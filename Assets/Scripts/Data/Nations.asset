@@ -19,9 +19,15 @@ MonoBehaviour:
     - regionName: 1
       initialWealth: 0
       initialProduction: 0
+    - regionName: 2
+      initialWealth: 0
+      initialProduction: 0
   - nationName: Nation 2
     nationColor: {r: 0.21462265, g: 0.23085096, b: 0.8584906, a: 1}
     regions:
     - regionName: 2
+      initialWealth: 0
+      initialProduction: 0
+    - regionName: 4
       initialWealth: 0
       initialProduction: 0
