@@ -1,35 +1,75 @@
+// MapController.cs - Updated version
 using UnityEngine;
+using TMPro;
 
 public class MapController : MonoBehaviour
 {
-    public Camera mainCamera;
-    
-    private GameManager gameManager;
+    public MapView mapView;
+    public TextMeshProUGUI infoText;
 
-    private void Awake()
+    private string selectedRegion = "";
+
+    void OnEnable()
     {
-        gameManager = GameObject.Find("GameManager").GetComponent<GameManager>();
+        // Subscribe to region click events
+        RegionClickHandler.OnRegionClicked += OnRegionClicked;
     }
 
-    void Update()
+    void OnDisable()
     {
-        if (Input.GetMouseButtonDown(0))
+        // Unsubscribe to avoid memory leaks
+        RegionClickHandler.OnRegionClicked -= OnRegionClicked;
+    }
+
+    void OnRegionClicked(string regionName)
+    {
+        SelectRegion(regionName);
+    }
+
+    void SelectRegion(string regionName)
+    {
+        // Reset previous selection
+        if (!string.IsNullOrEmpty(selectedRegion))
         {
-            HandleMapClick();
+            Color originalColor = GetRegionNationColor(selectedRegion);
+            mapView.ResetHighlight(selectedRegion, originalColor);
+        }
+
+        // Set new selection
+        selectedRegion = regionName;
+        mapView.HighlightRegion(regionName);
+
+        // Update info panel
+        MapDataSO.RegionData regionData = GetRegionData(regionName);
+        if (regionData != null)
+        {
+            infoText.text = $"Region: {regionName}\nWealth: {regionData.initialWealth}\nProduction: {regionData.initialProduction}";
         }
     }
 
-    private void HandleMapClick()
+    MapDataSO.RegionData GetRegionData(string regionName)
     {
-        Vector2 worldPoint = mainCamera.ScreenToWorldPoint(Input.mousePosition);
-        RaycastHit2D hit = Physics2D.Raycast(worldPoint, Vector2.zero);
-
-        if (hit.collider != null && hit.collider.CompareTag("Region"))
+        foreach (var nation in mapView.mapData.nations)
         {
-            string regionName = hit.collider.gameObject.name;
-            Debug.Log($"Region clicked: {regionName}");
-
-            gameManager.SelectRegion(regionName);
+            foreach (var region in nation.regions)
+            {
+                if (region.regionName == regionName)
+                    return region;
+            }
         }
+        return null;
+    }
+
+    Color GetRegionNationColor(string regionName)
+    {
+        foreach (var nation in mapView.mapData.nations)
+        {
+            foreach (var region in nation.regions)
+            {
+                if (region.regionName == regionName)
+                    return nation.nationColor;
+            }
+        }
+        return Color.white;
     }
 }

@@ -23,7 +23,7 @@ public class MapSystem : MonoBehaviour
         
         // Changed to match the simplified MapView implementation
         // which only takes the RegionEntity as a parameter
-        mapView.UpdateRegionVisual(region);
+       // mapView.UpdateRegionVisual(region);
     }
 
     private void OnRegionSelected(object regionNameObj)
@@ -32,13 +32,13 @@ public class MapSystem : MonoBehaviour
         {
             string regionName = (string)regionNameObj;
             Debug.Log($"Region selected in MapSystem: {regionName}");
-            mapView.HighlightSelectedRegion(regionName);
+            //mapView.HighlightSelectedRegion(regionName);
         }
         else if (regionNameObj is RegionEntity)
         {
             RegionEntity region = (RegionEntity)regionNameObj;
             Debug.Log($"Region selected in MapSystem: {region.regionName}");
-            mapView.HighlightSelectedRegion(region.regionName);
+           // mapView.HighlightSelectedRegion(region.regionName);
         }
     }
 }

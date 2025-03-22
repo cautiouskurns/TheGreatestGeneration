@@ -1,5 +1,6 @@
 using UnityEngine;
 
+// MapDataSO.cs - Keep this simple
 [CreateAssetMenu(fileName = "NewMapData", menuName = "Game Data/Map Data")]
 public class MapDataSO : ScriptableObject
 {
