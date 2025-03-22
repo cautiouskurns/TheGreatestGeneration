@@ -23,6 +23,5 @@ public class RegionEntity
         // Notify UI & other systems that this region has been updated
         EventBus.Trigger("RegionUpdated", this);
     }
+
 }
-
-

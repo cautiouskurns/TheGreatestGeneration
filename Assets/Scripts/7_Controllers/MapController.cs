@@ -31,8 +31,8 @@ public class MapController : MonoBehaviour
 
     private void DetectRegionClick()
     {
-        Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
-        RaycastHit2D hit = Physics2D.GetRayIntersection(ray);
+        Vector2 worldPoint = mainCamera.ScreenToWorldPoint(Input.mousePosition);
+        RaycastHit2D hit = Physics2D.Raycast(worldPoint, Vector2.zero);
 
         if (hit.collider != null)
         {
@@ -43,6 +43,14 @@ public class MapController : MonoBehaviour
             {
                 EventBus.Trigger("RegionSelected", regionEntities[regionName]);
             }
+            else
+            {
+                Debug.LogWarning($"⚠️ Region {regionName} was clicked but not found in regionEntities dictionary");
+            }
+        }
+        else
+        {
+            Debug.Log("🖱️ Click detected but no region was hit");
         }
     }
 }
