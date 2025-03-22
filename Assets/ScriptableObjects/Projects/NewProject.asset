@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   projectName: 
   description: 
-  turnsToComplete: 0
+  turnsToComplete: 1
   wealthCost: 0
   materialsCost: 0
   laborCost: 0

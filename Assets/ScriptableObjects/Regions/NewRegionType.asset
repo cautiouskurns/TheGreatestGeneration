@@ -13,7 +13,11 @@ MonoBehaviour:
   m_Name: NewRegionType
   m_EditorClassIdentifier: 
   typeName: 
-  mapColor: {r: 0, g: 0, b: 0, a: 0}
+  mapColor:
+    r: 0
+    g: 0
+    b: 0
+    a: 0
   agriculturePotential: 0
   industryPotential: 0
   commercePotential: 0
