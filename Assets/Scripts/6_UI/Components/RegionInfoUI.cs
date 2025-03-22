@@ -21,7 +21,7 @@ public class RegionInfoUI : MonoBehaviour
 
         infoText.text = $"🏙️ {region.regionName}\n" +
                         $"💰 Wealth: {region.wealth}\n" +
-                        $"🏭 Production: {region.production}";
+                        $"🏭 Production: {region.production}\n" +
+                        $"🏛️ Nation: {region.ownerNationName}";
     }
 }
-

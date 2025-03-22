@@ -2,7 +2,7 @@ using UnityEngine;
 using System.Collections.Generic;
 
 [CreateAssetMenu(fileName = "NewInfrastructureType", menuName = "Game/Infrastructure Type")]
-public class InfrastructureTypeSO : ScriptableObject
+public class InfrastructureTypeDataSO : ScriptableObject
 {
     public string typeName;
     public Sprite icon;

@@ -1,9 +1,9 @@
 using UnityEngine;
 
 [CreateAssetMenu(fileName = "NewRegionType", menuName = "Game/Region Type")]
-public class RegionDataSO : ScriptableObject
+public class RegionTypeDataSO : ScriptableObject
 {
-    public string typeName;
+    public string regionTypeName;
     public Color mapColor;
     [Range(0, 10)] public int agriculturePotential;
     [Range(0, 10)] public int industryPotential;

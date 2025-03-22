@@ -1,51 +1,40 @@
-using UnityEngine;
 using System.Collections.Generic;
+using UnityEngine;
 
-/// <summary>
-/// Represents the data structure for the game map, including regions, their properties, and relationships.
-/// This class serves as the "Model" in the MVC architecture.
-/// </summary>
-public class MapModel: MonoBehaviour
+public class MapModel
 {
-    // Dictionary to store all region entities by name for quick lookup
     private Dictionary<string, RegionEntity> regions = new Dictionary<string, RegionEntity>();
-    
-    // Reference to the source data
-    private MapDataSO mapData;
-    
-    // The currently selected region
     private RegionEntity selectedRegion;
-    
+    private MapDataSO mapData;
+
     public MapModel(MapDataSO mapData)
     {
         this.mapData = mapData;
         InitializeRegions();
     }
-    
+
     private void InitializeRegions()
     {
-        // Create RegionEntity instances based on the ScriptableObject data
-        foreach (NationDataSO nation in mapData.nations)
+        foreach (var nation in mapData.nations)
         {
-            foreach (RegionDataSO regionData in nation.regions)
+            foreach (var regionData in nation.regions)
             {
                 RegionEntity region = new RegionEntity(
                     regionData.regionName,
                     regionData.initialWealth,
-                    regionData.initialProduction
+                    regionData.initialProduction,
+                    nation.nationName,
+                    nation.nationColor
                 );
-                
+
                 regions.Add(region.regionName, region);
-                
-                // Notify other systems that a new region has been created
                 EventBus.Trigger("RegionCreated", region);
             }
         }
-        
-        // Notify that all regions are initialized and ready
+
         EventBus.Trigger("RegionEntitiesReady", regions);
     }
-    
+
     public RegionEntity GetRegion(string regionName)
     {
         if (regions.ContainsKey(regionName))
@@ -54,12 +43,12 @@ public class MapModel: MonoBehaviour
         }
         return null;
     }
-    
+
     public Dictionary<string, RegionEntity> GetAllRegions()
     {
         return regions;
     }
-    
+
     public void SelectRegion(string regionName)
     {
         if (regions.ContainsKey(regionName))
@@ -68,12 +57,12 @@ public class MapModel: MonoBehaviour
             EventBus.Trigger("RegionSelected", selectedRegion);
         }
     }
-    
+
     public RegionEntity GetSelectedRegion()
     {
         return selectedRegion;
     }
-    
+
     public void UpdateRegion(RegionEntity region)
     {
         if (regions.ContainsKey(region.regionName))
@@ -81,5 +70,17 @@ public class MapModel: MonoBehaviour
             regions[region.regionName] = region;
             EventBus.Trigger("RegionUpdated", region);
         }
+    }
+
+    public void ProcessTurn()
+    {
+        foreach (var region in regions.Values)
+        {
+            int wealthChange = region.production * 2;  // Wealth grows based on production
+            int productionChange = Random.Range(-2, 3); // Simulate fluctuation
+            region.UpdateEconomy(wealthChange, productionChange);
+        }
+
+        EventBus.Trigger("MapModelTurnProcessed", null);
     }
 }

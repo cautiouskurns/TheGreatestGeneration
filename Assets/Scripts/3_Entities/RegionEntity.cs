@@ -1,20 +1,21 @@
-using System;
-
+using UnityEngine;
 public class RegionEntity
 {
     public string regionName;
     public int wealth;
     public int production;
+    public string ownerNationName;
+    public Color regionColor;
 
-    // ✅ Correct Constructor with 3 Arguments
-    public RegionEntity(string name, int initialWealth, int initialProduction)
+    public RegionEntity(string name, int initialWealth, int initialProduction, string nationName, Color color)
     {
         regionName = name;
         wealth = initialWealth;
         production = initialProduction;
+        ownerNationName = nationName;
+        regionColor = color;
     }
 
-    // Method to update economy and trigger an event for UI updates
     public void UpdateEconomy(int wealthChange, int productionChange)
     {
         wealth += wealthChange;
@@ -23,5 +24,5 @@ public class RegionEntity
         // Notify UI & other systems that this region has been updated
         EventBus.Trigger("RegionUpdated", this);
     }
-
 }
+

@@ -1,3 +1,4 @@
+// MapSystem.cs - Fixed
 using UnityEngine;
 
 public class MapSystem : MonoBehaviour
@@ -19,19 +20,25 @@ public class MapSystem : MonoBehaviour
     private void OnRegionUpdated(object regionObj)
     {
         RegionEntity region = (RegionEntity)regionObj;
-
-        // If wealth is high, color green. If low, color red.
-        Color highlightColor = Color.yellow;
-        mapView.UpdateRegionVisual(region.regionName, highlightColor);
+        
+        // Changed to match the simplified MapView implementation
+        // which only takes the RegionEntity as a parameter
+        mapView.UpdateRegionVisual(region);
     }
 
     private void OnRegionSelected(object regionNameObj)
     {
-        string regionName = (string)regionNameObj;
-        Debug.Log($"Region selected in MapSystem: {regionName}");
-        
-        // Change the color based on selection
-        Color selectedColor = Color.cyan; // Or any highlight color
-        mapView.UpdateRegionVisual(regionName, selectedColor);
+        if (regionNameObj is string)
+        {
+            string regionName = (string)regionNameObj;
+            Debug.Log($"Region selected in MapSystem: {regionName}");
+            mapView.HighlightSelectedRegion(regionName);
+        }
+        else if (regionNameObj is RegionEntity)
+        {
+            RegionEntity region = (RegionEntity)regionNameObj;
+            Debug.Log($"Region selected in MapSystem: {region.regionName}");
+            mapView.HighlightSelectedRegion(region.regionName);
+        }
     }
 }
