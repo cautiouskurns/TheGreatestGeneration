@@ -10,15 +10,19 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 721d3144391044b71990151be32ac826, type: 3}
-  m_Name: NewResource
+  m_Name: Bread
   m_EditorClassIdentifier: 
-  resourceName: 
-  resourceType: 0
+  resourceName: Bread
+  resourceType: 1
   resourceIcon: {fileID: 0}
-  resourceColor: {r: 0, g: 0, b: 0, a: 0}
-  baseValue: 0
+  resourceColor: {r: 1, g: 1, b: 1, a: 1}
   description: 
-  isSecondaryResource: 0
-  requiredResources: []
-  requiredAmounts: 
-  primaryProductionSector: 
+  category: 1
+  baseValue: 10
+  marketVolatility: 1
+  maxStoragePerCapacity: 100
+  perishRate: 0
+  transportFactor: 1
+  weightPerUnit: 1
+  isRawResource: 1
+  productionRecipes: []

@@ -1,0 +1,40 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 721d3144391044b71990151be32ac826, type: 3}
+  m_Name: Iron
+  m_EditorClassIdentifier: 
+  resourceName: Iron
+  resourceType: 0
+  resourceIcon: {fileID: 0}
+  resourceColor: {r: 1, g: 1, b: 1, a: 1}
+  description: 
+  category: 1
+  baseValue: 35
+  marketVolatility: 1
+  maxStoragePerCapacity: 100
+  perishRate: 0
+  transportFactor: 1
+  weightPerUnit: 1
+  isRawResource: 0
+  productionRecipes:
+  - recipeName: Basic Iron Smelting
+    inputs:
+    - resource: {fileID: 11400000, guid: 43db618168ac24cc5bfe3caaceff2116, type: 2}
+      amount: 2
+      consumed: 1
+    - resource: {fileID: 11400000, guid: 7ef05617a42c3439aad429452189ebb2, type: 2}
+      amount: 1
+      consumed: 1
+    outputAmount: 1
+    productionTime: 1
+    requiredInfrastructureType: Industry
+    minimumInfrastructureLevel: 2

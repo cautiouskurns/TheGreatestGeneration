@@ -84,7 +84,7 @@ public class GameManager : MonoBehaviour
                 generator.SetNationTemplates(nationTemplates);
                 Debug.Log($"Using {nationTemplates.Length} nation templates for map generation");
             }
-            
+
             // Generate the map
             mapData = generator.GenerateMap();
         }
@@ -141,5 +141,10 @@ public class GameManager : MonoBehaviour
     public RegionEntity GetRegion(string regionName)
     {
         return mapModel.GetRegion(regionName);
+    }
+
+    public MapDataSO GetMapData()
+    {
+        return mapModel.GetMapData(); // Assuming MapModel has this method
     }
 }
