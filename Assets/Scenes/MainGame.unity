@@ -1083,7 +1083,7 @@ MonoBehaviour:
   regionInfoUI: {fileID: 868220602}
   useProceduralMap: 1
   predefinedMapData: {fileID: 0}
-  useSavedTerrainMap: 1
+  useSavedTerrainMap: 0
   savedTerrainMap: {fileID: 11400000, guid: 8f044f0faa0f34570aa66a6bd2ee9787, type: 2}
   mapWidth: 10
   mapHeight: 10
