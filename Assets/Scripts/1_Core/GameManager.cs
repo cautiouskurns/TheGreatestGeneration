@@ -88,8 +88,20 @@ public class GameManager : MonoBehaviour
         // Assign generated map data to MapView
         mapView.mapData = mapData;
         
-        // Initialize model with the map data
-        mapModel = new MapModel(mapData);
+        // Initialize model with the map data and terrain types
+        Dictionary<string, TerrainTypeDataSO> terrainTypesDict = new Dictionary<string, TerrainTypeDataSO>();
+        if (mapView.availableTerrainTypes != null)
+        {
+            foreach (var terrain in mapView.availableTerrainTypes)
+            {
+                if (terrain != null)
+                {
+                    terrainTypesDict[terrain.terrainName] = terrain;
+                }
+            }
+        }
+
+        mapModel = new MapModel(mapData, terrainTypesDict);
         
         Debug.Log("GameManager initialized with " + 
                   (useProceduralMap ? "procedurally generated" : "predefined") + 

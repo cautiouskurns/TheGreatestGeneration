@@ -1083,10 +1083,10 @@ MonoBehaviour:
   regionInfoUI: {fileID: 868220602}
   useProceduralMap: 1
   predefinedMapData: {fileID: 0}
-  useSavedTerrainMap: 0
-  savedTerrainMap: {fileID: 11400000, guid: 8f044f0faa0f34570aa66a6bd2ee9787, type: 2}
-  mapWidth: 10
-  mapHeight: 10
+  useSavedTerrainMap: 1
+  savedTerrainMap: {fileID: 11400000, guid: d349c95b0ea384c108256d7244867919, type: 2}
+  mapWidth: 50
+  mapHeight: 50
   nationCount: 3
   regionsPerNation: 30
 --- !u!4 &1263410360
@@ -1394,8 +1394,13 @@ MonoBehaviour:
   regionPrefab: {fileID: 3409607309657115395, guid: 6c8f38f9864824bf7a1fd62aa18849d2, type: 3}
   regionSpacing: 1
   showTerrainColors: 1
-  terrainColorBlend: 0.7
-  availableTerrainTypes: []
+  terrainColorBlend: 1
+  availableTerrainTypes:
+  - {fileID: 11400000, guid: 1a9429df4eead42578a54166ab7f3878, type: 2}
+  - {fileID: 11400000, guid: 7378eb603bca54df29701006296ef891, type: 2}
+  - {fileID: 11400000, guid: 0df9227be0d874692acc8d7530ff9835, type: 2}
+  - {fileID: 11400000, guid: 482df1c1ff85f4e99b6dd378e15bac95, type: 2}
+  - {fileID: 11400000, guid: d11a4169988444c9a92c2c43c5a89cc6, type: 2}
 --- !u!1 &2076773028
 GameObject:
   m_ObjectHideFlags: 0
@@ -1446,9 +1451,9 @@ MonoBehaviour:
   showNationMap: 1
   elevationScale: 30
   moistureScale: 50
-  seed: 0
-  mapWidth: 50
-  mapHeight: 50
+  seed: 100
+  mapWidth: 20
+  mapHeight: 20
   terrainTypes:
   - {fileID: 11400000, guid: 1a9429df4eead42578a54166ab7f3878, type: 2}
   - {fileID: 11400000, guid: 7378eb603bca54df29701006296ef891, type: 2}

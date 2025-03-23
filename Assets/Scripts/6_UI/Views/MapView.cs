@@ -109,71 +109,135 @@ public class MapView : MonoBehaviour
 
     void GenerateMap()
     {
-        // Calculate grid dimensions
-        int totalRegions = 0;
+        if (mapData == null || mapData.nations == null)
+        {
+            Debug.LogError("MapData or nations array is null!");
+            return;
+        }
+
+        // First, determine if position data is available in the RegionData
+        bool usePositionData = false;
+        
+        // Check first region for position data (not at origin)
         foreach (var nation in mapData.nations)
         {
-            totalRegions += nation.regions.Length;
+            if (nation.regions != null && nation.regions.Length > 0)
+            {
+                // If position is not (0,0), assume it's valid position data
+                if (nation.regions[0].position != Vector2.zero)
+                {
+                    usePositionData = true;
+                    break;
+                }
+            }
         }
         
-        int gridWidth = Mathf.CeilToInt(Mathf.Sqrt(totalRegions));
-        int gridHeight = Mathf.CeilToInt((float)totalRegions / gridWidth);
-        
-        // Calculate center offset (to place first tile at negative coordinates)
-        float offsetX = -(gridWidth * regionSpacing) / 2f;
-        float offsetY = -(gridHeight * regionSpacing) / 2f;
-        
-        int x = 0, y = 0;
-        
-        foreach (var nation in mapData.nations)
+        if (usePositionData)
         {
-            foreach (var region in nation.regions)
+            // Use position data from the RegionData
+            foreach (var nation in mapData.nations)
             {
-                // Position with offset to center
-                Vector3 position = new Vector3(
-                    offsetX + (x * regionSpacing), 
-                    offsetY + (y * regionSpacing), 
-                    0
-                );
-                
-                GameObject regionGO = Instantiate(regionPrefab, position, Quaternion.identity, transform);
-                regionGO.name = region.regionName;
-                
-                // Apply initial color based on nation
-                Color regionColor = nation.nationColor;
-                
-                // Check if we have a terrain type assigned to this region
-                // This would be part of your extended RegionData class in MapDataSO
-                // For now, we'll just randomly assign a terrain type for visualization
-                if (showTerrainColors && availableTerrainTypes.Length > 0)
+                foreach (var region in nation.regions)
                 {
-                    // Randomly assign a terrain type for now
-                    TerrainTypeDataSO terrain = availableTerrainTypes[Random.Range(0, availableTerrainTypes.Length)];
-                    regionTerrainMap[region.regionName] = terrain;
+                    // Use the position directly from RegionData
+                    Vector3 position = new Vector3(
+                        region.position.x * regionSpacing, 
+                        region.position.y * regionSpacing, 
+                        0
+                    );
                     
-                    // Blend nation color with terrain color
-                    regionColor = Color.Lerp(nation.nationColor, terrain.baseColor, terrainColorBlend);
+                    CreateRegionGameObject(nation, region, position);
                 }
-                
-                regionGO.GetComponent<SpriteRenderer>().color = regionColor;
-                
-                // Add a component to handle clicks
-                RegionClickHandler clickHandler = regionGO.AddComponent<RegionClickHandler>();
-                clickHandler.regionName = region.regionName;
-
-                regionObjects[region.regionName] = regionGO;
-
-                // Move to next grid position
-                x++;
-                if (x >= gridWidth)
+            }
+        }
+        else
+        {
+            // Fall back to grid layout if position data is not available
+            // Calculate grid dimensions
+            int totalRegions = 0;
+            foreach (var nation in mapData.nations)
+            {
+                totalRegions += nation.regions.Length;
+            }
+            
+            int gridWidth = Mathf.CeilToInt(Mathf.Sqrt(totalRegions));
+            int gridHeight = Mathf.CeilToInt((float)totalRegions / gridWidth);
+            
+            // Calculate center offset
+            float offsetX = -(gridWidth * regionSpacing) / 2f;
+            float offsetY = -(gridHeight * regionSpacing) / 2f;
+            
+            int x = 0, y = 0;
+            
+            foreach (var nation in mapData.nations)
+            {
+                foreach (var region in nation.regions)
                 {
-                    x = 0;
-                    y++;
+                    // Position with offset to center
+                    Vector3 position = new Vector3(
+                        offsetX + (x * regionSpacing), 
+                        offsetY + (y * regionSpacing), 
+                        0
+                    );
+                    
+                    CreateRegionGameObject(nation, region, position);
+                    
+                    // Move to next grid position
+                    x++;
+                    if (x >= gridWidth)
+                    {
+                        x = 0;
+                        y++;
+                    }
                 }
             }
         }
 
-        Debug.Log($"Generated map with {regionObjects.Count} regions in a {gridWidth}x{gridHeight} grid");
+        Debug.Log($"Generated map with {regionObjects.Count} regions");
+    }
+
+    // Helper method to create region game objects
+    private void CreateRegionGameObject(MapDataSO.NationData nation, MapDataSO.RegionData region, Vector3 position)
+    {
+        GameObject regionGO = Instantiate(regionPrefab, position, Quaternion.identity, transform);
+        regionGO.name = region.regionName;
+        
+        // Apply initial color based on nation
+        Color regionColor = nation.nationColor;
+        
+        // Use the terrain type from region data if available
+        if (showTerrainColors && !string.IsNullOrEmpty(region.terrainTypeName))
+        {
+            TerrainTypeDataSO terrain = null;
+            
+            // Try to find the terrain type by name
+            if (terrainTypeDict.ContainsKey(region.terrainTypeName))
+            {
+                terrain = terrainTypeDict[region.terrainTypeName];
+            }
+            else if (availableTerrainTypes.Length > 0)
+            {
+                // Fallback to random if not found
+                terrain = availableTerrainTypes[Random.Range(0, availableTerrainTypes.Length)];
+                Debug.LogWarning($"Terrain type '{region.terrainTypeName}' not found for region {region.regionName}, using random terrain");
+            }
+            
+            if (terrain != null)
+            {
+                regionTerrainMap[region.regionName] = terrain;
+                
+                // Blend nation color with terrain color
+                regionColor = Color.Lerp(nation.nationColor, terrain.baseColor, terrainColorBlend);
+            }
+        }
+        
+        regionGO.GetComponent<SpriteRenderer>().color = regionColor;
+        
+        // Add a component to handle clicks
+        RegionClickHandler clickHandler = regionGO.AddComponent<RegionClickHandler>();
+        clickHandler.regionName = region.regionName;
+
+        regionObjects[region.regionName] = regionGO;
     }
 
     public void HighlightRegion(string regionName)

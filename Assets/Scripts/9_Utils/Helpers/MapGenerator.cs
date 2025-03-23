@@ -122,14 +122,14 @@ public class MapGenerator
                 {
                     TerrainTypeDataSO terrain = terrainMap[x, y];
                     
-                    // Create region data
+                    // Create region data with position information
                     MapDataSO.RegionData regionData = new MapDataSO.RegionData
                     {
                         regionName = "Region " + regionCounter++,
                         initialWealth = Random.Range(50, 200),
                         initialProduction = Random.Range(5, 20),
-                        // Add terrain reference if we extend the RegionData class
-                        // terrain = terrain
+                        position = new Vector2(x, y), // Add position to store the grid location
+                        terrainTypeName = terrain != null ? terrain.terrainName : "Plains" // Save terrain type name
                     };
                     
                     // Add to nation's region list
@@ -141,14 +141,12 @@ public class MapGenerator
         // Assign regions to nations in the MapDataSO
         for (int i = 0; i < nationCount; i++)
         {
-            // Limit to requested regions per nation
-            int actualRegionCount = Mathf.Min(nationRegions[i].Count, regionsPerNation);
-            
+            // Use all regions for each nation instead of limiting
             mapData.nations[i] = new MapDataSO.NationData
             {
                 nationName = "Nation " + (i + 1),
                 nationColor = nationColors[i],
-                regions = nationRegions[i].GetRange(0, actualRegionCount).ToArray()
+                regions = nationRegions[i].ToArray() // Use all regions, no limiting
             };
         }
         

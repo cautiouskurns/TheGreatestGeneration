@@ -6,10 +6,13 @@ public class MapModel
     private Dictionary<string, RegionEntity> regions = new Dictionary<string, RegionEntity>();
     private RegionEntity selectedRegion;
     private MapDataSO mapData;
+    private Dictionary<string, TerrainTypeDataSO> terrainTypes; // Add this
 
-    public MapModel(MapDataSO mapData)
+    // Update constructor to accept terrain types
+    public MapModel(MapDataSO mapData, Dictionary<string, TerrainTypeDataSO> terrainTypes = null)
     {
         this.mapData = mapData;
+        this.terrainTypes = terrainTypes; // Store reference to terrain types
         InitializeRegions();
     }
 
@@ -19,12 +22,23 @@ public class MapModel
         {
             foreach (var regionData in nation.regions)
             {
+                // Get terrain type from dictionary if available
+                TerrainTypeDataSO terrain = null;
+                if (!string.IsNullOrEmpty(regionData.terrainTypeName) && 
+                    terrainTypes != null && 
+                    terrainTypes.ContainsKey(regionData.terrainTypeName))
+                {
+                    terrain = terrainTypes[regionData.terrainTypeName];
+                }
+                
+                // Create region with terrain
                 RegionEntity region = new RegionEntity(
                     regionData.regionName,
                     regionData.initialWealth,
                     regionData.initialProduction,
                     nation.nationName,
-                    nation.nationColor
+                    nation.nationColor,
+                    terrain  // Pass the terrain to the RegionEntity
                 );
 
                 regions.Add(region.regionName, region);
@@ -89,5 +103,11 @@ public class MapModel
         }
 
         EventBus.Trigger("MapModelTurnProcessed", null);
+    }
+    
+    // Add a method to get the MapDataSO for the GameManager
+    public MapDataSO GetMapData()
+    {
+        return mapData;
     }
 }

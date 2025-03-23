@@ -18,6 +18,8 @@ public class MapDataSO : ScriptableObject
         public string regionName;
         public int initialWealth;
         public int initialProduction;
+        public Vector2 position;
+        public string terrainTypeName;
     }
 
     public NationData[] nations;

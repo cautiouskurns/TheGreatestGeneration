@@ -8,7 +8,7 @@ public static class EventBus
 
     public static void Subscribe(string eventName, Action<object> listener)
     {
-        Debug.Log($"EventBus: Subscribing to '{eventName}' event with listener {listener.Method.DeclaringType}.{listener.Method.Name}");
+//        Debug.Log($"EventBus: Subscribing to '{eventName}' event with listener {listener.Method.DeclaringType}.{listener.Method.Name}");
         
         if (!eventDictionary.ContainsKey(eventName))
         {
@@ -27,11 +27,11 @@ public static class EventBus
 
     public static void Trigger(string eventName, object eventData = null)
     {
-        Debug.Log($"EventBus: Triggering '{eventName}' event");
+//        Debug.Log($"EventBus: Triggering '{eventName}' event");
         
         if (eventDictionary.ContainsKey(eventName))
         {
-            Debug.Log($"EventBus: Found {eventDictionary[eventName].GetInvocationList().Length} listeners for '{eventName}'");
+        //    Debug.Log($"EventBus: Found {eventDictionary[eventName].GetInvocationList().Length} listeners for '{eventName}'");
             eventDictionary[eventName].Invoke(eventData);
         }
         else
