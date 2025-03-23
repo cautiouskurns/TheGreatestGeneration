@@ -134,21 +134,43 @@ public class MapView : MonoBehaviour
         
         if (usePositionData)
         {
-            // Use position data from the RegionData
+            // Calculate the map bounds to center it
+            float minX = float.MaxValue, maxX = float.MinValue;
+            float minY = float.MaxValue, maxY = float.MinValue;
+            
+            // Find the extent of the map
             foreach (var nation in mapData.nations)
             {
                 foreach (var region in nation.regions)
                 {
-                    // Use the position directly from RegionData
+                    minX = Mathf.Min(minX, region.position.x);
+                    maxX = Mathf.Max(maxX, region.position.x);
+                    minY = Mathf.Min(minY, region.position.y);
+                    maxY = Mathf.Max(maxY, region.position.y);
+                }
+            }
+            
+            // Calculate the center of the map in grid coordinates
+            float centerX = (minX + maxX) / 2f;
+            float centerY = (minY + maxY) / 2f;
+            
+            // Now create regions with offset to center
+            foreach (var nation in mapData.nations)
+            {
+                foreach (var region in nation.regions)
+                {
+                    // Calculate position with offset to center the map
                     Vector3 position = new Vector3(
-                        region.position.x * regionSpacing, 
-                        region.position.y * regionSpacing, 
+                        (region.position.x - centerX) * regionSpacing,
+                        (region.position.y - centerY) * regionSpacing,
                         0
                     );
                     
                     CreateRegionGameObject(nation, region, position);
                 }
             }
+            
+            Debug.Log($"Generated centered map with bounds: ({minX},{minY}) to ({maxX},{maxY})");
         }
         else
         {
@@ -191,9 +213,9 @@ public class MapView : MonoBehaviour
                     }
                 }
             }
+            
+            Debug.Log($"Generated grid map with {regionObjects.Count} regions in a {gridWidth}x{gridHeight} grid");
         }
-
-        Debug.Log($"Generated map with {regionObjects.Count} regions");
     }
 
     // Helper method to create region game objects
