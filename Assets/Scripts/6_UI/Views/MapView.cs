@@ -12,18 +12,46 @@ public class MapView : MonoBehaviour
 
     void Start()
     {
-        GenerateMap();
+        if (mapData != null)
+        {
+            GenerateMap();
+        }
+        else
+        {
+            Debug.LogError("MapData is not assigned to MapView!");
+        }
     }
 
     void GenerateMap()
     {
+        // Calculate grid dimensions
+        int totalRegions = 0;
+        foreach (var nation in mapData.nations)
+        {
+            totalRegions += nation.regions.Length;
+        }
+        
+        int gridWidth = Mathf.CeilToInt(Mathf.Sqrt(totalRegions));
+        int gridHeight = Mathf.CeilToInt((float)totalRegions / gridWidth);
+        
+        // Calculate center offset (to place first tile at negative coordinates)
+        float offsetX = -(gridWidth * regionSpacing) / 2f;
+        float offsetY = -(gridHeight * regionSpacing) / 2f;
+        
         int x = 0, y = 0;
-
+        
         foreach (var nation in mapData.nations)
         {
             foreach (var region in nation.regions)
             {
-                GameObject regionGO = Instantiate(regionPrefab, new Vector3(x * regionSpacing, y * regionSpacing, 0), Quaternion.identity, transform);
+                // Position with offset to center
+                Vector3 position = new Vector3(
+                    offsetX + (x * regionSpacing), 
+                    offsetY + (y * regionSpacing), 
+                    0
+                );
+                
+                GameObject regionGO = Instantiate(regionPrefab, position, Quaternion.identity, transform);
                 regionGO.name = region.regionName;
                 regionGO.GetComponent<SpriteRenderer>().color = nation.nationColor;
                 
@@ -33,9 +61,9 @@ public class MapView : MonoBehaviour
 
                 regionObjects[region.regionName] = regionGO;
 
-                // Simple grid layout
+                // Move to next grid position
                 x++;
-                if (x > 5)
+                if (x >= gridWidth)
                 {
                     x = 0;
                     y++;
@@ -43,7 +71,7 @@ public class MapView : MonoBehaviour
             }
         }
 
-        Debug.Log($"Generated map with {regionObjects.Count} regions");
+        Debug.Log($"Generated map with {regionObjects.Count} regions in a {gridWidth}x{gridHeight} grid");
     }
 
     public void HighlightRegion(string regionName)
