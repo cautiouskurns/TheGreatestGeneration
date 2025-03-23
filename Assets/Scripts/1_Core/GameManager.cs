@@ -23,6 +23,9 @@ public class GameManager : MonoBehaviour
     
     private MapModel mapModel;
 
+    [Header("Nation Templates")]
+    public NationTemplate[] nationTemplates;
+
     private void Awake()
     {
         // Generate or use predefined map
@@ -74,6 +77,12 @@ public class GameManager : MonoBehaviour
                 {
                     generator.SetTerrainTypes(terrainTypes);
                 }
+            }
+             // Set nation templates if available
+            if (nationTemplates != null && nationTemplates.Length > 0)
+            {
+                generator.SetNationTemplates(nationTemplates);
+                Debug.Log($"Using {nationTemplates.Length} nation templates for map generation");
             }
             
             // Generate the map

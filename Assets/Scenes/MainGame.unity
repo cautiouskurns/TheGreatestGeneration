@@ -984,6 +984,40 @@ MonoBehaviour:
   mapHeight: 50
   nationCount: 3
   regionsPerNation: 30
+  nationTemplates:
+  - name: Carhein
+    color: {r: 0.5566038, g: 0.007876454, b: 0.007876454, a: 0}
+    centerPosition: {x: 0.8, y: 0.3}
+    expansionRadius: 0.249
+    isLandlocked: 0
+    isMountainous: 0
+    forestPreference: 0
+    desertPreference: 0
+    plainsPreference: 0
+    wealthMultiplier: 0
+    productionMultiplier: 0
+  - name: Tear
+    color: {r: 0.46327814, g: 0, b: 0.7169812, a: 0}
+    centerPosition: {x: 0.5, y: 0.1}
+    expansionRadius: 0.144
+    isLandlocked: 0
+    isMountainous: 0
+    forestPreference: 0
+    desertPreference: 0
+    plainsPreference: 0
+    wealthMultiplier: 0
+    productionMultiplier: 0
+  - name: Caymlyn
+    color: {r: 0.09529287, g: 0, b: 0.6226415, a: 0}
+    centerPosition: {x: 0.4, y: 0.4}
+    expansionRadius: 0.561
+    isLandlocked: 0
+    isMountainous: 0
+    forestPreference: 0
+    desertPreference: 0
+    plainsPreference: 0
+    wealthMultiplier: 0
+    productionMultiplier: 0
 --- !u!4 &1263410360
 Transform:
   m_ObjectHideFlags: 0
