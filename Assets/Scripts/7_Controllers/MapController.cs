@@ -1,4 +1,4 @@
-// MapController.cs - Updated version
+// MapController.cs - Aligned with EventBus
 using UnityEngine;
 using TMPro;
 
@@ -6,24 +6,40 @@ public class MapController : MonoBehaviour
 {
     public MapView mapView;
     public TextMeshProUGUI infoText;
+    private GameManager gameManager;
 
     private string selectedRegion = "";
 
-    void OnEnable()
+    private void Awake()
     {
-        // Subscribe to region click events
-        RegionClickHandler.OnRegionClicked += OnRegionClicked;
+        gameManager = FindFirstObjectByType<GameManager>();
+        if (gameManager == null)
+        {
+            Debug.LogError("GameManager not found!");
+        }
     }
 
-    void OnDisable()
+    private void OnEnable()
     {
-        // Unsubscribe to avoid memory leaks
-        RegionClickHandler.OnRegionClicked -= OnRegionClicked;
+        // Listen for RegionClicked events from RegionClickHandler
+        EventBus.Subscribe("RegionClicked", OnRegionClicked);
     }
 
-    void OnRegionClicked(string regionName)
+    private void OnDisable()
     {
-        SelectRegion(regionName);
+        EventBus.Unsubscribe("RegionClicked", OnRegionClicked);
+    }
+
+    private void OnRegionClicked(object regionNameObj)
+    {
+        string regionName = (string)regionNameObj;
+        Debug.Log($"MapController received RegionClicked for: {regionName}");
+        
+        // Pass to GameManager which handles the model update
+        if (gameManager != null)
+        {
+            gameManager.SelectRegion(regionName);
+        }
     }
 
     void SelectRegion(string regionName)

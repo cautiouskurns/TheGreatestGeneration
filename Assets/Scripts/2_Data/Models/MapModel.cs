@@ -51,10 +51,17 @@ public class MapModel
 
     public void SelectRegion(string regionName)
     {
+        Debug.Log($"MapModel.SelectRegion called with: {regionName}");
+        
         if (regions.ContainsKey(regionName))
         {
             selectedRegion = regions[regionName];
             EventBus.Trigger("RegionSelected", selectedRegion);
+            Debug.Log("RegionSelected event triggered");
+        }
+        else
+        {
+            Debug.LogWarning($"Region '{regionName}' not found in regions dictionary");
         }
     }
 

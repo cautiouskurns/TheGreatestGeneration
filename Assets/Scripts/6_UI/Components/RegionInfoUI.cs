@@ -5,6 +5,21 @@ public class RegionInfoUI : MonoBehaviour
 {
     public TextMeshProUGUI infoText;
 
+    private void Start()
+    {
+        Debug.Log("RegionInfoUI Start method called");
+        
+        if (infoText == null)
+        {
+            Debug.LogError("InfoText reference is null in RegionInfoUI");
+        }
+        else
+        {
+            Debug.Log("InfoText reference is valid");
+            infoText.text = "Waiting for region selection...";
+        }
+    }
+
     private void OnEnable()
     {
         EventBus.Subscribe("RegionSelected", UpdateInfo);

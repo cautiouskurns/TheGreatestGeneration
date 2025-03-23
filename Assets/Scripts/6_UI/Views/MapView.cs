@@ -26,14 +26,42 @@ public class MapView : MonoBehaviour
 
     private void OnEnable()
     {
-        // Add this event subscription
+        // Add event subscriptions
         EventBus.Subscribe("RegionUpdated", OnRegionUpdated);
+        EventBus.Subscribe("RegionSelected", OnRegionSelected);
     }
 
     private void OnDisable()
     {
-        // Add this event unsubscription
+        // Add event unsubscriptions
         EventBus.Unsubscribe("RegionUpdated", OnRegionUpdated);
+        EventBus.Unsubscribe("RegionSelected", OnRegionSelected);
+    }
+
+    // Add this handler for RegionSelected events
+    private void OnRegionSelected(object regionObj)
+    {
+        RegionEntity region = regionObj as RegionEntity;
+        if (region != null)
+        {
+            // Reset all selections
+            foreach (var regionGO in regionObjects.Values)
+            {
+                string regionName = regionGO.name;
+                RegionEntity regionEntity = FindFirstObjectByType<GameManager>().GetRegion(regionName);
+                if (regionEntity != null && regionEntity != region)
+                {
+                    // Restore original color
+                    regionGO.GetComponent<SpriteRenderer>().color = regionEntity.regionColor;
+                }
+            }
+
+            // Highlight selected region
+            if (regionObjects.ContainsKey(region.regionName))
+            {
+                regionObjects[region.regionName].GetComponent<SpriteRenderer>().color = Color.yellow;
+            }
+        }
     }
 
     private void OnRegionUpdated(object regionObj)
