@@ -1,6 +1,8 @@
 // MapView.cs - Updated version
 using UnityEngine;
 using System.Collections.Generic;
+using TMPro;
+using System.Collections;
 
 public class MapView : MonoBehaviour
 {
@@ -19,6 +21,31 @@ public class MapView : MonoBehaviour
         else
         {
             Debug.LogError("MapData is not assigned to MapView!");
+        }
+    }
+
+    private void OnEnable()
+    {
+        // Add this event subscription
+        EventBus.Subscribe("RegionUpdated", OnRegionUpdated);
+    }
+
+    private void OnDisable()
+    {
+        // Add this event unsubscription
+        EventBus.Unsubscribe("RegionUpdated", OnRegionUpdated);
+    }
+
+    private void OnRegionUpdated(object regionObj)
+    {
+        RegionEntity region = regionObj as RegionEntity;
+        if (region != null)
+        {
+            // Update visual
+            UpdateRegionVisual(region);
+            
+            // Show economy changes if applicable
+            ShowEconomyChanges(region);
         }
     }
 
@@ -88,5 +115,87 @@ public class MapView : MonoBehaviour
         {
             regionObjects[regionName].GetComponent<SpriteRenderer>().color = originalColor;
         }
+    }
+
+    public void UpdateRegionVisual(RegionEntity region)
+    {
+        if (regionObjects.ContainsKey(region.regionName))
+        {
+            // Update visuals based on region data if needed
+        }
+    }
+
+    // In MapView.cs, add a method to show economy changes
+    public void ShowEconomyChanges(RegionEntity region)
+    {
+        if (!region.hasChangedThisTurn) return;
+        
+        if (regionObjects.ContainsKey(region.regionName))
+        {
+            GameObject regionObj = regionObjects[region.regionName];
+            
+            // Create floating text to show changes
+            GameObject changeText = new GameObject("ChangeText");
+            changeText.transform.SetParent(regionObj.transform);
+            changeText.transform.localPosition = Vector3.up * 0.5f;
+            
+            TextMeshPro tmp = changeText.AddComponent<TextMeshPro>();
+            tmp.text = (region.wealthDelta >= 0 ? "+" : "") + region.wealthDelta + "";
+            tmp.fontSize = 2;
+            tmp.alignment = TextAlignmentOptions.Center;
+            tmp.color = region.wealthDelta >= 0 ? Color.green : Color.red;
+            
+            // Animate text floating up and fading
+            StartCoroutine(AnimateChangeText(changeText));
+            
+            // Also pulse the region color briefly
+            StartCoroutine(PulseRegion(regionObj, region.wealthDelta >= 0));
+            
+            // Reset change flags
+            region.ResetChangeFlags();
+        }
+    }
+
+    private IEnumerator AnimateChangeText(GameObject textObj)
+    {
+        TextMeshPro tmp = textObj.GetComponent<TextMeshPro>();
+        float duration = 1.5f;
+        float elapsed = 0f;
+        
+        while (elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+            float t = elapsed / duration;
+            
+            textObj.transform.localPosition = Vector3.up * (0.5f + t * 0.5f);
+            tmp.alpha = 1 - t;
+            
+            yield return null;
+        }
+        
+        Destroy(textObj);
+    }
+
+    private IEnumerator PulseRegion(GameObject regionObj, bool positive)
+    {
+        SpriteRenderer sr = regionObj.GetComponent<SpriteRenderer>();
+        Color originalColor = sr.color;
+        Color pulseColor = positive ? Color.green : Color.red;
+        
+        float duration = 0.5f;
+        float elapsed = 0f;
+        
+        while (elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+            float t = elapsed / duration;
+            float pulse = Mathf.Sin(t * Mathf.PI);
+            
+            sr.color = Color.Lerp(originalColor, pulseColor, pulse * 0.5f);
+            
+            yield return null;
+        }
+        
+        sr.color = originalColor;
     }
 }

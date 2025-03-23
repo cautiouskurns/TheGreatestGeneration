@@ -17,11 +17,34 @@ public class RegionInfoUI : MonoBehaviour
 
     private void UpdateInfo(object regionObj)
     {
+        Debug.Log("RegionSelected event received");
+        
         RegionEntity region = regionObj as RegionEntity;
+        if (region == null)
+        {
+            Debug.LogError("Region is null or not a RegionEntity");
+            return;
+        }
 
-        infoText.text = $"🏙️ {region.regionName}\n" +
-                        $"💰 Wealth: {region.wealth}\n" +
-                        $"🏭 Production: {region.production}\n" +
-                        $"🏛️ Nation: {region.ownerNationName}";
+        Debug.Log($"Updating UI for region: {region.regionName}");
+
+        if (infoText == null)
+        {
+            Debug.LogError("InfoText reference is null");
+            return;
+        }
+
+        infoText.text = $"<b>{region.regionName}</b>\n" +
+                        $"<color=#FFD700>Wealth: {region.wealth}</color>\n" +
+                        $"<color=#87CEEB>Production: {region.production}</color>\n" +
+                        $"Nation: {region.ownerNationName}";
+        
+        // Add a simple growth trend indicator if available
+        if (region.hasChangedThisTurn)
+        {
+            string trend = region.wealthDelta > 0 ? "<color=green>↑</color>" : 
+                          (region.wealthDelta < 0 ? "<color=red>↓</color>" : "→");
+            infoText.text += $"\nTrend: {trend}";
+        }
     }
 }

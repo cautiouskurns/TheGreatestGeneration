@@ -4,7 +4,8 @@ using UnityEngine;
 public class GameManager : MonoBehaviour
 {
     public MapView mapView;
-    
+    public RegionInfoUI regionInfoUI; // Add this field
+
     [Header("Map Generation")]
     public bool useProceduralMap = true;
     public MapDataSO predefinedMapData;
