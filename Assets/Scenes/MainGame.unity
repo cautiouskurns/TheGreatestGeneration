@@ -644,9 +644,25 @@ PrefabInstance:
       propertyPath: m_Name
       value: RegionInfoPanel
       objectReference: {fileID: 0}
+    - target: {fileID: 1498617218295455920, guid: b80f689e6288d4a6aab2c9ca0d50732f, type: 3}
+      propertyPath: m_fontColor.b
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1498617218295455920, guid: b80f689e6288d4a6aab2c9ca0d50732f, type: 3}
+      propertyPath: m_fontColor.g
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1498617218295455920, guid: b80f689e6288d4a6aab2c9ca0d50732f, type: 3}
+      propertyPath: m_fontColor.r
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1498617218295455920, guid: b80f689e6288d4a6aab2c9ca0d50732f, type: 3}
+      propertyPath: m_fontColor32.rgba
+      value: 4278190080
+      objectReference: {fileID: 0}
     - target: {fileID: 5631686462658916662, guid: b80f689e6288d4a6aab2c9ca0d50732f, type: 3}
       propertyPath: m_Color.a
-      value: 0.078431375
+      value: 0.7294118
       objectReference: {fileID: 0}
     - target: {fileID: 6766372137083828692, guid: b80f689e6288d4a6aab2c9ca0d50732f, type: 3}
       propertyPath: m_Pivot.x
@@ -1270,7 +1286,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   mapData: {fileID: 11400000, guid: 8252d4b3843774c4592bbff8aedff39e, type: 2}
   regionPrefab: {fileID: 3409607309657115395, guid: 6c8f38f9864824bf7a1fd62aa18849d2, type: 3}
-  regionSpacing: 1
+  regionSpacing: 1.1
   showTerrainColors: 1
   terrainColorBlend: 0.7
   availableTerrainTypes:
