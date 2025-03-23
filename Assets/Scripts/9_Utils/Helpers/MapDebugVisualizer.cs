@@ -148,6 +148,54 @@ public class MapDebugVisualizer : MonoBehaviour
     }
     
     /// <summary>
+    /// Save the current map as a TerrainMapDataSO asset
+    /// </summary>
+    public void SaveCurrentMapToAsset()
+    {
+        // Create a new ScriptableObject to store the map data
+        TerrainMapDataSO mapAsset = ScriptableObject.CreateInstance<TerrainMapDataSO>();
+        
+        // Store terrain data
+        mapAsset.width = mapWidth;
+        mapAsset.height = mapHeight;
+        mapAsset.seed = seed;
+        mapAsset.elevationScale = elevationScale;
+        mapAsset.moistureScale = moistureScale;
+        
+        // Save the terrain type references for each cell
+        mapAsset.terrainData = new string[mapWidth, mapHeight];
+        for (int y = 0; y < mapHeight; y++)
+        {
+            for (int x = 0; x < mapWidth; x++)
+            {
+                if (terrainMap[x, y] != null)
+                {
+                    mapAsset.terrainData[x, y] = terrainMap[x, y].terrainName;
+                }
+                else
+                {
+                    mapAsset.terrainData[x, y] = "Plains"; // Default
+                }
+            }
+        }
+        
+        // Save the asset
+        #if UNITY_EDITOR
+        // Create directory if it doesn't exist
+        string directory = "Assets/ScriptableObjects/Maps";
+        if (!System.IO.Directory.Exists(directory))
+        {
+            System.IO.Directory.CreateDirectory(directory);
+        }
+        
+        string path = $"{directory}/TerrainMap_Seed{seed}.asset";
+        UnityEditor.AssetDatabase.CreateAsset(mapAsset, path);
+        UnityEditor.AssetDatabase.SaveAssets();
+        Debug.Log($"Map saved to {path}");
+        #endif
+    }
+    
+    /// <summary>
     /// Draw UI controls in the inspector for easy testing
     /// </summary>
     private void OnGUI()
@@ -155,7 +203,7 @@ public class MapDebugVisualizer : MonoBehaviour
         // Only in editor or debug builds
         if (Application.isEditor || Debug.isDebugBuild)
         {
-            GUILayout.BeginArea(new Rect(10, 10, 300, 300));
+            GUILayout.BeginArea(new Rect(10, 10, 300, 350)); // Make area larger for save button
             
             GUILayout.Label("Map Visualization Controls");
             
@@ -199,6 +247,14 @@ public class MapDebugVisualizer : MonoBehaviour
             if (GUILayout.Button("Regenerate Map"))
             {
                 RegenerateMap();
+            }
+            
+            GUILayout.Space(20);
+            
+            // Add save button
+            if (GUILayout.Button("Save Current Map as Asset"))
+            {
+                SaveCurrentMapToAsset();
             }
             
             GUILayout.EndArea();

@@ -1,16 +1,23 @@
 // GameManager.cs - Updated version
 using UnityEngine;
+using System.Collections.Generic;
 
 public class GameManager : MonoBehaviour
 {
     public MapView mapView;
-    public RegionInfoUI regionInfoUI; // Add this field
+    public RegionInfoUI regionInfoUI;
 
     [Header("Map Generation")]
     public bool useProceduralMap = true;
     public MapDataSO predefinedMapData;
+    
+    [Header("Terrain Generation")]
+    public bool useSavedTerrainMap = true;
+    public TerrainMapDataSO savedTerrainMap;
+    
+    [Header("Procedural Map Settings")]
     public int mapWidth = 10;
-    public int mapHeight = 8;
+    public int mapHeight = 10;
     public int nationCount = 3;
     public int regionsPerNation = 5;
     
@@ -20,13 +27,61 @@ public class GameManager : MonoBehaviour
     {
         // Generate or use predefined map
         MapDataSO mapData;
+        
         if (useProceduralMap)
         {
-            MapGenerator generator = new MapGenerator(mapWidth, mapHeight, nationCount, regionsPerNation);
+            // Create map generator
+            MapGenerator generator;
+            
+            if (useSavedTerrainMap && savedTerrainMap != null)
+            {
+                // Use the saved terrain map parameters
+                Debug.Log($"Using saved terrain map (Seed: {savedTerrainMap.seed})");
+                generator = new MapGenerator(
+                    savedTerrainMap.width,
+                    savedTerrainMap.height,
+                    nationCount,
+                    regionsPerNation,
+                    savedTerrainMap.seed
+                );
+                generator.SetTerrainParameters(
+                    savedTerrainMap.elevationScale,
+                    savedTerrainMap.moistureScale
+                );
+            }
+            else
+            {
+                // Generate with random parameters
+                Debug.Log("Generating map with random terrain parameters");
+                int randomSeed = Random.Range(0, 100000);
+                generator = new MapGenerator(mapWidth, mapHeight, nationCount, regionsPerNation, randomSeed);
+                generator.SetTerrainParameters(30f, 50f); // Default values
+            }
+            
+            // Set terrain types
+            if (mapView.availableTerrainTypes != null && mapView.availableTerrainTypes.Length > 0)
+            {
+                Dictionary<string, TerrainTypeDataSO> terrainTypes = new Dictionary<string, TerrainTypeDataSO>();
+                foreach (var terrain in mapView.availableTerrainTypes)
+                {
+                    if (terrain != null)
+                    {
+                        terrainTypes[terrain.terrainName] = terrain;
+                    }
+                }
+                
+                if (terrainTypes.Count > 0)
+                {
+                    generator.SetTerrainTypes(terrainTypes);
+                }
+            }
+            
+            // Generate the map
             mapData = generator.GenerateMap();
         }
         else
         {
+            // Use predefined map
             mapData = predefinedMapData;
         }
         
