@@ -224,8 +224,8 @@ public class MapView : MonoBehaviour
         GameObject regionGO = Instantiate(regionPrefab, position, Quaternion.identity, transform);
         regionGO.name = region.regionName;
         
-        // Apply initial color based on nation
-        Color regionColor = nation.nationColor;
+        // Start with just the terrain color
+        Color regionColor = Color.gray; // Default fallback color
         
         // Use the terrain type from region data if available
         if (showTerrainColors && !string.IsNullOrEmpty(region.terrainTypeName))
@@ -247,13 +247,21 @@ public class MapView : MonoBehaviour
             if (terrain != null)
             {
                 regionTerrainMap[region.regionName] = terrain;
-                
-                // Blend nation color with terrain color
-                regionColor = Color.Lerp(nation.nationColor, terrain.baseColor, terrainColorBlend);
+                regionColor = terrain.baseColor;
             }
         }
+        else
+        {
+            // If not showing terrain colors, use nation color
+            regionColor = nation.nationColor;
+        }
         
-        regionGO.GetComponent<SpriteRenderer>().color = regionColor;
+        // Apply the color to main sprite
+        SpriteRenderer sr = regionGO.GetComponent<SpriteRenderer>();
+        sr.color = regionColor;
+        
+        // Create a border to show nation ownership
+        AddNationBorder(regionGO, nation.nationColor);
         
         // Add a component to handle clicks
         RegionClickHandler clickHandler = regionGO.AddComponent<RegionClickHandler>();
@@ -262,11 +270,66 @@ public class MapView : MonoBehaviour
         regionObjects[region.regionName] = regionGO;
     }
 
+    // Method to add a colored border to represent nation ownership
+    private void AddNationBorder(GameObject regionGO, Color nationColor)
+    {
+        // Create a child GameObject for the border
+        GameObject borderObj = new GameObject("NationBorder");
+        borderObj.transform.SetParent(regionGO.transform);
+        borderObj.transform.localPosition = Vector3.zero;
+        
+        // Add LineRenderer component for the border
+        LineRenderer border = borderObj.AddComponent<LineRenderer>();
+        border.useWorldSpace = false;
+        border.positionCount = 5; // Square (4 corners + connect back to start)
+        border.startWidth = 0.1f;
+        border.endWidth = 0.1f;
+        border.loop = true;
+        
+        // Set material and color
+        border.material = new Material(Shader.Find("Sprites/Default"));
+        border.startColor = nationColor;
+        border.endColor = nationColor;
+        
+        // Get the size from the parent's sprite
+        SpriteRenderer parentSprite = regionGO.GetComponent<SpriteRenderer>();
+        float width = parentSprite.bounds.size.x * 0.9f;
+        float height = parentSprite.bounds.size.y * 0.9f;
+        
+        // Position the border slightly in front of the sprite
+        float z = -0.1f;
+        
+        // Set the positions to form a rectangle
+        border.SetPosition(0, new Vector3(-width/2, -height/2, z));
+        border.SetPosition(1, new Vector3(-width/2, height/2, z));
+        border.SetPosition(2, new Vector3(width/2, height/2, z));
+        border.SetPosition(3, new Vector3(width/2, -height/2, z));
+        border.SetPosition(4, new Vector3(-width/2, -height/2, z)); // Close the loop
+    }
+
     public void HighlightRegion(string regionName)
     {
         if (regionObjects.ContainsKey(regionName))
         {
-            regionObjects[regionName].GetComponent<SpriteRenderer>().color = Color.yellow;
+            GameObject regionObj = regionObjects[regionName];
+            LineRenderer border = regionObj.GetComponentInChildren<LineRenderer>();
+            
+            if (border != null)
+            {
+                // Save original color and width for later restoration
+                if (!regionObj.TryGetComponent<HighlightData>(out var highlightData))
+                {
+                    highlightData = regionObj.AddComponent<HighlightData>();
+                    highlightData.originalColor = border.startColor;
+                    highlightData.originalWidth = border.startWidth;
+                }
+                
+                // Apply highlight
+                border.startColor = Color.yellow;
+                border.endColor = Color.yellow;
+                border.startWidth = 0.05f; // Thicker highlight
+                border.endWidth = 0.05f;
+            }
         }
     }
 
@@ -274,7 +337,18 @@ public class MapView : MonoBehaviour
     {
         if (regionObjects.ContainsKey(regionName))
         {
-            regionObjects[regionName].GetComponent<SpriteRenderer>().color = originalColor;
+            GameObject regionObj = regionObjects[regionName];
+            LineRenderer border = regionObj.GetComponentInChildren<LineRenderer>();
+            HighlightData highlightData = regionObj.GetComponent<HighlightData>();
+            
+            if (border != null && highlightData != null)
+            {
+                // Restore original border appearance
+                border.startColor = highlightData.originalColor;
+                border.endColor = highlightData.originalColor;
+                border.startWidth = highlightData.originalWidth;
+                border.endWidth = highlightData.originalWidth;
+            }
         }
     }
 
@@ -295,18 +369,31 @@ public class MapView : MonoBehaviour
         GameObject regionGO = regionObjects[region.regionName];
         SpriteRenderer sr = regionGO.GetComponent<SpriteRenderer>();
         
-        // Start with nation color
-        Color finalColor = region.regionColor;
-        
-        // Blend with terrain color if available
+        // Start with terrain color if available
+        Color mainColor = region.regionColor;
         if (showTerrainColors && regionTerrainMap.ContainsKey(region.regionName))
         {
             TerrainTypeDataSO terrain = regionTerrainMap[region.regionName];
-            finalColor = Color.Lerp(region.regionColor, terrain.baseColor, terrainColorBlend);
+            mainColor = terrain.baseColor;
         }
         
-        // Apply the color
-        sr.color = finalColor;
+        // Apply the terrain color to the main sprite
+        sr.color = mainColor;
+        
+        // Update the border with the nation color
+        LineRenderer border = regionGO.GetComponentInChildren<LineRenderer>();
+        if (border != null)
+        {
+            border.startColor = region.regionColor;
+            border.endColor = region.regionColor;
+            
+            // Also update the stored original color in case this is highlighted
+            HighlightData highlightData = regionGO.GetComponent<HighlightData>();
+            if (highlightData != null)
+            {
+                highlightData.originalColor = region.regionColor;
+            }
+        }
     }
 
     // Show economy changes with visual effects
@@ -400,5 +487,12 @@ public class MapView : MonoBehaviour
                 }
             }
         }
+    }
+
+    // Helper class to store original border appearance
+    private class HighlightData : MonoBehaviour
+    {
+        public Color originalColor;
+        public float originalWidth;
     }
 }
