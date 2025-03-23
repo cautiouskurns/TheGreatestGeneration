@@ -10,17 +10,17 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 0ad2da71ed2434e279ee85782906b717, type: 3}
-  m_Name: NewTerrainType
+  m_Name: Plains
   m_EditorClassIdentifier: 
-  terrainName: 
-  description: 
-  baseColor: {r: 1, g: 1, b: 1, a: 1}
+  terrainName: Plains
+  description: Flat, grassy lands suitable for agriculture and settlement.
+  baseColor: {r: 0.56078434, g: 0.7372549, b: 0.56078434, a: 1}
   terrainIcon: {fileID: 0}
   terrainTexture: {fileID: 0}
-  fertilityMultiplier: 1
-  mineralsMultiplier: 1
+  fertilityMultiplier: 1.5
+  mineralsMultiplier: 0.8
   productionMultiplier: 1
-  commerceMultiplier: 1
+  commerceMultiplier: 1.2
   isPassable: 1
   isNaturalBorder: 0
   specialResourceChance: 0.1

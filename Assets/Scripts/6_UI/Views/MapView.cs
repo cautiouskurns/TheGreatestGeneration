@@ -6,11 +6,40 @@ using System.Collections;
 
 public class MapView : MonoBehaviour
 {
+    [Header("Map Data")]
     public MapDataSO mapData;
+    
+    [Header("Prefabs")]
     public GameObject regionPrefab;
+    
+    [Header("Visualization Settings")]
     public float regionSpacing = 2.0f;
+    public bool showTerrainColors = true;
+    public float terrainColorBlend = 0.7f; // How much terrain color influences the final color
+    
+    [Header("Terrain Types")]
+    public TerrainTypeDataSO[] availableTerrainTypes;
 
     private Dictionary<string, GameObject> regionObjects = new Dictionary<string, GameObject>();
+    private Dictionary<string, TerrainTypeDataSO> terrainTypeDict = new Dictionary<string, TerrainTypeDataSO>();
+    
+    // Cache terrain maps for regions for more efficient lookups
+    private Dictionary<string, TerrainTypeDataSO> regionTerrainMap = new Dictionary<string, TerrainTypeDataSO>();
+
+    void Awake()
+    {
+        // Initialize terrain type dictionary
+        if (availableTerrainTypes != null && availableTerrainTypes.Length > 0)
+        {
+            foreach (var terrain in availableTerrainTypes)
+            {
+                if (terrain != null)
+                {
+                    terrainTypeDict[terrain.terrainName] = terrain;
+                }
+            }
+        }
+    }
 
     void Start()
     {
@@ -51,14 +80,15 @@ public class MapView : MonoBehaviour
                 RegionEntity regionEntity = FindFirstObjectByType<GameManager>().GetRegion(regionName);
                 if (regionEntity != null && regionEntity != region)
                 {
-                    // Restore original color
-                    regionGO.GetComponent<SpriteRenderer>().color = regionEntity.regionColor;
+                    // Restore original color based on terrain and nation
+                    UpdateRegionVisualColors(regionEntity);
                 }
             }
 
             // Highlight selected region
             if (regionObjects.ContainsKey(region.regionName))
             {
+                // Apply a highlight color or effect
                 regionObjects[region.regionName].GetComponent<SpriteRenderer>().color = Color.yellow;
             }
         }
@@ -108,9 +138,26 @@ public class MapView : MonoBehaviour
                 
                 GameObject regionGO = Instantiate(regionPrefab, position, Quaternion.identity, transform);
                 regionGO.name = region.regionName;
-                regionGO.GetComponent<SpriteRenderer>().color = nation.nationColor;
                 
-                // Add a component to handle clicks instead of using tags
+                // Apply initial color based on nation
+                Color regionColor = nation.nationColor;
+                
+                // Check if we have a terrain type assigned to this region
+                // This would be part of your extended RegionData class in MapDataSO
+                // For now, we'll just randomly assign a terrain type for visualization
+                if (showTerrainColors && availableTerrainTypes.Length > 0)
+                {
+                    // Randomly assign a terrain type for now
+                    TerrainTypeDataSO terrain = availableTerrainTypes[Random.Range(0, availableTerrainTypes.Length)];
+                    regionTerrainMap[region.regionName] = terrain;
+                    
+                    // Blend nation color with terrain color
+                    regionColor = Color.Lerp(nation.nationColor, terrain.baseColor, terrainColorBlend);
+                }
+                
+                regionGO.GetComponent<SpriteRenderer>().color = regionColor;
+                
+                // Add a component to handle clicks
                 RegionClickHandler clickHandler = regionGO.AddComponent<RegionClickHandler>();
                 clickHandler.regionName = region.regionName;
 
@@ -149,11 +196,34 @@ public class MapView : MonoBehaviour
     {
         if (regionObjects.ContainsKey(region.regionName))
         {
-            // Update visuals based on region data if needed
+            // Update visuals based on region data
+            UpdateRegionVisualColors(region);
         }
     }
+    
+    private void UpdateRegionVisualColors(RegionEntity region)
+    {
+        if (!regionObjects.ContainsKey(region.regionName))
+            return;
+            
+        GameObject regionGO = regionObjects[region.regionName];
+        SpriteRenderer sr = regionGO.GetComponent<SpriteRenderer>();
+        
+        // Start with nation color
+        Color finalColor = region.regionColor;
+        
+        // Blend with terrain color if available
+        if (showTerrainColors && regionTerrainMap.ContainsKey(region.regionName))
+        {
+            TerrainTypeDataSO terrain = regionTerrainMap[region.regionName];
+            finalColor = Color.Lerp(region.regionColor, terrain.baseColor, terrainColorBlend);
+        }
+        
+        // Apply the color
+        sr.color = finalColor;
+    }
 
-    // In MapView.cs, add a method to show economy changes
+    // Show economy changes with visual effects
     public void ShowEconomyChanges(RegionEntity region)
     {
         if (!region.hasChangedThisTurn) return;
@@ -225,5 +295,24 @@ public class MapView : MonoBehaviour
         }
         
         sr.color = originalColor;
+    }
+    
+    // Method to assign terrain to region for testing
+    public void AssignTerrainToRegion(string regionName, TerrainTypeDataSO terrain)
+    {
+        if (terrain != null)
+        {
+            regionTerrainMap[regionName] = terrain;
+            
+            // Update visuals if region exists
+            if (regionObjects.ContainsKey(regionName))
+            {
+                RegionEntity region = FindFirstObjectByType<GameManager>().GetRegion(regionName);
+                if (region != null)
+                {
+                    UpdateRegionVisualColors(region);
+                }
+            }
+        }
     }
 }

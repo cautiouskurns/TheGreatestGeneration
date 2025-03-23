@@ -500,6 +500,9 @@ MonoBehaviour:
   mapData: {fileID: 0}
   regionPrefab: {fileID: 3409607309657115395, guid: 6c8f38f9864824bf7a1fd62aa18849d2, type: 3}
   regionSpacing: 2
+  showTerrainColors: 1
+  terrainColorBlend: 0.7
+  availableTerrainTypes: []
 --- !u!1 &619394800
 GameObject:
   m_ObjectHideFlags: 0
@@ -1388,6 +1391,9 @@ MonoBehaviour:
   mapData: {fileID: 11400000, guid: 8252d4b3843774c4592bbff8aedff39e, type: 2}
   regionPrefab: {fileID: 3409607309657115395, guid: 6c8f38f9864824bf7a1fd62aa18849d2, type: 3}
   regionSpacing: 1
+  showTerrainColors: 1
+  terrainColorBlend: 0.7
+  availableTerrainTypes: []
 --- !u!1 &2076773028
 GameObject:
   m_ObjectHideFlags: 0
@@ -1397,8 +1403,9 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 2076773029}
+  - component: {fileID: 2076773030}
   m_Layer: 0
-  m_Name: GameObject
+  m_Name: MapDebugVisualizer
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1419,6 +1426,35 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &2076773030
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2076773028}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 24fb80b19139340e7a034f4a74ff01b3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  showElevationMap: 0
+  showMoistureMap: 0
+  showTerrainMap: 1
+  showNationMap: 1
+  elevationScale: 30
+  moistureScale: 50
+  seed: 0
+  mapWidth: 50
+  mapHeight: 50
+  terrainTypes:
+  - {fileID: 11400000, guid: 1a9429df4eead42578a54166ab7f3878, type: 2}
+  - {fileID: 11400000, guid: 7378eb603bca54df29701006296ef891, type: 2}
+  - {fileID: 11400000, guid: 0df9227be0d874692acc8d7530ff9835, type: 2}
+  - {fileID: 11400000, guid: 482df1c1ff85f4e99b6dd378e15bac95, type: 2}
+  - {fileID: 11400000, guid: d11a4169988444c9a92c2c43c5a89cc6, type: 2}
+  mapContainer: {fileID: 0}
+  debugTilePrefab: {fileID: 3409607309657115395, guid: 6c8f38f9864824bf7a1fd62aa18849d2, type: 3}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
