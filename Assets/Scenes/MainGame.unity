@@ -979,7 +979,7 @@ MonoBehaviour:
   useProceduralMap: 1
   predefinedMapData: {fileID: 0}
   useSavedTerrainMap: 1
-  savedTerrainMap: {fileID: 11400000, guid: d349c95b0ea384c108256d7244867919, type: 2}
+  savedTerrainMap: {fileID: 11400000, guid: 493ec4eca936d4d68b26a72dc4fac696, type: 2}
   mapWidth: 50
   mapHeight: 50
   nationCount: 3
