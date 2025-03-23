@@ -73,37 +73,59 @@ public class MapView : MonoBehaviour
         if (region != null)
         {
             // Reset all selections
-            foreach (var regionGO in regionObjects.Values)
+            foreach (var entry in regionObjects)
             {
-                string regionName = regionGO.name;
+                string regionName = entry.Key;
+                GameObject regionParent = entry.Value;
+                
+                // Skip the newly selected region
+                if (regionName == region.regionName)
+                    continue;
+                    
                 RegionEntity regionEntity = FindFirstObjectByType<GameManager>().GetRegion(regionName);
-                if (regionEntity != null && regionEntity != region)
+                if (regionEntity != null)
                 {
-                    // Restore original color based on terrain and nation
-                    UpdateRegionVisualColors(regionEntity);
+                    // Restore original border color
+                    Transform borderTransform = regionParent.transform.Find("Border");
+                    if (borderTransform != null)
+                    {
+                        SpriteRenderer borderRenderer = borderTransform.GetComponent<SpriteRenderer>();
+                        borderRenderer.color = regionEntity.regionColor;
+                        borderTransform.localScale = new Vector3(1.1f, 1.1f, 1); // Normal border size
+                    }
                 }
             }
 
-            // Highlight selected region
+            // Highlight the selected region
             if (regionObjects.ContainsKey(region.regionName))
             {
-                // Find the Border child object
                 GameObject regionParent = regionObjects[region.regionName];
                 Transform borderTransform = regionParent.transform.Find("Border");
                 
                 if (borderTransform != null)
                 {
-                    // Apply highlight to border
                     SpriteRenderer borderRenderer = borderTransform.GetComponent<SpriteRenderer>();
+                    
+                    // Store original color if needed for later
+                    if (!regionParent.TryGetComponent<HighlightData>(out var highlightData))
+                    {
+                        highlightData = regionParent.AddComponent<HighlightData>();
+                        highlightData.originalBorderColor = borderRenderer.color;
+                    }
+                    
+                    // Change border to yellow and make it slightly larger
                     borderRenderer.color = Color.yellow;
-                    borderTransform.localScale = new Vector3(1.15f, 1.15f, 1); // Make border slightly larger
-                }
-                else
-                {
-                    Debug.LogError($"Border child not found for region {region.regionName}");
+                    borderTransform.localScale = new Vector3(1.15f, 1.15f, 1);
                 }
             }
         }
+    }
+
+    // Helper class to store original border color and scale
+    private class HighlightData : MonoBehaviour
+    {
+        public Color originalBorderColor;
+        public Vector3 originalBorderScale;
     }
 
     private void OnRegionUpdated(object regionObj)
@@ -496,10 +518,4 @@ public class MapView : MonoBehaviour
         }
     }
 
-    // Updated helper class for highlight data
-    private class HighlightData : MonoBehaviour
-    {
-        public Color originalBorderColor;
-        public Vector3 originalBorderScale;
-    }
 }
