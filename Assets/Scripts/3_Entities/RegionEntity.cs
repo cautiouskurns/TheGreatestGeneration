@@ -16,6 +16,9 @@ public class RegionEntity
     public bool hasChangedThisTurn = false;
     public int wealthDelta = 0;
     public int productionDelta = 0;
+    
+    // Add resource component
+    public ResourceComponent resources;
 
     // Constructor for basic region
     public RegionEntity(string name, int initialWealth, int initialProduction, string nationName, Color color)
@@ -32,6 +35,9 @@ public class RegionEntity
         : this(name, initialWealth, initialProduction, nationName, color)
     {
         terrainType = terrain;
+        
+        // Initialize resource component
+        resources = new ResourceComponent(this);
     }
 
     // Update economy with terrain modifiers if available
@@ -51,6 +57,12 @@ public class RegionEntity
         // Apply the changes
         wealth += wealthChange;
         production += productionChange;
+        
+        // Process resources if available
+        if (resources != null)
+        {
+            resources.ProcessTurn();
+        }
         
         // Track changes for visual feedback
         hasChangedThisTurn = true;
@@ -82,6 +94,35 @@ public class RegionEntity
             description += $"\n\nTerrain: {terrainType.terrainName}\n" + 
                           $"{terrainType.description}\n\n" + 
                           $"{GetTerrainEffectsDescription()}";
+        }
+        
+        return description;
+    }
+    
+    // Get a description that includes resources
+    public string GetDetailedDescription()
+    {
+        string description = GetDescription();
+        
+        // Add resource information if available
+        if (resources != null)
+        {
+            description += "\n\n=== Resources ===\n";
+            
+            var allResources = resources.GetAllResources();
+            var productionRates = resources.GetAllProductionRates();
+            var consumptionRates = resources.GetAllConsumptionRates();
+            
+            foreach (var resource in allResources.Keys)
+            {
+                float amount = allResources[resource];
+                float production = productionRates.ContainsKey(resource) ? productionRates[resource] : 0;
+                float consumption = consumptionRates.ContainsKey(resource) ? consumptionRates[resource] : 0;
+                float netChange = production - consumption;
+                
+                string changeIndicator = netChange > 0 ? "↑" : (netChange < 0 ? "↓" : "→");
+                description += $"{resource}: {amount:F1} {changeIndicator} ({netChange:+0.0;-0.0})\n";
+            }
         }
         
         return description;

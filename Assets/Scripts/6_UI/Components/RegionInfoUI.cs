@@ -118,6 +118,29 @@ public class RegionInfoUI : MonoBehaviour
         {
             terrainIcon.gameObject.SetActive(false);
         }
+
+        // Add resource information if available
+        if (region.resources != null)
+        {
+            infoString += "\n\n<size=20><b>Resources:</b></size>\n";
+            
+            var allResources = region.resources.GetAllResources();
+            var productionRates = region.resources.GetAllProductionRates();
+            var consumptionRates = region.resources.GetAllConsumptionRates();
+            
+            foreach (var resource in allResources.Keys)
+            {
+                float amount = allResources[resource];
+                float production = productionRates.ContainsKey(resource) ? productionRates[resource] : 0;
+                float consumption = consumptionRates.ContainsKey(resource) ? consumptionRates[resource] : 0;
+                float netChange = production - consumption;
+                
+                string colorCode = netChange >= 0 ? "green" : "red";
+                string arrow = netChange > 0 ? "↑" : (netChange < 0 ? "↓" : "→");
+                
+                infoString += $"<b>{resource}:</b> {amount:F1} <color={colorCode}>{arrow} ({netChange:+0.0;-0.0})</color>\n";
+            }
+        }
         
         infoText.text = infoString;
     }
