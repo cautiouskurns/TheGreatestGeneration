@@ -1,4 +1,4 @@
-// GameManager.cs - Updated version
+// GameManager.cs - Updated version with NationModel integration
 using UnityEngine;
 using System.Collections.Generic;
 
@@ -22,12 +22,13 @@ public class GameManager : MonoBehaviour
     public int regionsPerNation = 5;
     
     private MapModel mapModel;
+    private NationModel nationModel;
 
     [Header("Nation Templates")]
     public NationTemplate[] nationTemplates;
 
+    [Header("Resources")]
     public ResourceDataSO[] availableResources;
-
 
     private void Awake()
     {
@@ -81,7 +82,7 @@ public class GameManager : MonoBehaviour
                     generator.SetTerrainTypes(terrainTypes);
                 }
             }
-             // Set nation templates if available
+            // Set nation templates if available
             if (nationTemplates != null && nationTemplates.Length > 0)
             {
                 generator.SetNationTemplates(nationTemplates);
@@ -113,17 +114,36 @@ public class GameManager : MonoBehaviour
             }
         }
 
+        // Initialize MapModel
         mapModel = new MapModel(mapData, terrainTypesDict);
+        
+        // Initialize NationModel with the same map data
+        nationModel = new NationModel(mapData);
+        
+        // Register all regions with the NationModel
+        RegisterRegionsWithNations();
         
         Debug.Log("GameManager initialized with " + 
                   (useProceduralMap ? "procedurally generated" : "predefined") + 
-                  " map");
+                  " map and nation model");
     }
 
     private void Start()
     {
         // Initialize resources after everything else is set up
         InitializeResources();
+    }
+
+    // Register existing regions with nations
+    private void RegisterRegionsWithNations()
+    {
+        foreach (var regionEntry in mapModel.GetAllRegions())
+        {
+            RegionEntity region = regionEntry.Value;
+            nationModel.RegisterRegion(region);
+        }
+        
+        Debug.Log("Registered all regions with their nations");
     }
 
     private void InitializeResources()
@@ -158,8 +178,13 @@ public class GameManager : MonoBehaviour
 
     private void OnTurnEnded(object _)
     {
+        // Process turn for all regions first
         mapModel.ProcessTurn();
-        Debug.Log("Turn ended, processing complete");
+        
+        // Then update nation-level data
+        nationModel.ProcessTurn();
+        
+        Debug.Log("Turn ended, region and nation processing complete");
     }
     
     public void SelectRegion(string regionName)
@@ -174,6 +199,37 @@ public class GameManager : MonoBehaviour
 
     public MapDataSO GetMapData()
     {
-        return mapModel.GetMapData(); // Assuming MapModel has this method
+        return mapModel.GetMapData();
+    }
+    
+    // Nation-related methods
+    public NationEntity GetNation(string nationName)
+    {
+        return nationModel.GetNation(nationName);
+    }
+
+    public void SelectNation(string nationName)
+    {
+        nationModel.SelectNation(nationName);
+    }
+
+    public NationEntity GetSelectedNation()
+    {
+        return nationModel.GetSelectedNation();
+    }
+
+    public Dictionary<string, NationEntity> GetAllNations()
+    {
+        return nationModel.GetAllNations();
+    }
+    
+    // For registering new regions if created during gameplay
+    public void RegisterNewRegion(RegionEntity region)
+    {
+        // Add to map model if needed
+        // mapModel.AddRegion(region); - Would need to implement this method
+        
+        // Register with nation model
+        nationModel.RegisterRegion(region);
     }
 }
