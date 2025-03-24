@@ -39,112 +39,120 @@ public class RegionInfoUI : MonoBehaviour
 
     private void UpdateInfo(object regionObj)
     {
-        Debug.Log("RegionSelected event received");
-        
         RegionEntity region = regionObj as RegionEntity;
-        if (region == null)
-        {
-            Debug.LogError("Region is null or not a RegionEntity");
-            return;
-        }
+        if (region == null || infoText == null) return;
 
-        Debug.Log($"Updating UI for region: {region.regionName}");
-
-        if (infoText == null)
-        {
-            Debug.LogError("InfoText reference is null");
-            return;
-        }
-
-        // Update the region info text with rich text formatting
-        string infoString = $"<size=24><b>{region.regionName}</b></size>\n";
+        // Create a clean, structured layout with consistent styling
+        string infoString = "";
         
-        // Add terrain info if available
-        if (region.terrainType != null)
-        {
-            infoString += $"<color=#8888FF><b>Terrain:</b> {region.terrainType.terrainName}</color>\n";
-        }
+        // HEADER SECTION
+        infoString += $"<size=26><b>{region.regionName}</b></size>\n";
+        infoString += $"<color=#DDDDDD><size=18>{region.ownerNationName}</size></color>\n\n";
         
-        infoString += $"<color=#FFD700><b>Wealth:</b> {region.wealth}</color>\n" +
-                      $"<color=#87CEEB><b>Production:</b> {region.production}</color>\n" +
-                      $"<b>Nation:</b> {region.ownerNationName}";
+        // STATISTICS SECTION
+        infoString += "<size=20><b>Region Statistics</b></size>\n";
+        infoString += "<color=#666666>──────────────────</color>\n";
         
-        // Add a simple growth trend indicator if available
+        // Key statistics with trend indicators
+        infoString += $"<color=#FFD700>Wealth:</color> <color=#FFFFFF>{region.wealth}</color>";
         if (region.hasChangedThisTurn)
         {
-            string trend = region.wealthDelta > 0 ? "<color=green>↑</color>" : 
-                          (region.wealthDelta < 0 ? "<color=red>↓</color>" : "→");
-            infoString += $"\n<b>Trend:</b> {trend}";
+            string trendIcon = region.wealthDelta > 0 ? "↑" : (region.wealthDelta < 0 ? "↓" : "→");
+            string trendColor = region.wealthDelta > 0 ? "#00FF00" : (region.wealthDelta < 0 ? "#FF0000" : "#FFFFFF");
+            infoString += $" <color={trendColor}>{trendIcon} {region.wealthDelta}</color>";
         }
+        infoString += "\n";
         
-        // Add terrain effects if available
+        infoString += $"<color=#87CEEB>Production:</color> <color=#FFFFFF>{region.production}</color>\n\n";
+        
+        // TERRAIN SECTION - Only if terrain type exists
         if (region.terrainType != null)
         {
-            infoString += "\n\n<size=18><b>Terrain Effects:</b></size>\n";
+            infoString += $"<size=20><b>Terrain: {region.terrainType.terrainName}</b></size>\n";
+            infoString += "<color=#666666>──────────────────</color>\n";
+            
+            // Add terrain description
+            infoString += $"<color=#FFFFFF><i>{region.terrainType.description}</i></color>\n\n";
+            
+            // Add terrain effects in a clean table format
+            infoString += "<size=18><b>Terrain Effects</b></size>\n";
+            
+            // Only show modifiers that aren't 1.0 (neutral)
+            bool hasModifiers = false;
             
             float agricultureMod = region.terrainType.GetMultiplierForSector("agriculture");
             float miningMod = region.terrainType.GetMultiplierForSector("mining");
             float industryMod = region.terrainType.GetMultiplierForSector("industry");
             float commerceMod = region.terrainType.GetMultiplierForSector("commerce");
             
-            if (agricultureMod != 1.0f)
-                infoString += FormatModifierText("Agriculture", agricultureMod);
-            
-            if (miningMod != 1.0f)
-                infoString += FormatModifierText("Mining", miningMod);
-            
-            if (industryMod != 1.0f)
-                infoString += FormatModifierText("Industry", industryMod);
-            
-            if (commerceMod != 1.0f)
-                infoString += FormatModifierText("Commerce", commerceMod);
+            if (agricultureMod != 1.0f || miningMod != 1.0f || industryMod != 1.0f || commerceMod != 1.0f)
+            {
+                hasModifiers = true;
                 
-            // Add terrain description
-            infoString += $"\n<size=16><i>{region.terrainType.description}</i></size>";
+                if (agricultureMod != 1.0f)
+                    infoString += $"• <color=#FFFFFF>Agriculture:</color> {FormatPercentage(agricultureMod)}\n";
+                
+                if (miningMod != 1.0f)
+                    infoString += $"• <color=#FFFFFF>Mining:</color> {FormatPercentage(miningMod)}\n";
+                
+                if (industryMod != 1.0f)
+                    infoString += $"• <color=#FFFFFF>Industry:</color> {FormatPercentage(industryMod)}\n";
+                
+                if (commerceMod != 1.0f)
+                    infoString += $"• <color=#FFFFFF>Commerce:</color> {FormatPercentage(commerceMod)}\n";
+            }
             
-            // Display terrain icon if available
-            if (terrainIcon != null && region.terrainType.terrainIcon != null)
+            if (!hasModifiers)
             {
-                terrainIcon.sprite = region.terrainType.terrainIcon;
-                terrainIcon.color = region.terrainType.baseColor;
-                terrainIcon.gameObject.SetActive(true);
+                infoString += "<color=#AAAAAA>No special modifiers for this terrain.</color>\n";
             }
-            else if (terrainIcon != null)
-            {
-                terrainIcon.gameObject.SetActive(false);
-            }
+            
+            infoString += "\n";
         }
-        else if (terrainIcon != null)
-        {
-            terrainIcon.gameObject.SetActive(false);
-        }
-
-        // Add resource information if available
+        
+        // RESOURCES SECTION
         if (region.resources != null)
         {
-            infoString += "\n\n<size=20><b>Resources:</b></size>\n";
-            
             var allResources = region.resources.GetAllResources();
-            var productionRates = region.resources.GetAllProductionRates();
-            var consumptionRates = region.resources.GetAllConsumptionRates();
             
-            foreach (var resource in allResources.Keys)
+            if (allResources.Count > 0)
             {
-                float amount = allResources[resource];
-                float production = productionRates.ContainsKey(resource) ? productionRates[resource] : 0;
-                float consumption = consumptionRates.ContainsKey(resource) ? consumptionRates[resource] : 0;
-                float netChange = production - consumption;
+                infoString += "<size=20><b>Resources</b></size>\n";
+                infoString += "<color=#666666>──────────────────</color>\n";
                 
-                string colorCode = netChange >= 0 ? "green" : "red";
-                string arrow = netChange > 0 ? "↑" : (netChange < 0 ? "↓" : "→");
+                var productionRates = region.resources.GetAllProductionRates();
+                var consumptionRates = region.resources.GetAllConsumptionRates();
                 
-                infoString += $"<b>{resource}:</b> {amount:F1} <color={colorCode}>{arrow} ({netChange:+0.0;-0.0})</color>\n";
+                foreach (var resource in allResources.Keys)
+                {
+                    float amount = allResources[resource];
+                    float production = productionRates.ContainsKey(resource) ? productionRates[resource] : 0;
+                    float consumption = consumptionRates.ContainsKey(resource) ? consumptionRates[resource] : 0;
+                    float netChange = production - consumption;
+                    
+                    string colorCode = netChange > 0 ? "#00FF00" : (netChange < 0 ? "#FF5555" : "#FFFFFF");
+                    string arrow = netChange > 0 ? "↑" : (netChange < 0 ? "↓" : "→");
+                    
+                    // Create cleaner resource entry
+                    infoString += $"<b>{resource}:</b> <color=#FFFFFF>{amount:F1}</color>  <color={colorCode}>{arrow} {netChange:+0.0;-0.0}/turn</color>\n";
+                }
             }
         }
         
+        // Display the formatted text
         infoText.text = infoString;
     }
-    
+
+    // Helper method for formatting percentages with color
+    private string FormatPercentage(float modifier)
+    {
+        float percentage = (modifier - 1.0f) * 100f;
+        string colorCode = percentage > 0 ? "#00FF00" : "#FF5555";
+        string sign = percentage > 0 ? "+" : "";
+        
+        return $"<color={colorCode}>{sign}{percentage:F0}%</color>";
+    }
+        
     // Format a modifier into rich text with appropriate coloring
     private string FormatModifierText(string sectorName, float modifier)
     {
