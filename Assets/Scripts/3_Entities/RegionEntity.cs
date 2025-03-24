@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections.Generic;
 
 public class RegionEntity
 {
@@ -40,36 +41,36 @@ public class RegionEntity
         resources = new ResourceComponent(this);
     }
 
-    // Update economy with terrain modifiers if available
+    // In RegionEntity.UpdateEconomy method
     public void UpdateEconomy(int wealthChange, int productionChange)
     {
-        // Apply terrain modifiers if available
-        if (terrainType != null)
-        {
-            // Apply terrain multipliers to respective sectors
-            // For wealth, we'll use the commerce multiplier as an approximation
-            wealthChange = Mathf.RoundToInt(wealthChange * terrainType.GetMultiplierForSector("commerce"));
-            
-            // For production, we'll use the industry multiplier
-            productionChange = Mathf.RoundToInt(productionChange * terrainType.GetMultiplierForSector("industry"));
-        }
-        
-        // Apply the changes
+        // Apply changes to wealth and production as before
         wealth += wealthChange;
         production += productionChange;
         
-        // Process resources if available
+        // Define region "size" - could be based on production or a new property
+        float regionSize = production / 10.0f;
+        
+        // Process resources with wealth and size factors
         if (resources != null)
         {
-            resources.ProcessTurn();
+            resources.ProcessTurn(wealth, regionSize);
+            
+            // You could add effects based on consumption satisfaction
+            Dictionary<string, float> satisfaction = resources.GetConsumptionSatisfaction();
+            
+            // Example: If food satisfaction is low, reduce wealth
+            if (satisfaction.ContainsKey("Food") && satisfaction["Food"] < 0.5f)
+            {
+                wealth -= Mathf.RoundToInt((0.5f - satisfaction["Food"]) * 10);
+            }
         }
         
-        // Track changes for visual feedback
+        // Update tracking flags and notify systems
         hasChangedThisTurn = true;
         wealthDelta = wealthChange;
         productionDelta = productionChange;
         
-        // Notify UI & other systems that this region has been updated
         EventBus.Trigger("RegionUpdated", this);
     }
     

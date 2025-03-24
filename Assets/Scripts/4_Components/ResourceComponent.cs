@@ -14,11 +14,35 @@ public class ResourceComponent
     // Reference to region owning this component
     private RegionEntity ownerRegion;
     
+
+    // Add to ResourceComponent class
+    private float baseConsumptionFactor = 1.0f;
+    private float wealthConsumptionMultiplier = 0.01f; // Consumption increases 1% per wealth point
+    private float sizeConsumptionMultiplier = 0.2f;    // Consumption increases 20% per "size unit"
+
     // Constructor
     public ResourceComponent(RegionEntity owner)
     {
         ownerRegion = owner;
         InitializeBasicResources();
+    }
+    
+    // Add to ResourceComponent class
+    private Dictionary<string, ResourceDataSO> resourceDefinitions = new Dictionary<string, ResourceDataSO>();
+
+    // Method to register a resource definition
+    public void RegisterResourceDefinition(ResourceDataSO resourceData)
+    {
+        if (resourceData != null)
+        {
+            resourceDefinitions[resourceData.resourceName] = resourceData;
+            
+            // Initialize storage for this resource if it doesn't exist yet
+            if (!resources.ContainsKey(resourceData.resourceName))
+            {
+                resources[resourceData.resourceName] = 0;
+            }
+        }
     }
     
     // Initialize with basic resources
@@ -79,14 +103,33 @@ public class ResourceComponent
             }
         }
     }
-    
-    // Fix for ResourceComponent.ProcessTurn method
-    public void ProcessTurn()
+
+    // Add to ResourceComponent class
+    public void CalculateConsumption(int regionWealth, float regionSize)
     {
-        // Create a copy of the keys to avoid modifying the collection during iteration
+        // Base factor affected by wealth and size
+        float wealthFactor = 1.0f + (regionWealth * wealthConsumptionMultiplier);
+        float sizeFactor = 1.0f + (regionSize * sizeConsumptionMultiplier);
+        
+        // Calculate consumption for each resource type
+        consumptionRates["Food"] = 5.0f * wealthFactor * sizeFactor;
+        consumptionRates["Wood"] = 2.0f * wealthFactor * sizeFactor;
+        consumptionRates["Stone"] = 1.0f * wealthFactor * sizeFactor;
+        consumptionRates["Iron"] = 0.5f * wealthFactor * sizeFactor;
+        
+        // Luxury resources consumed more with higher wealth
+        consumptionRates["Luxury"] = 0.1f * Mathf.Pow(wealthFactor, 2);
+    }
+        
+    // Update existing ProcessTurn method
+    public void ProcessTurn(int regionWealth, float regionSize)
+    {
+        // Recalculate consumption based on current region properties
+        CalculateConsumption(regionWealth, regionSize);
+        
+        // Process production and consumption as you currently do
         List<string> resourceKeys = new List<string>(resources.Keys);
         
-        // Process production and consumption for each resource
         foreach (string resource in resourceKeys)
         {
             float production = productionRates.ContainsKey(resource) ? productionRates[resource] : 0;
@@ -102,7 +145,58 @@ public class ResourceComponent
             resources[resource] = Mathf.Max(0, resources[resource]);
         }
     }
+
+     // Add to ResourceComponent class
+    public Dictionary<string, float> GetConsumptionSatisfaction()
+    {
+        Dictionary<string, float> satisfaction = new Dictionary<string, float>();
         
+        foreach (var entry in consumptionRates)
+        {
+            string resource = entry.Key;
+            float needed = entry.Value;
+            
+            if (needed <= 0) continue;
+            
+            float available = resources.ContainsKey(resource) ? resources[resource] : 0;
+            satisfaction[resource] = Mathf.Clamp01(available / needed);
+        }
+        
+        return satisfaction;
+    }   
+
+    public float GetOverallSatisfaction() 
+    {
+        var satisfaction = GetConsumptionSatisfaction();
+        if (satisfaction.Count == 0) return 1.0f;
+        
+        float total = 0f;
+        foreach (var value in satisfaction.Values) {
+            total += value;
+        }
+        
+        return total / satisfaction.Count;
+    }
+
+    public bool HasConsumptionNeeds()
+    {
+        foreach (var entry in consumptionRates) {
+            if (entry.Value > 0) return true;
+        }
+        return false;
+    }
+
+    public float GetWealthConsumptionFactor(int wealth)
+    {
+        return 1.0f + (wealth * wealthConsumptionMultiplier);
+    }
+
+    public float GetSizeConsumptionFactor(float size)
+    {
+        return 1.0f + (size * sizeConsumptionMultiplier);
+    }
+
+
     // Add a resource
     public void AddResource(string resourceName, float amount)
     {
