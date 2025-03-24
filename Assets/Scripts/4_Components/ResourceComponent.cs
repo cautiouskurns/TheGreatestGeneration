@@ -44,81 +44,186 @@ public class ResourceComponent
             }
         }
     }
-    
-    // Initialize with basic resources
+
+    // Add to ResourceComponent class
+    public void LoadResourceDefinitions(ResourceDataSO[] definitions)
+    {
+        foreach (var definition in definitions)
+        {
+            RegisterResourceDefinition(definition);
+        }
+        
+        // After loading definitions, calculate base production based on definitions
+        CalculateBaseProduction();
+    }
+
+    // Initialize resources based on definitions
     private void InitializeBasicResources()
     {
-        // Start with some basic resources
-        resources["Food"] = 100;
-        resources["Wood"] = 50;
-        resources["Stone"] = 25;
-        resources["Iron"] = 10;
+        // Don't do anything if we don't have resource definitions yet
+        if (resourceDefinitions.Count == 0)
+        {
+            Debug.LogWarning("No resource definitions available for initialization");
+            return;
+        }
         
-        // Set initial production rates based on terrain
+        // Initialize resources with appropriate starting quantities
+        foreach (var entry in resourceDefinitions)
+        {
+            string resourceName = entry.Key;
+            ResourceDataSO resourceData = entry.Value;
+            
+            // Set initial quantities based on resource type and category
+            float initialAmount = 0f;
+            
+            // Primary resources start with more
+            if (resourceData.category == ResourceDataSO.ResourceCategory.Primary)
+            {
+                initialAmount = resourceData.baseValue * 5f;
+                
+                // Adjust based on resource type
+                if (resourceData.resourceType == ResourceDataSO.ResourceType.Food)
+                    initialAmount *= 2f; // More starting food
+            }
+            // Secondary resources start with moderate amounts
+            else if (resourceData.category == ResourceDataSO.ResourceCategory.Secondary)
+            {
+                initialAmount = resourceData.baseValue * 2.5f;
+            }
+            // Tertiary resources start with small amounts
+            else if (resourceData.category == ResourceDataSO.ResourceCategory.Tertiary)
+            {
+                initialAmount = resourceData.baseValue * 1f;
+            }
+            
+            // Apply terrain type modifiers if available
+            if (ownerRegion.terrainType != null)
+            {
+                string sector = GetSectorForResourceType(resourceData.resourceType);
+                float terrainMultiplier = ownerRegion.terrainType.GetMultiplierForSector(sector);
+                
+                // Boost initial resources based on terrain affinity
+                if (terrainMultiplier > 1.2f)
+                    initialAmount *= 1.5f;
+            }
+            
+            // Set the resource amount
+            resources[resourceName] = initialAmount;
+        }
+        
+        // Calculate initial production rates based on terrain
         CalculateBaseProduction();
     }
     
-    // Calculate production rates based on terrain
+    // Update CalculateBaseProduction method
     public void CalculateBaseProduction()
     {
-        // Default production values
-        productionRates["Food"] = 10;
-        productionRates["Wood"] = 5;
-        productionRates["Stone"] = 3;
-        productionRates["Iron"] = 1;
+        // Clear existing rates
+        productionRates.Clear();
+        consumptionRates.Clear();
         
-        // Default consumption values
-        consumptionRates["Food"] = 5;
-        consumptionRates["Wood"] = 2;
-        consumptionRates["Stone"] = 1;
-        consumptionRates["Iron"] = 0.5f;
-        
-        // Apply terrain modifiers if available
-        if (ownerRegion.terrainType != null)
+        // Set production rates based on resource definitions and terrain
+        foreach (var entry in resourceDefinitions)
         {
-            // Food production modified by agriculture potential
-            float agricultureMod = ownerRegion.terrainType.GetMultiplierForSector("agriculture");
-            productionRates["Food"] *= agricultureMod;
+            string resourceName = entry.Key;
+            ResourceDataSO resourceData = entry.Value;
             
-            // Wood production boosted in forests
-            if (ownerRegion.terrainType.terrainName == "Forest")
+            // Set base production rate for raw resources
+            if (resourceData.isRawResource)
             {
-                productionRates["Wood"] *= 2.0f;
+                float baseRate = resourceData.baseValue / 10f; // Convert value to production rate
+                productionRates[resourceName] = baseRate;
+                
+                // Apply terrain modifiers if available
+                if (ownerRegion.terrainType != null)
+                {
+                    // Match resource type to appropriate sector
+                    string sector = GetSectorForResourceType(resourceData.resourceType);
+                    float terrainMultiplier = ownerRegion.terrainType.GetMultiplierForSector(sector);
+                    
+                    productionRates[resourceName] *= terrainMultiplier;
+                }
+                
+                // Set base consumption rate based on the same baseRate variable
+                consumptionRates[resourceName] = baseRate / 2f; // Simple consumption model
             }
-            
-            // Stone and iron boosted in mountains
-            if (ownerRegion.terrainType.terrainName == "Mountains")
+            else
             {
-                productionRates["Stone"] *= 2.0f;
-                productionRates["Iron"] *= 1.5f;
-            }
-            
-            // Water reduces all production except food
-            if (ownerRegion.terrainType.terrainName == "Water")
-            {
-                productionRates["Food"] *= 0.8f; // Fish
-                productionRates["Wood"] *= 0.2f;
-                productionRates["Stone"] *= 0.1f;
-                productionRates["Iron"] *= 0.1f;
+                // For non-raw resources, set minimal production and consumption
+                productionRates[resourceName] = 0f;
+                consumptionRates[resourceName] = resourceData.baseValue / 20f; // Small consumption rate
             }
         }
     }
 
-    // Add to ResourceComponent class
+    // Helper method to map resource types to sectors
+    private string GetSectorForResourceType(ResourceDataSO.ResourceType resourceType)
+    {
+        switch (resourceType)
+        {
+            case ResourceDataSO.ResourceType.Food:
+                return "agriculture";
+            case ResourceDataSO.ResourceType.Material:
+                return resourceType == ResourceDataSO.ResourceType.Material ? "mining" : "industry";
+            case ResourceDataSO.ResourceType.Wealth:
+                return "commerce";
+            default:
+                return "industry";
+        }
+    }
+
     public void CalculateConsumption(int regionWealth, float regionSize)
     {
         // Base factor affected by wealth and size
         float wealthFactor = 1.0f + (regionWealth * wealthConsumptionMultiplier);
         float sizeFactor = 1.0f + (regionSize * sizeConsumptionMultiplier);
         
-        // Calculate consumption for each resource type
-        consumptionRates["Food"] = 5.0f * wealthFactor * sizeFactor;
-        consumptionRates["Wood"] = 2.0f * wealthFactor * sizeFactor;
-        consumptionRates["Stone"] = 1.0f * wealthFactor * sizeFactor;
-        consumptionRates["Iron"] = 0.5f * wealthFactor * sizeFactor;
-        
-        // Luxury resources consumed more with higher wealth
-        consumptionRates["Luxury"] = 0.1f * Mathf.Pow(wealthFactor, 2);
+        // Calculate consumption for each resource definition
+        foreach (var entry in resourceDefinitions)
+        {
+            string resourceName = entry.Key;
+            ResourceDataSO resourceData = entry.Value;
+            
+            // Different consumption rates based on resource type
+            float baseConsumption = 0f;
+            
+            // Set base consumption based on resource type
+            switch (resourceData.resourceType)
+            {
+                case ResourceDataSO.ResourceType.Food:
+                    baseConsumption = resourceData.baseValue / 8f;
+                    break;
+                case ResourceDataSO.ResourceType.Material:
+                    baseConsumption = resourceData.baseValue / 15f;
+                    break;
+                case ResourceDataSO.ResourceType.Wealth:
+                    // Wealth is consumed more with higher wealth factor
+                    baseConsumption = resourceData.baseValue / 20f * Mathf.Pow(wealthFactor, 1.5f);
+                    break;
+                default:
+                    baseConsumption = resourceData.baseValue / 12f;
+                    break;
+            }
+            
+            // Apply wealth and size factors
+            consumptionRates[resourceName] = baseConsumption * wealthFactor * sizeFactor;
+            
+            // Adjust consumption based on resource category
+            switch (resourceData.category)
+            {
+                case ResourceDataSO.ResourceCategory.Primary:
+                    // Primary resources are consumed more evenly
+                    break;
+                case ResourceDataSO.ResourceCategory.Secondary:
+                    // Secondary resources scale more with wealth
+                    consumptionRates[resourceName] *= wealthFactor;
+                    break;
+                case ResourceDataSO.ResourceCategory.Tertiary:
+                    // Tertiary/luxury goods scale heavily with wealth
+                    consumptionRates[resourceName] *= Mathf.Pow(wealthFactor, 2);
+                    break;
+            }
+        }
     }
         
     // Update existing ProcessTurn method

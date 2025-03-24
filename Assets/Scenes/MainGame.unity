@@ -1233,6 +1233,10 @@ MonoBehaviour:
     plainsPreference: 0
     wealthMultiplier: 0
     productionMultiplier: 0
+  availableResources:
+  - {fileID: 11400000, guid: 1286de16dfd4c4e5cafb3cf0d45fb9c0, type: 2}
+  - {fileID: 11400000, guid: 7ef05617a42c3439aad429452189ebb2, type: 2}
+  - {fileID: 11400000, guid: 43db618168ac24cc5bfe3caaceff2116, type: 2}
 --- !u!4 &1263410360
 Transform:
   m_ObjectHideFlags: 0

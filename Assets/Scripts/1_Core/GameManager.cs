@@ -26,6 +26,9 @@ public class GameManager : MonoBehaviour
     [Header("Nation Templates")]
     public NationTemplate[] nationTemplates;
 
+    public ResourceDataSO[] availableResources;
+
+
     private void Awake()
     {
         // Generate or use predefined map
@@ -115,6 +118,32 @@ public class GameManager : MonoBehaviour
         Debug.Log("GameManager initialized with " + 
                   (useProceduralMap ? "procedurally generated" : "predefined") + 
                   " map");
+    }
+
+    private void Start()
+    {
+        // Initialize resources after everything else is set up
+        InitializeResources();
+    }
+
+    private void InitializeResources()
+    {
+        if (availableResources == null || availableResources.Length == 0)
+        {
+            Debug.LogWarning("No resource definitions assigned to GameManager!");
+            return;
+        }
+        
+        Debug.Log($"Initializing {availableResources.Length} resource types for all regions");
+        
+        // Load resources into all regions
+        foreach (var region in mapModel.GetAllRegions().Values)
+        {
+            if (region.resources != null)
+            {
+                region.resources.LoadResourceDefinitions(availableResources);
+            }
+        }
     }
 
     private void OnEnable()

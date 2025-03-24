@@ -39,6 +39,31 @@ public class RegionEntity
         
         // Initialize resource component
         resources = new ResourceComponent(this);
+
+        if (terrainType != null)
+        {
+            // Add different starting resources based on terrain type
+            switch (terrainType.terrainName)
+            {
+                case "Forest":
+                    resources.AddResource("Wood", 50);
+                    resources.AddResource("Food", 30);
+                    break;
+                case "Mountains":
+                    resources.AddResource("Stone", 50);
+                    resources.AddResource("Iron", 30);
+                    break;
+                case "Plains":
+                    resources.AddResource("Food", 50);
+                    resources.AddResource("Wood", 20);
+                    break;
+                default:
+                    // Default starting resources
+                    resources.AddResource("Food", 30);
+                    resources.AddResource("Wood", 30);
+                    break;
+            }
+        }
     }
 
     // In RegionEntity.UpdateEconomy method
