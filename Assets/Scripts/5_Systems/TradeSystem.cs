@@ -1,5 +1,6 @@
 using UnityEngine;
 using System.Collections.Generic;
+using UnityEngine.UI;
 
 // Add a new system to handle inter-region trade
 public class TradeSystem : MonoBehaviour
@@ -26,6 +27,13 @@ public class TradeSystem : MonoBehaviour
     public bool showTradeHeatmap = false;
     private Dictionary<string, int> regionTradeVolume = new Dictionary<string, int>();
 
+    [Range(1, 10)] public int maxTradingPartnersPerRegion = 3;
+
+    public bool showSelectedRegionTradesOnly = true;
+    private string selectedRegionName = "";
+    public float minimumTradeVolumeToShow = 5.0f;
+
+
 private List<GameObject> activeTradeLines = new List<GameObject>();
     
     private void Awake()
@@ -50,6 +58,7 @@ private List<GameObject> activeTradeLines = new List<GameObject>();
 
     private void Start()
     {
+
         // Try to get regions after all objects are initialized
         var gameManager = FindFirstObjectByType<GameManager>();
         if (gameManager != null)
@@ -85,7 +94,7 @@ private List<GameObject> activeTradeLines = new List<GameObject>();
             Debug.LogWarning("TradeSystem: GameManager not found");
         }
     }
-    
+
     private void OnEnable()
     {
         // Just subscribe to events
@@ -99,6 +108,7 @@ private List<GameObject> activeTradeLines = new List<GameObject>();
         
         // Delayed initialization to avoid startup timing issues
         StartCoroutine(InitializeWithDelay());
+        EventBus.Subscribe("RegionSelected", OnRegionSelected);
     }
 
     private System.Collections.IEnumerator InitializeWithDelay()
@@ -156,6 +166,7 @@ private List<GameObject> activeTradeLines = new List<GameObject>();
     {
         EventBus.Unsubscribe("RegionEntitiesReady", OnRegionsReady);
         EventBus.Unsubscribe("TurnEnded", ProcessTrade);
+        EventBus.Unsubscribe("RegionSelected", OnRegionSelected);
     }
     
     private void OnRegionsReady(object regionsObj)
@@ -267,6 +278,17 @@ private List<GameObject> activeTradeLines = new List<GameObject>();
     private void ImportFromPartners(RegionEntity importer, string resourceName, 
                                 float deficitAmount, List<RegionEntity> partners)
     {
+            // Sort partners by surplus amount (most surplus first)
+        partners.Sort((a, b) => {
+            float surplusA = CalculateSurplus(a, resourceName);
+            float surplusB = CalculateSurplus(b, resourceName);
+            return surplusB.CompareTo(surplusA);
+        });
+        
+        // Limit number of partners
+        if (partners.Count > maxTradingPartnersPerRegion)
+            partners = partners.GetRange(0, maxTradingPartnersPerRegion);
+            
         float remainingDeficit = deficitAmount;
         
         foreach (var partner in partners)
@@ -323,6 +345,17 @@ private List<GameObject> activeTradeLines = new List<GameObject>();
         }
     }
 
+    private float CalculateSurplus(RegionEntity region, string resourceName)
+    {
+        var resources = region.resources.GetAllResources();
+        var consumption = region.resources.GetAllConsumptionRates();
+        
+        float available = resources.ContainsKey(resourceName) ? resources[resourceName] : 0;
+        float needed = consumption.ContainsKey(resourceName) ? consumption[resourceName] : 0;
+        
+        return available - needed * 1.2f;
+    }
+
     private void RecordTrade(RegionEntity exporter, RegionEntity importer, string resourceName, float amount)
     {
         // Add to importer's record
@@ -369,8 +402,15 @@ private List<GameObject> activeTradeLines = new List<GameObject>();
     }
 
     // Display a trade line between regions
-    private void ShowTradeLine(RegionEntity from, RegionEntity to, Color color)
+    private void ShowTradeLine(RegionEntity from, RegionEntity to, Color color, float tradeAmount)
     {
+            // Only show lines for significant trades
+        if (tradeAmount < minimumTradeVolumeToShow)
+            return;
+            
+        // Scale line width based on trade volume
+        float lineWidth = Mathf.Clamp(tradeAmount / 20f, 0.1f, 2.0f);
+
         if (!showTradeLines) return;
         
         // Get region positions from GameObjects (or use stored positions)
@@ -402,6 +442,10 @@ private List<GameObject> activeTradeLines = new List<GameObject>();
         
         // Add to active lines list
         activeTradeLines.Add(lineObj);
+
+            // Set width based on volume
+        line.startWidth = lineWidth;
+        line.endWidth = lineWidth;
         
         // Destroy after duration
         Destroy(lineObj, tradeLineDuration);
@@ -410,7 +454,22 @@ private List<GameObject> activeTradeLines = new List<GameObject>();
     // Call this after executing a trade
     private void ShowTradeVisualization(RegionEntity exporter, RegionEntity importer)
     {
-        ShowTradeLine(exporter, importer, exportColor);
+        // Find the actual amount traded from the records
+        float tradeAmount = 0f;
+        if (recentExports.ContainsKey(exporter.regionName))
+        {
+            foreach (var trade in recentExports[exporter.regionName])
+            {
+                if (trade.partnerName == importer.regionName)
+                {
+                    tradeAmount += trade.amount;
+                }
+            }
+        }
+        
+        // Make sure amount is at least 1.0 to ensure visibility
+        tradeAmount = Mathf.Max(1.0f, tradeAmount);
+        ShowTradeLine(exporter, importer, exportColor, tradeAmount);
     }
 
     // Clean up any leftover lines
@@ -497,6 +556,67 @@ private List<GameObject> activeTradeLines = new List<GameObject>();
                 if (needed > available)
                 {
                     Debug.Log($"  DEFICIT: {resourceName} = {needed - available:F1}");
+                }
+            }
+        }
+    }
+
+    private void OnRegionSelected(object regionObj)
+    {
+        if (regionObj is RegionEntity region)
+        {
+            selectedRegionName = region.regionName;
+            RefreshTradeLines();
+        }
+        else if (regionObj is string regionName)
+        {
+            selectedRegionName = regionName;
+            RefreshTradeLines();
+        }
+    }
+
+    private void RefreshTradeLines()
+    {
+        // Clear existing lines
+        ClearTradeLines();
+        
+        // If we're showing all trade lines, redraw them all
+        if (!showSelectedRegionTradesOnly)
+        {
+            // Draw all trade lines
+            foreach (var exports in recentExports)
+            {
+                string exporterName = exports.Key;
+                foreach (var tradeInfo in exports.Value)
+                {
+                    RegionEntity exporter = regions[exporterName];
+                    RegionEntity importer = regions[tradeInfo.partnerName];
+                    ShowTradeLine(exporter, importer, exportColor, tradeInfo.amount);
+                }
+            }
+        }
+        // Otherwise just show lines for the selected region
+        else if (!string.IsNullOrEmpty(selectedRegionName) && regions.ContainsKey(selectedRegionName))
+        {
+            // Draw trade lines for selected region's imports
+            if (recentImports.ContainsKey(selectedRegionName))
+            {
+                foreach (var tradeInfo in recentImports[selectedRegionName])
+                {
+                    RegionEntity exporter = regions[tradeInfo.partnerName];
+                    RegionEntity importer = regions[selectedRegionName];
+                    ShowTradeLine(exporter, importer, importColor, tradeInfo.amount);
+                }
+            }
+            
+            // Draw trade lines for selected region's exports
+            if (recentExports.ContainsKey(selectedRegionName))
+            {
+                foreach (var tradeInfo in recentExports[selectedRegionName])
+                {
+                    RegionEntity exporter = regions[selectedRegionName];
+                    RegionEntity importer = regions[tradeInfo.partnerName];
+                    ShowTradeLine(exporter, importer, exportColor, tradeInfo.amount);
                 }
             }
         }
