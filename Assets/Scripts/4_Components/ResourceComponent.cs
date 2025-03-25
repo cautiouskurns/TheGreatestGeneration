@@ -375,4 +375,10 @@ public class ResourceComponent
     {
         return new Dictionary<string, float>(consumptionRates);
     }
+
+    // Add to ResourceComponent
+    public Dictionary<string, ResourceDataSO> GetResourceDefinitions()
+    {
+        return new Dictionary<string, ResourceDataSO>(resourceDefinitions);
+    }
 }

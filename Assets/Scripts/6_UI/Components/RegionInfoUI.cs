@@ -138,6 +138,32 @@ public class RegionInfoUI : MonoBehaviour
                 }
             }
         }
+        // Add to the UpdateInfo method of RegionInfoUI, after the Resources section
+        if (region.productionComponent != null)
+        {
+            var activeRecipes = region.productionComponent.GetActiveRecipes();
+            
+            if (activeRecipes.Count > 0)
+            {
+                infoString += "\n<size=20><b>Production</b></size>\n";
+                infoString += "<color=#666666>──────────────────</color>\n";
+                
+                foreach (var recipeName in activeRecipes)
+                {
+                    float progress = region.productionComponent.GetRecipeProgress(recipeName);
+                    
+                    // Display recipe with progress if it's a multi-turn recipe
+                    if (progress > 0)
+                    {
+                        infoString += $"<b>{recipeName}:</b> <color=#FFFFFF>In Progress ({progress:F1})</color>\n";
+                    }
+                    else
+                    {
+                        infoString += $"<b>{recipeName}:</b> <color=#FFFFFF>Active</color>\n";
+                    }
+                }
+            }
+        }
         
         // Display the formatted text
         infoText.text = infoString;

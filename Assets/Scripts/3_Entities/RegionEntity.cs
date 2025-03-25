@@ -20,6 +20,7 @@ public class RegionEntity
     
     // Add resource component
     public ResourceComponent resources;
+    public ProductionComponent productionComponent;
 
     // Constructor for basic region
     public RegionEntity(string name, int initialWealth, int initialProduction, string nationName, Color color)
@@ -39,6 +40,7 @@ public class RegionEntity
         
         // Initialize resource component
         resources = new ResourceComponent(this);
+        productionComponent = new ProductionComponent(this, resources);
 
         if (terrainType != null)
         {
@@ -50,8 +52,8 @@ public class RegionEntity
                     resources.AddResource("Food", 30);
                     break;
                 case "Mountains":
-                    resources.AddResource("Stone", 50);
-                    resources.AddResource("Iron", 30);
+                    resources.AddResource("Coal", 50);
+                    resources.AddResource("Iron Ore", 30);
                     break;
                 case "Plains":
                     resources.AddResource("Food", 50);
@@ -89,6 +91,11 @@ public class RegionEntity
             {
                 wealth -= Mathf.RoundToInt((0.5f - satisfaction["Food"]) * 10);
             }
+        }
+
+        if (productionComponent != null)
+        {
+            productionComponent.ProcessProduction();
         }
         
         // Update tracking flags and notify systems

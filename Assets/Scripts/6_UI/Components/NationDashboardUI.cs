@@ -28,7 +28,7 @@ public class NationDashboardUI : MonoBehaviour
         nationInfoText.text = nation.GetNationSummary();
         
         // Update nation color
-        nationInfoText.color = nation.nationColor;
+        //nationInfoText.color = nation.nationColor;
         
         // You could set a nation flag image here if available
     }

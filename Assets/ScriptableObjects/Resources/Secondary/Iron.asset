@@ -34,7 +34,7 @@ MonoBehaviour:
     - resource: {fileID: 11400000, guid: 7ef05617a42c3439aad429452189ebb2, type: 2}
       amount: 1
       consumed: 1
-    outputAmount: 1
+    outputAmount: 100
     productionTime: 1
-    requiredInfrastructureType: Industry
-    minimumInfrastructureLevel: 2
+    requiredInfrastructureType: 0
+    minimumInfrastructureLevel: 0

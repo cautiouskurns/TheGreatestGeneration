@@ -162,6 +162,8 @@ public class GameManager : MonoBehaviour
             if (region.resources != null)
             {
                 region.resources.LoadResourceDefinitions(availableResources);
+                region.productionComponent.ActivateRecipe("Basic Iron Smelting");
+
             }
         }
     }
