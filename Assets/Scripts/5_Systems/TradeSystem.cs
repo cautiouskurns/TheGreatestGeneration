@@ -88,47 +88,67 @@ private List<GameObject> activeTradeLines = new List<GameObject>();
     
     private void OnEnable()
     {
+        // Just subscribe to events
         EventBus.Subscribe("TurnEnded", ProcessTrade);
         
-        // Initialize regions dictionary if it's null
+        // Initialize regions if needed
         if (regions == null)
         {
             regions = new Dictionary<string, RegionEntity>();
         }
         
+        // Delayed initialization to avoid startup timing issues
+        StartCoroutine(InitializeWithDelay());
+    }
+
+    private System.Collections.IEnumerator InitializeWithDelay()
+    {
+        // Wait for two frames to ensure everything is properly initialized
+        yield return null;
+        yield return null;
+        
+        Debug.Log("TradeSystem: Starting delayed initialization");
+        
         // Get GameManager reference safely
         var gameManager = FindFirstObjectByType<GameManager>();
-        if (gameManager != null)
+        if (gameManager == null)
         {
-            try
-            {
-                // Get regions from GameManager
-                var allRegions = gameManager.GetAllRegions();
-                if (allRegions != null)
-                {
-                    regions = allRegions;
-                    Debug.Log($"TradeSystem: Got {regions.Count} regions from GameManager");
-                    
-                    // Only call DebugTradeSystem if we have regions
-                    if (regions.Count > 0)
-                    {
-                        DebugTradeSystem();
-                    }
-                }
-                else
-                {
-                    Debug.LogWarning("TradeSystem: GameManager returned null regions dictionary");
-                }
-            }
-            catch (System.Exception e)
-            {
-                // Catch any exceptions to prevent crashes
-                Debug.LogError($"TradeSystem: Error getting regions from GameManager: {e.Message}");
-            }
+            Debug.LogError("TradeSystem: GameManager not found during delayed initialization");
+            yield break;
         }
-        else
+        
+        Debug.Log("TradeSystem: Found GameManager, attempting to get regions");
+        
+        try
         {
-            Debug.LogWarning("TradeSystem: GameManager not found");
+            // Use reflection to check if GetAllRegions exists
+            var method = gameManager.GetType().GetMethod("GetAllRegions");
+            if (method == null)
+            {
+                Debug.LogError("TradeSystem: GameManager does not have a GetAllRegions method");
+                yield break;
+            }
+            
+            // Try to get regions
+            var allRegions = gameManager.GetAllRegions();
+            
+            // Check if the result is null
+            if (allRegions == null)
+            {
+                Debug.LogError("TradeSystem: GameManager.GetAllRegions() returned null");
+                yield break;
+            }
+            
+            // Success! Store the regions
+            regions = allRegions;
+            Debug.Log($"TradeSystem: Successfully retrieved {regions.Count} regions");
+            
+            // Debug the trade system
+            DebugTradeSystem();
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"TradeSystem: Detailed error: {e.Message}\nStack trace: {e.StackTrace}");
         }
     }
 

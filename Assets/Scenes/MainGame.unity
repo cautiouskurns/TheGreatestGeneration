@@ -968,14 +968,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d81bc8fce7570451ba37b0cdde45f41f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  tradeRadius: 2
-  tradeEfficiency: 0.942
-  showTradeLines: 0
+  tradeRadius: 5
+  tradeEfficiency: 0.201
+  showTradeLines: 1
   tradeLineWidth: 0.1
-  tradeLineDuration: 2
+  tradeLineDuration: 50
   importColor: {r: 0, g: 1, b: 0, a: 0.5}
   exportColor: {r: 1, g: 0.5, b: 0, a: 0.5}
-  showTradeHeatmap: 1
+  showTradeHeatmap: 0
 --- !u!1 &1011756824
 GameObject:
   m_ObjectHideFlags: 0
