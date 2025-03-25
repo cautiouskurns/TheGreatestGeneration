@@ -24,6 +24,9 @@ public class GameManager : MonoBehaviour
     private MapModel mapModel;
     private NationModel nationModel;
 
+    private TradeSystem tradeSystem;
+
+
     [Header("Nation Templates")]
     public NationTemplate[] nationTemplates;
 
@@ -126,6 +129,14 @@ public class GameManager : MonoBehaviour
         Debug.Log("GameManager initialized with " + 
                   (useProceduralMap ? "procedurally generated" : "predefined") + 
                   " map and nation model");
+
+         // Find or create TradeSystem
+        tradeSystem = FindFirstObjectByType<TradeSystem>();
+        if (tradeSystem == null)
+        {
+            GameObject tradeSystemObj = new GameObject("TradeSystem");
+            tradeSystem = tradeSystemObj.AddComponent<TradeSystem>();
+        }
     }
 
     private void Start()
@@ -164,6 +175,29 @@ public class GameManager : MonoBehaviour
                 region.resources.LoadResourceDefinitions(availableResources);
                 region.productionComponent.ActivateRecipe("Basic Iron Smelting");
 
+            }
+        }
+
+        // Add this at the end of InitializeResources() in GameManager
+        // Manually create some deficits and surpluses for testing
+        var regions = mapModel.GetAllRegions();
+        if (regions.Count >= 2)
+        {
+            var regionArray = new RegionEntity[regions.Count];
+            regions.Values.CopyTo(regionArray, 0);
+            
+            // Give first region excess food
+            if (regionArray[0].resources != null)
+            {
+                regionArray[0].resources.AddResource("Crops", 100);
+                Debug.Log($"Added 100 Crops to {regionArray[0].regionName} for trade testing");
+            }
+            
+            // Give second region excess iron
+            if (regionArray[1].resources != null)
+            {
+                regionArray[1].resources.AddResource("Iron Ore", 100);
+                Debug.Log($"Added 100 Iron Ore to {regionArray[1].regionName} for trade testing");
             }
         }
     }
@@ -233,5 +267,11 @@ public class GameManager : MonoBehaviour
         
         // Register with nation model
         nationModel.RegisterRegion(region);
+    }
+
+    // Add to GameManager.cs
+    public Dictionary<string, RegionEntity> GetAllRegions()
+    {
+        return mapModel.GetAllRegions();
     }
 }

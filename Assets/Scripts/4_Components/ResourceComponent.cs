@@ -381,4 +381,68 @@ public class ResourceComponent
     {
         return new Dictionary<string, ResourceDataSO>(resourceDefinitions);
     }
+
+    // Add population demand factors
+    private Dictionary<string, float> baseConsumptionPerCapita = new Dictionary<string, float>();
+
+    // Calculate demand based on population
+    public void CalculateDemand()
+    {
+        // Clear existing consumption rates
+        consumptionRates.Clear();
+
+        // For each resource
+        foreach (var resource in resourceDefinitions.Keys)
+        {
+            // Base consumption per capita (default or from definition)
+            float perCapitaNeed = 0.1f; // Default
+            if (baseConsumptionPerCapita.ContainsKey(resource))
+                perCapitaNeed = baseConsumptionPerCapita[resource];
+
+            // Total consumption = population × per capita need × wealth multiplier
+            float totalDemand = ownerRegion.laborAvailable * perCapitaNeed *
+                                (1.0f + ownerRegion.wealth * 0.001f); // Wealth increases consumption
+
+            consumptionRates[resource] = totalDemand;
+        }
+    }
+
+    // Calculate production based on labor allocation
+    public void CalculateProduction()
+    {
+        // Clear existing production rates
+        productionRates.Clear();
+
+        foreach (var resource in resourceDefinitions.Values)
+        {
+            // Skip non-raw resources (handled by ProductionComponent)
+            if (!resource.isRawResource) continue;
+
+            // Get appropriate sector for this resource
+            string sector = GetSectorForResourceType(resource.resourceType);
+
+            // Get labor allocated to this sector
+            float laborShare = 0.0f;
+            if (ownerRegion.laborAllocation.ContainsKey(sector))
+                laborShare = ownerRegion.laborAllocation[sector];
+
+            // Base production = resource base value × labor allocation × land productivity
+            float baseProduction = resource.baseValue * 0.2f *
+                                (ownerRegion.laborAvailable * laborShare) *
+                                ownerRegion.landProductivity;
+
+            // Apply production efficiency and capital investment
+            baseProduction *= ownerRegion.productionEfficiency *
+                            (1.0f + ownerRegion.capitalInvestment * 0.05f);
+
+            // Apply terrain modifiers
+            if (ownerRegion.terrainType != null)
+            {
+                float terrainModifier = ownerRegion.terrainType.GetMultiplierForSector(sector);
+                baseProduction *= terrainModifier;
+            }
+
+            productionRates[resource.resourceName] = baseProduction;
+        }
+    }
 }

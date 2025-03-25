@@ -164,10 +164,74 @@ public class RegionInfoUI : MonoBehaviour
                 }
             }
         }
+
+
+        // Add economic section
+        infoString += "\n\n<size=20><b>Economy</b></size>\n";
+        infoString += "<color=#666666>──────────────────</color>\n";
+
+        // Population and labor
+        infoString += $"<color=#FFD700>Population:</color> <color=#FFFFFF>{region.laborAvailable}</color>";
+        infoString += $"\n<color=#87CEEB>Capital:</color> <color=#FFFFFF>{region.capitalInvestment:F1}</color>";
+
+        // Satisfaction with color coding
+        string satisfactionColor = "#FF5555"; // Red for low satisfaction
+        if (region.satisfaction > 0.7f)
+            satisfactionColor = "#00FF00"; // Green for high satisfaction
+        else if (region.satisfaction > 0.5f)
+            satisfactionColor = "#FFFF00"; // Yellow for medium satisfaction
+
+        infoString += $"\n<color=#FFFFFF>Satisfaction:</color> <color={satisfactionColor}>{region.satisfaction:P0}</color>";
         
+        // TRADE SECTION
+        infoString += "\n\n<size=20><b>Trade</b></size>\n";
+        infoString += "<color=#666666>──────────────────</color>\n";
+
+        // Get trade data
+        var tradeSystem = FindFirstObjectByType<TradeSystem>();
+        if (tradeSystem != null)
+        {
+            // Show imports
+            var imports = tradeSystem.GetRecentImports(region.regionName);
+            if (imports.Count > 0)
+            {
+                infoString += "<color=#FFFFFF><b>Imports:</b></color>\n";
+                foreach (var trade in imports)
+                {
+                    infoString += $"• <color=#87CEEB>{trade.resourceName}</color> from <color=#DDDDDD>{trade.partnerName}</color>: <color=#FFFFFF>{trade.amount:F1}</color>\n";
+                }
+            }
+            
+            // Show exports
+            var exports = tradeSystem.GetRecentExports(region.regionName);
+            if (exports.Count > 0)
+            {
+                infoString += "\n<color=#FFFFFF><b>Exports:</b></color>\n";
+                foreach (var trade in exports)
+                {
+                    infoString += $"• <color=#87CEEB>{trade.resourceName}</color> to <color=#DDDDDD>{trade.partnerName}</color>: <color=#FFFFFF>{trade.amount:F1}</color>\n";
+                }
+            }
+            
+            // If no trade
+            if (imports.Count == 0 && exports.Count == 0)
+            {
+                infoString += "<color=#AAAAAA>No recent trade activity.</color>\n";
+            }
+        }
+        else
+        {
+            infoString += "<color=#AAAAAA>Trade system not available.</color>\n";
+        }
+
+
         // Display the formatted text
         infoText.text = infoString;
     }
+
+
+
+
 
     // Helper method for formatting percentages with color
     private string FormatPercentage(float modifier)
@@ -196,4 +260,11 @@ public class RegionInfoUI : MonoBehaviour
         
         return effectText;
     }
+}
+
+public class TradeInfo
+{
+    public string partnerName;
+    public string resourceName;
+    public float amount;
 }

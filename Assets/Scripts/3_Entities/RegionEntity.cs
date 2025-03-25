@@ -17,6 +17,26 @@ public class RegionEntity
     public bool hasChangedThisTurn = false;
     public int wealthDelta = 0;
     public int productionDelta = 0;
+
+    // New economic simulation properties
+    public float landProductivity = 1.0f;  // Affected by terrain type
+    public int laborAvailable = 100;       // Base population that can work
+    public float capitalInvestment = 10.0f; // Infrastructure/investment level
+
+    // Production efficiency modifiers
+    public float productionEfficiency = 1.0f;
+
+    public float satisfaction = 0.7f; // Population satisfaction (0-1)
+
+
+    // Sector allocations (% of labor in each sector)
+    public Dictionary<string, float> laborAllocation = new Dictionary<string, float>
+    {
+        { "agriculture", 0.6f },
+        { "industry", 0.3f },
+        { "commerce", 0.1f }
+    };
+
     
     // Add resource component
     public ResourceComponent resources;
@@ -68,31 +88,61 @@ public class RegionEntity
         }
     }
 
-    // In RegionEntity.UpdateEconomy method
+    // Update the UpdateEconomy method
     public void UpdateEconomy(int wealthChange, int productionChange)
     {
-        // Apply changes to wealth and production as before
+        // Existing code for updating wealth and production
         wealth += wealthChange;
         production += productionChange;
         
-        // Define region "size" - could be based on production or a new property
+        // Calculate region "size" as before
         float regionSize = production / 10.0f;
         
-        // Process resources with wealth and size factors
+        // Process resources
         if (resources != null)
         {
+            resources.CalculateProduction(); // Updated method that uses labor
+            resources.CalculateDemand(); // New method to calculate consumption based on population
             resources.ProcessTurn(wealth, regionSize);
             
-            // You could add effects based on consumption satisfaction
-            Dictionary<string, float> satisfaction = resources.GetConsumptionSatisfaction();
+            // Calculate satisfaction based on needs being met
+            Dictionary<string, float> needsSatisfaction = resources.GetConsumptionSatisfaction();
             
-            // Example: If food satisfaction is low, reduce wealth
-            if (satisfaction.ContainsKey("Food") && satisfaction["Food"] < 0.5f)
+            // Overall satisfaction is average of all resource satisfactions
+            float totalSatisfaction = 0f;
+            int resourceCount = 0;
+            
+            foreach (var entry in needsSatisfaction)
             {
-                wealth -= Mathf.RoundToInt((0.5f - satisfaction["Food"]) * 10);
+                totalSatisfaction += entry.Value;
+                resourceCount++;
+            }
+            
+            if (resourceCount > 0)
+            {
+                satisfaction = totalSatisfaction / resourceCount;
+            }
+            
+            // Satisfaction affects wealth and population
+            if (satisfaction < 0.5f)
+            {
+                // Low satisfaction leads to wealth loss
+                wealth -= Mathf.RoundToInt((0.5f - satisfaction) * 20);
+                
+                // And potential population decline
+                laborAvailable = Mathf.Max(50, laborAvailable - Mathf.RoundToInt((0.5f - satisfaction) * 10));
+            }
+            else if (satisfaction > 0.8f)
+            {
+                // High satisfaction leads to population growth
+                laborAvailable += Mathf.RoundToInt((satisfaction - 0.8f) * 15);
+                
+                // And reinvestment in capital
+                capitalInvestment += (satisfaction - 0.8f) * 0.5f;
             }
         }
-
+        
+        // Process production
         if (productionComponent != null)
         {
             productionComponent.ProcessProduction();
@@ -105,7 +155,8 @@ public class RegionEntity
         
         EventBus.Trigger("RegionUpdated", this);
     }
-    
+
+
     // Reset changes after visualization
     public void ResetChangeFlags()
     {
