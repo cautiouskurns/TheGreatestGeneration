@@ -262,9 +262,3 @@ public class RegionInfoUI : MonoBehaviour
     }
 }
 
-public class TradeInfo
-{
-    public string partnerName;
-    public string resourceName;
-    public float amount;
-}
