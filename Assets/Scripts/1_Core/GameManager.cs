@@ -4,9 +4,12 @@ using System.Collections.Generic;
 
 public class GameManager : MonoBehaviour
 {
+    #region References
     public MapView mapView;
     public RegionInfoUI regionInfoUI;
+    #endregion
 
+    #region Map Generation Settings
     [Header("Map Generation")]
     public bool useProceduralMap = true;
     public MapDataSO predefinedMapData;
@@ -20,19 +23,23 @@ public class GameManager : MonoBehaviour
     public int mapHeight = 10;
     public int nationCount = 3;
     public int regionsPerNation = 5;
-    
+    #endregion
+
+    #region Models
     private MapModel mapModel;
     private NationModel nationModel;
-
     private TradeSystem tradeSystem;
+    #endregion
 
-
+    #region Content Data
     [Header("Nation Templates")]
     public NationTemplate[] nationTemplates;
 
     [Header("Resources")]
     public ResourceDataSO[] availableResources;
+    #endregion
 
+    #region Initialization
     private void Awake()
     {
         // Generate or use predefined map
@@ -46,7 +53,6 @@ public class GameManager : MonoBehaviour
             if (useSavedTerrainMap && savedTerrainMap != null)
             {
                 // Use the saved terrain map parameters
-//                Debug.Log($"Using saved terrain map (Seed: {savedTerrainMap.seed})");
                 generator = new MapGenerator(
                     savedTerrainMap.width,
                     savedTerrainMap.height,
@@ -89,7 +95,6 @@ public class GameManager : MonoBehaviour
             if (nationTemplates != null && nationTemplates.Length > 0)
             {
                 generator.SetNationTemplates(nationTemplates);
-//                Debug.Log($"Using {nationTemplates.Length} nation templates for map generation");
             }
 
             // Generate the map
@@ -125,12 +130,8 @@ public class GameManager : MonoBehaviour
         
         // Register all regions with the NationModel
         RegisterRegionsWithNations();
-        
-// //        Debug.Log("GameManager initialized with " + 
-//                   (useProceduralMap ? "procedurally generated" : "predefined") + 
-//                   " map and nation model");
 
-         // Find or create TradeSystem
+        // Find or create TradeSystem
         tradeSystem = FindFirstObjectByType<TradeSystem>();
         if (tradeSystem == null)
         {
@@ -153,8 +154,6 @@ public class GameManager : MonoBehaviour
             RegionEntity region = regionEntry.Value;
             nationModel.RegisterRegion(region);
         }
-        
-//        Debug.Log("Registered all regions with their nations");
     }
 
     private void InitializeResources()
@@ -165,8 +164,6 @@ public class GameManager : MonoBehaviour
             return;
         }
         
-//        Debug.Log($"Initializing {availableResources.Length} resource types for all regions");
-        
         // Load resources into all regions
         foreach (var region in mapModel.GetAllRegions().Values)
         {
@@ -174,11 +171,9 @@ public class GameManager : MonoBehaviour
             {
                 region.resources.LoadResourceDefinitions(availableResources);
                 region.productionComponent.ActivateRecipe("Basic Iron Smelting");
-
             }
         }
 
-        // Add this at the end of InitializeResources() in GameManager
         // Manually create some deficits and surpluses for testing
         var regions = mapModel.GetAllRegions();
         if (regions.Count >= 2)
@@ -190,18 +185,18 @@ public class GameManager : MonoBehaviour
             if (regionArray[0].resources != null)
             {
                 regionArray[0].resources.AddResource("Crops", 100);
-//                Debug.Log($"Added 100 Crops to {regionArray[0].regionName} for trade testing");
             }
             
             // Give second region excess iron
             if (regionArray[1].resources != null)
             {
                 regionArray[1].resources.AddResource("Iron Ore", 100);
-  //              Debug.Log($"Added 100 Iron Ore to {regionArray[1].regionName} for trade testing");
             }
         }
     }
+    #endregion
 
+    #region Event Handling
     private void OnEnable()
     {
         EventBus.Subscribe("TurnEnded", OnTurnEnded);
@@ -222,7 +217,9 @@ public class GameManager : MonoBehaviour
         
         Debug.Log("Turn ended, region and nation processing complete");
     }
-    
+    #endregion
+
+    #region Region Management
     public void SelectRegion(string regionName)
     {
         mapModel.SelectRegion(regionName);
@@ -233,12 +230,28 @@ public class GameManager : MonoBehaviour
         return mapModel.GetRegion(regionName);
     }
 
+    public Dictionary<string, RegionEntity> GetAllRegions()
+    {
+        return mapModel.GetAllRegions();
+    }
+    
+    // For registering new regions if created during gameplay
+    public void RegisterNewRegion(RegionEntity region)
+    {
+        // Add to map model if needed
+        // mapModel.AddRegion(region); - Would need to implement this method
+        
+        // Register with nation model
+        nationModel.RegisterRegion(region);
+    }
+    
     public MapDataSO GetMapData()
     {
         return mapModel.GetMapData();
     }
-    
-    // Nation-related methods
+    #endregion
+
+    #region Nation Management
     public NationEntity GetNation(string nationName)
     {
         return nationModel.GetNation(nationName);
@@ -258,20 +271,5 @@ public class GameManager : MonoBehaviour
     {
         return nationModel.GetAllNations();
     }
-    
-    // For registering new regions if created during gameplay
-    public void RegisterNewRegion(RegionEntity region)
-    {
-        // Add to map model if needed
-        // mapModel.AddRegion(region); - Would need to implement this method
-        
-        // Register with nation model
-        nationModel.RegisterRegion(region);
-    }
-
-    // Add to GameManager.cs
-    public Dictionary<string, RegionEntity> GetAllRegions()
-    {
-        return mapModel.GetAllRegions();
-    }
+    #endregion
 }

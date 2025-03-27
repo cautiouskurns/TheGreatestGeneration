@@ -3,12 +3,15 @@ using UnityEngine;
 
 public class MapModel
 {
+    #region Fields
     private Dictionary<string, RegionEntity> regions = new Dictionary<string, RegionEntity>();
     private RegionEntity selectedRegion;
     private MapDataSO mapData;
-    private Dictionary<string, TerrainTypeDataSO> terrainTypes; // Add this
+    private Dictionary<string, TerrainTypeDataSO> terrainTypes;
+    #endregion
 
-    // Update constructor to accept terrain types
+    #region Initialization
+    // Constructor to accept terrain types
     public MapModel(MapDataSO mapData, Dictionary<string, TerrainTypeDataSO> terrainTypes = null)
     {
         this.mapData = mapData;
@@ -48,7 +51,9 @@ public class MapModel
 
         EventBus.Trigger("RegionEntitiesReady", regions);
     }
+    #endregion
 
+    #region Region Access
     public RegionEntity GetRegion(string regionName)
     {
         if (regions.ContainsKey(regionName))
@@ -62,7 +67,9 @@ public class MapModel
     {
         return regions;
     }
+    #endregion
 
+    #region Region Selection
     public void SelectRegion(string regionName)
     {
         Debug.Log($"MapModel.SelectRegion called with: {regionName}");
@@ -83,7 +90,9 @@ public class MapModel
     {
         return selectedRegion;
     }
+    #endregion
 
+    #region Region Updates
     public void UpdateRegion(RegionEntity region)
     {
         if (regions.ContainsKey(region.regionName))
@@ -104,10 +113,13 @@ public class MapModel
 
         EventBus.Trigger("MapModelTurnProcessed", null);
     }
+    #endregion
     
+    #region Data Access
     // Add a method to get the MapDataSO for the GameManager
     public MapDataSO GetMapData()
     {
         return mapData;
     }
+    #endregion
 }
