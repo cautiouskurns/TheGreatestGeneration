@@ -970,7 +970,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   tradeRadius: 4
   tradeEfficiency: 0.91
-  maxTradingPartnersPerRegion: 3
+  maxTradingPartnersPerRegion: 2
   showTradeLines: 1
   tradeLineWidth: 0.5
   tradeLineDuration: 50

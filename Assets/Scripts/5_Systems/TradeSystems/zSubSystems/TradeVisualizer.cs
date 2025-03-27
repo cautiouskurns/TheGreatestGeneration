@@ -12,7 +12,7 @@ public class TradeVisualizer
     private readonly bool showTradeLines;
     
     // Parameters for curved lines
-    private readonly float curveHeight = 0.3f;
+    private readonly float curveHeight = 0.2f;
     private readonly int curveSegments = 12;
     
     private readonly List<GameObject> activeTradeLines = new List<GameObject>();

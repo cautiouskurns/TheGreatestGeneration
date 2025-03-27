@@ -52,8 +52,12 @@ public class TradeSystem : MonoBehaviour
             tradeLineWidth, tradeLineDuration, 
             minimumTradeVolumeToShow,
             showTradeLines);
+            
+        // Log initialization to debug
+        Debug.Log("TradeSystem initialized with visualizer configured for import/export visualization");
     }
-    
+
+
     private void Start()
     {
         // Try to get regions after all objects are initialized
@@ -308,8 +312,28 @@ public class TradeSystem : MonoBehaviour
         
         RegionEntity selectedRegion = regions[selectedRegionName];
         
-        // Show imports
+        // Get all trade data for the selected region
         var imports = recorder.GetRecentImports(selectedRegionName);
+        var exports = recorder.GetRecentExports(selectedRegionName);
+        
+        // Create lookup for bidirectional trades to enhance visualization
+        Dictionary<string, HashSet<string>> bidirectionalTrades = new Dictionary<string, HashSet<string>>();
+        
+        // Find all bidirectional trade relationships (resources traded both ways)
+        foreach (var import in imports)
+        {
+            string partnerName = import.partnerName;
+            string resourceName = import.resourceName;
+            
+            // Initialize set if needed
+            if (!bidirectionalTrades.ContainsKey(partnerName))
+                bidirectionalTrades[partnerName] = new HashSet<string>();
+            
+            // Add this trade relationship
+            bidirectionalTrades[partnerName].Add(resourceName);
+        }
+        
+        // Show imports first
         foreach (var trade in imports)
         {
             if (!regions.ContainsKey(trade.partnerName)) continue;
@@ -318,8 +342,7 @@ public class TradeSystem : MonoBehaviour
             visualizer.ShowTradeLine(exporter, selectedRegion, importColor, trade.amount);
         }
         
-        // Show exports
-        var exports = recorder.GetRecentExports(selectedRegionName);
+        // Show exports next so they appear on top of imports
         foreach (var trade in exports)
         {
             if (!regions.ContainsKey(trade.partnerName)) continue;
@@ -328,13 +351,44 @@ public class TradeSystem : MonoBehaviour
             visualizer.ShowTradeLine(selectedRegion, importer, exportColor, trade.amount);
         }
     }
+
     
     private void ShowAllTradeLines()
     {
-        // Get all exports
+        // Get all exports and imports
         var allExports = recorder.GetAllExports();
+        var allImports = recorder.GetAllImports();
         
-        // Show a line for each export
+        // Create a set to track which trade relationships we've already visualized
+        HashSet<string> visualizedTrades = new HashSet<string>();
+        
+        // First, show ALL imports (green lines) for a clear base layer
+        foreach (var importPair in allImports)
+        {
+            string importerName = importPair.Key;
+            
+            if (!regions.ContainsKey(importerName)) continue;
+            
+            RegionEntity importer = regions[importerName];
+            
+            foreach (var trade in importPair.Value)
+            {
+                if (!regions.ContainsKey(trade.partnerName)) continue;
+                
+                RegionEntity exporter = regions[trade.partnerName];
+                
+                // Create a unique key for this trade relationship
+                string tradeKey = $"{exporter.regionName}_{importer.regionName}_{trade.resourceName}";
+                
+                // Add this relationship to our tracking set
+                visualizedTrades.Add(tradeKey);
+                
+                // Show this as an import line
+                visualizer.ShowTradeLine(exporter, importer, importColor, trade.amount);
+            }
+        }
+        
+        // Then, show ALL exports (orange lines) - they'll be rendered on top
         foreach (var exportPair in allExports)
         {
             string exporterName = exportPair.Key;
@@ -348,6 +402,12 @@ public class TradeSystem : MonoBehaviour
                 if (!regions.ContainsKey(trade.partnerName)) continue;
                 
                 RegionEntity importer = regions[trade.partnerName];
+                
+                // Create a unique key for this trade relationship
+                string tradeKey = $"{exporter.regionName}_{importer.regionName}_{trade.resourceName}";
+                
+                // Show this as an export line regardless of whether we've shown the import
+                // This ensures we see both directions visually
                 visualizer.ShowTradeLine(exporter, importer, exportColor, trade.amount);
             }
         }
