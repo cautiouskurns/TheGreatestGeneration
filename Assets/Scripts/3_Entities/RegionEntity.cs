@@ -122,45 +122,23 @@ public class RegionEntity
         }
     }
 
+
     // Updated economy update method
     public void UpdateEconomy(int wealthChange, int productionChange)
     {
-        // Apply economic changes
-        economy.ApplyChanges(wealthChange, productionChange);
+        // For now, temporarily store the requested changes
+        int requestedWealthChange = wealthChange;
+        int requestedProductionChange = productionChange;
         
-        // Calculate region "size" for resource processing
-        float regionSize = economy.production / 10.0f;
+        // Call the centralized processing
+        ProcessTurn();
         
-        // Process resources
-        if (resources != null)
-        {
-            resources.CalculateProduction();
-            resources.CalculateDemand();
-            resources.ProcessTurn(economy.wealth, regionSize);
-            
-            // Calculate satisfaction based on needs being met
-            Dictionary<string, float> needsSatisfaction = resources.GetConsumptionSatisfaction();
-            
-            // Update satisfaction and population
-            population.UpdateSatisfaction(needsSatisfaction);
-            population.UpdatePopulation();
-            
-            // Apply population effects to economy
-            economy.ApplySatisfactionEffects(population.satisfaction);
-        }
-        
-        // Process production
-        if (productionComponent != null)
-        {
-            productionComponent.ProcessProduction();
-        }
-        
-        // Update tracking flag
-        hasChangedThisTurn = true;
-        
-        // Notify systems
-        EventBus.Trigger("RegionUpdated", this);
+        // For backward compatibility, make sure the delta values match what was expected
+        // This may not be necessary once all systems are updated to use ProcessTurn
+        economy.wealthDelta = requestedWealthChange;
+        economy.productionDelta = requestedProductionChange;
     }
+
 
     // Reset changes after visualization
     public void ResetChangeFlags()
@@ -246,5 +224,85 @@ public class RegionEntity
         float percentage = (modifier - 1.0f) * 100f;
         string sign = percentage >= 0 ? "+" : "";
         return $"{sign}{percentage:F0}%";
+    }
+
+
+    // Add this method to your RegionEntity class
+    public void ProcessTurn()
+    {
+        // Calculate base economic changes
+        int wealthChange = economy.CalculateBaseWealthChange();
+        int productionChange = economy.CalculateBaseProductionChange();
+        
+        // Calculate region "size" for resource processing
+        float regionSize = economy.production / 10.0f;
+        
+        // Process resources
+        if (resources != null)
+        {
+            resources.CalculateProduction();
+            resources.CalculateDemand();
+            resources.ProcessTurn(economy.wealth, regionSize);
+            
+            // Calculate satisfaction based on needs being met
+            Dictionary<string, float> needsSatisfaction = resources.GetConsumptionSatisfaction();
+            
+            // Update satisfaction and population
+            population.UpdateSatisfaction(needsSatisfaction);
+            population.UpdatePopulation();
+            
+            // Apply population effects to economy
+            economy.ApplySatisfactionEffects(population.satisfaction);
+            
+            // Calculate resource balance effects on economy
+            Dictionary<string, float> resourceBalance = CalculateResourceBalance();
+            int resourceWealthEffect = economy.CalculateResourceEffect(resourceBalance);
+            wealthChange += resourceWealthEffect;
+        }
+        
+        // Process production
+        if (productionComponent != null)
+        {
+            productionComponent.ProcessProduction();
+        }
+        
+        // Apply economic changes
+        economy.ApplyChanges(wealthChange, productionChange);
+        
+        // Mark as changed for visualization
+        hasChangedThisTurn = true;
+        
+        // Notify systems
+        EventBus.Trigger("RegionUpdated", this);
+    }
+
+
+    // Add this helper method to RegionEntity
+    private Dictionary<string, float> CalculateResourceBalance()
+    {
+        Dictionary<string, float> balance = new Dictionary<string, float>();
+        
+        if (resources == null) return balance;
+        
+        var productionRates = resources.GetAllProductionRates();
+        var consumptionRates = resources.GetAllConsumptionRates();
+        
+        // Combine all resource names
+        HashSet<string> resourceNames = new HashSet<string>();
+        foreach (var key in productionRates.Keys) resourceNames.Add(key);
+        foreach (var key in consumptionRates.Keys) resourceNames.Add(key);
+        
+        // Calculate balance for each resource
+        foreach (var resource in resourceNames)
+        {
+            float production = productionRates.ContainsKey(resource) ? 
+                productionRates[resource] : 0;
+            float consumption = consumptionRates.ContainsKey(resource) ? 
+                consumptionRates[resource] : 0;
+            
+            balance[resource] = production - consumption;
+        }
+        
+        return balance;
     }
 }

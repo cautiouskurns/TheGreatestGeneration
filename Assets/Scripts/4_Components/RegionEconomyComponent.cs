@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections.Generic;
 
 public class RegionEconomyComponent
 {
@@ -55,5 +56,31 @@ public class RegionEconomyComponent
     {
         wealthDelta = 0;
         productionDelta = 0;
+    }
+
+    // Add these methods to RegionEconomyComponent
+    public int CalculateBaseWealthChange()
+    {
+        return production * 2;  // Your original formula
+    }
+
+    public int CalculateBaseProductionChange()
+    {
+        return Random.Range(-2, 3);  // Your original formula
+    }
+
+    // Add this for resource effects
+    public int CalculateResourceEffect(Dictionary<string, float> resourceBalance)
+    {
+        // Calculate wealth effect based on resource surpluses and shortages
+        int effect = 0;
+        
+        foreach (var entry in resourceBalance)
+        {
+            // Positive balance increases wealth, negative decreases
+            effect += Mathf.RoundToInt(entry.Value);
+        }
+        
+        return effect;
     }
 }
