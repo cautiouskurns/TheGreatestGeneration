@@ -1,9 +1,13 @@
-// Assets/Scripts/4_Components/ResourceComponent.cs
 using System.Collections.Generic;
 using UnityEngine;
 
+/// <summary>
+/// Manages resources for a region, handling storage, production, and consumption.
+/// </summary>
 public class ResourceComponent
 {
+    #region Resource Storage
+    
     // Resource storage - tracks quantities of each resource type
     private Dictionary<string, float> resources = new Dictionary<string, float>();
     
@@ -11,26 +15,40 @@ public class ResourceComponent
     private Dictionary<string, float> productionRates = new Dictionary<string, float>();
     private Dictionary<string, float> consumptionRates = new Dictionary<string, float>();
     
+    // Reference to definitions of all resources
+    private Dictionary<string, ResourceDataSO> resourceDefinitions = new Dictionary<string, ResourceDataSO>();
+    
+    #endregion
+    
+    #region References and Constants
+    
     // Reference to region owning this component
     private RegionEntity ownerRegion;
     
-
-    // Add to ResourceComponent class
+    // Consumption modifiers
     private float baseConsumptionFactor = 1.0f;
     private float wealthConsumptionMultiplier = 0.01f; // Consumption increases 1% per wealth point
     private float sizeConsumptionMultiplier = 0.2f;    // Consumption increases 20% per "size unit"
-
-    // Constructor
+    
+    // Population-based consumption
+    private Dictionary<string, float> baseConsumptionPerCapita = new Dictionary<string, float>();
+    
+    #endregion
+    
+    #region Initialization
+    
+    /// <summary>
+    /// Constructor
+    /// </summary>
     public ResourceComponent(RegionEntity owner)
     {
         ownerRegion = owner;
         InitializeBasicResources();
     }
     
-    // Add to ResourceComponent class
-    private Dictionary<string, ResourceDataSO> resourceDefinitions = new Dictionary<string, ResourceDataSO>();
-
-    // Method to register a resource definition
+    /// <summary>
+    /// Method to register a resource definition
+    /// </summary>
     public void RegisterResourceDefinition(ResourceDataSO resourceData)
     {
         if (resourceData != null)
@@ -45,7 +63,9 @@ public class ResourceComponent
         }
     }
 
-    // Add to ResourceComponent class
+    /// <summary>
+    /// Loads a collection of resource definitions
+    /// </summary>
     public void LoadResourceDefinitions(ResourceDataSO[] definitions)
     {
         foreach (var definition in definitions)
@@ -56,14 +76,15 @@ public class ResourceComponent
         // After loading definitions, calculate base production based on definitions
         CalculateBaseProduction();
     }
-
-    // Initialize resources based on definitions
+    
+    /// <summary>
+    /// Initialize resources based on definitions
+    /// </summary>
     private void InitializeBasicResources()
     {
         // Don't do anything if we don't have resource definitions yet
         if (resourceDefinitions.Count == 0)
         {
-            //Debug.LogWarning("No resource definitions available for initialization");
             return;
         }
         
@@ -115,7 +136,13 @@ public class ResourceComponent
         CalculateBaseProduction();
     }
     
-    // Update CalculateBaseProduction method
+    #endregion
+    
+    #region Production and Consumption Calculation
+    
+    /// <summary>
+    /// Calculate base production rates for all resources
+    /// </summary>
     public void CalculateBaseProduction()
     {
         // Clear existing rates
@@ -155,23 +182,51 @@ public class ResourceComponent
             }
         }
     }
-
-    // Helper method to map resource types to sectors
-    private string GetSectorForResourceType(ResourceDataSO.ResourceType resourceType)
+    
+    /// <summary>
+    /// Calculate production based on labor allocation
+    /// </summary>
+    public void CalculateProduction()
     {
-        switch (resourceType)
+        // Clear existing production rates
+        productionRates.Clear();
+
+        foreach (var resource in resourceDefinitions.Values)
         {
-            case ResourceDataSO.ResourceType.Food:
-                return "agriculture";
-            case ResourceDataSO.ResourceType.Material:
-                return resourceType == ResourceDataSO.ResourceType.Material ? "mining" : "industry";
-            case ResourceDataSO.ResourceType.Wealth:
-                return "commerce";
-            default:
-                return "industry";
+            // Skip non-raw resources (handled by ProductionComponent)
+            if (!resource.isRawResource) continue;
+
+            // Get appropriate sector for this resource
+            string sector = GetSectorForResourceType(resource.resourceType);
+
+            // Get labor allocated to this sector
+            float laborShare = 0.0f;
+            if (ownerRegion.laborAllocation.ContainsKey(sector))
+                laborShare = ownerRegion.laborAllocation[sector];
+
+            // Base production = resource base value × labor allocation × land productivity
+            float baseProduction = resource.baseValue * 0.2f *
+                                (ownerRegion.laborAvailable * laborShare) *
+                                ownerRegion.landProductivity;
+
+            // Apply production efficiency and capital investment
+            baseProduction *= ownerRegion.productionEfficiency *
+                            (1.0f + ownerRegion.capitalInvestment * 0.05f);
+
+            // Apply terrain modifiers
+            if (ownerRegion.terrainType != null)
+            {
+                float terrainModifier = ownerRegion.terrainType.GetMultiplierForSector(sector);
+                baseProduction *= terrainModifier;
+            }
+
+            productionRates[resource.resourceName] = baseProduction;
         }
     }
-
+    
+    /// <summary>
+    /// Calculate consumption based on wealth and size factors
+    /// </summary>
     public void CalculateConsumption(int regionWealth, float regionSize)
     {
         // Base factor affected by wealth and size
@@ -225,167 +280,10 @@ public class ResourceComponent
             }
         }
     }
-        
-    // Update existing ProcessTurn method
-    public void ProcessTurn(int regionWealth, float regionSize)
-    {
-        // Recalculate consumption based on current region properties
-        CalculateConsumption(regionWealth, regionSize);
-        
-        // Process production and consumption as you currently do
-        List<string> resourceKeys = new List<string>(resources.Keys);
-        
-        foreach (string resource in resourceKeys)
-        {
-            float production = productionRates.ContainsKey(resource) ? productionRates[resource] : 0;
-            float consumption = consumptionRates.ContainsKey(resource) ? consumptionRates[resource] : 0;
-            
-            // Calculate net change
-            float netChange = production - consumption;
-            
-            // Apply change
-            resources[resource] += netChange;
-            
-            // Don't go below zero
-            resources[resource] = Mathf.Max(0, resources[resource]);
-        }
-    }
-
-     // Add to ResourceComponent class
-    public Dictionary<string, float> GetConsumptionSatisfaction()
-    {
-        Dictionary<string, float> satisfaction = new Dictionary<string, float>();
-        
-        foreach (var entry in consumptionRates)
-        {
-            string resource = entry.Key;
-            float needed = entry.Value;
-            
-            if (needed <= 0) continue;
-            
-            float available = resources.ContainsKey(resource) ? resources[resource] : 0;
-            satisfaction[resource] = Mathf.Clamp01(available / needed);
-        }
-        
-        return satisfaction;
-    }   
-
-    public float GetOverallSatisfaction() 
-    {
-        var satisfaction = GetConsumptionSatisfaction();
-        if (satisfaction.Count == 0) return 1.0f;
-        
-        float total = 0f;
-        foreach (var value in satisfaction.Values) {
-            total += value;
-        }
-        
-        return total / satisfaction.Count;
-    }
-
-    public bool HasConsumptionNeeds()
-    {
-        foreach (var entry in consumptionRates) {
-            if (entry.Value > 0) return true;
-        }
-        return false;
-    }
-
-    public float GetWealthConsumptionFactor(int wealth)
-    {
-        return 1.0f + (wealth * wealthConsumptionMultiplier);
-    }
-
-    public float GetSizeConsumptionFactor(float size)
-    {
-        return 1.0f + (size * sizeConsumptionMultiplier);
-    }
-
-
-    // Add a resource
-    public void AddResource(string resourceName, float amount)
-    {
-        if (!resources.ContainsKey(resourceName))
-        {
-            resources[resourceName] = 0;
-        }
-        
-        resources[resourceName] += amount;
-    }
     
-    // Remove a resource
-    public bool RemoveResource(string resourceName, float amount)
-    {
-        if (!resources.ContainsKey(resourceName) || resources[resourceName] < amount)
-        {
-            return false; // Not enough resources
-        }
-        
-        resources[resourceName] -= amount;
-        return true;
-    }
-    
-    // Get amount of a resource
-    public float GetResourceAmount(string resourceName)
-    {
-        if (!resources.ContainsKey(resourceName))
-        {
-            return 0;
-        }
-        
-        return resources[resourceName];
-    }
-    
-    // Get all resources for display
-    public Dictionary<string, float> GetAllResources()
-    {
-        return new Dictionary<string, float>(resources);
-    }
-    
-    // Get production rate for a resource
-    public float GetProductionRate(string resourceName)
-    {
-        if (!productionRates.ContainsKey(resourceName))
-        {
-            return 0;
-        }
-        
-        return productionRates[resourceName];
-    }
-    
-    // Get consumption rate for a resource
-    public float GetConsumptionRate(string resourceName)
-    {
-        if (!consumptionRates.ContainsKey(resourceName))
-        {
-            return 0;
-        }
-        
-        return consumptionRates[resourceName];
-    }
-    
-    // Get all production rates
-    public Dictionary<string, float> GetAllProductionRates()
-    {
-        return new Dictionary<string, float>(productionRates);
-    }
-    
-    // Get all consumption rates
-    public Dictionary<string, float> GetAllConsumptionRates()
-    {
-        return new Dictionary<string, float>(consumptionRates);
-    }
-
-    // Add to ResourceComponent
-    public Dictionary<string, ResourceDataSO> GetResourceDefinitions()
-    {
-        return new Dictionary<string, ResourceDataSO>(resourceDefinitions);
-    }
-
-    // Add population demand factors
-    private Dictionary<string, float> baseConsumptionPerCapita = new Dictionary<string, float>();
-
-    // Calculate demand based on population
+    /// <summary>
+    /// Calculate demand based on population
+    /// </summary>
     public void CalculateDemand()
     {
         // Clear existing consumption rates
@@ -406,43 +304,229 @@ public class ResourceComponent
             consumptionRates[resource] = totalDemand;
         }
     }
-
-    // Calculate production based on labor allocation
-    public void CalculateProduction()
+    
+    #endregion
+    
+    #region Turn Processing and Effects
+        
+    /// <summary>
+    /// Process resource changes for a turn
+    /// </summary>
+    public void ProcessTurn(int regionWealth, float regionSize)
     {
-        // Clear existing production rates
-        productionRates.Clear();
-
-        foreach (var resource in resourceDefinitions.Values)
+        // Recalculate consumption based on current region properties
+        CalculateConsumption(regionWealth, regionSize);
+        
+        // Process production and consumption for each resource
+        List<string> resourceKeys = new List<string>(resources.Keys);
+        
+        foreach (string resource in resourceKeys)
         {
-            // Skip non-raw resources (handled by ProductionComponent)
-            if (!resource.isRawResource) continue;
-
-            // Get appropriate sector for this resource
-            string sector = GetSectorForResourceType(resource.resourceType);
-
-            // Get labor allocated to this sector
-            float laborShare = 0.0f;
-            if (ownerRegion.laborAllocation.ContainsKey(sector))
-                laborShare = ownerRegion.laborAllocation[sector];
-
-            // Base production = resource base value × labor allocation × land productivity
-            float baseProduction = resource.baseValue * 0.2f *
-                                (ownerRegion.laborAvailable * laborShare) *
-                                ownerRegion.landProductivity;
-
-            // Apply production efficiency and capital investment
-            baseProduction *= ownerRegion.productionEfficiency *
-                            (1.0f + ownerRegion.capitalInvestment * 0.05f);
-
-            // Apply terrain modifiers
-            if (ownerRegion.terrainType != null)
-            {
-                float terrainModifier = ownerRegion.terrainType.GetMultiplierForSector(sector);
-                baseProduction *= terrainModifier;
-            }
-
-            productionRates[resource.resourceName] = baseProduction;
+            float production = productionRates.ContainsKey(resource) ? productionRates[resource] : 0;
+            float consumption = consumptionRates.ContainsKey(resource) ? consumptionRates[resource] : 0;
+            
+            // Calculate net change
+            float netChange = production - consumption;
+            
+            // Apply change
+            resources[resource] += netChange;
+            
+            // Don't go below zero
+            resources[resource] = Mathf.Max(0, resources[resource]);
         }
     }
+    
+    #endregion
+    
+    #region Satisfaction Calculation
+    
+    /// <summary>
+    /// Get satisfaction levels for each resource (how well consumption needs are met)
+    /// </summary>
+    public Dictionary<string, float> GetConsumptionSatisfaction()
+    {
+        Dictionary<string, float> satisfaction = new Dictionary<string, float>();
+        
+        foreach (var entry in consumptionRates)
+        {
+            string resource = entry.Key;
+            float needed = entry.Value;
+            
+            if (needed <= 0) continue;
+            
+            float available = resources.ContainsKey(resource) ? resources[resource] : 0;
+            satisfaction[resource] = Mathf.Clamp01(available / needed);
+        }
+        
+        return satisfaction;
+    }   
+
+    /// <summary>
+    /// Get overall resource satisfaction score
+    /// </summary>
+    public float GetOverallSatisfaction() 
+    {
+        var satisfaction = GetConsumptionSatisfaction();
+        if (satisfaction.Count == 0) return 1.0f;
+        
+        float total = 0f;
+        foreach (var value in satisfaction.Values) {
+            total += value;
+        }
+        
+        return total / satisfaction.Count;
+    }
+
+    #endregion
+    
+    #region Resource Manipulation
+    
+    /// <summary>
+    /// Add a resource
+    /// </summary>
+    public void AddResource(string resourceName, float amount)
+    {
+        if (!resources.ContainsKey(resourceName))
+        {
+            resources[resourceName] = 0;
+        }
+        
+        resources[resourceName] += amount;
+    }
+    
+    /// <summary>
+    /// Remove a resource
+    /// </summary>
+    public bool RemoveResource(string resourceName, float amount)
+    {
+        if (!resources.ContainsKey(resourceName) || resources[resourceName] < amount)
+        {
+            return false; // Not enough resources
+        }
+        
+        resources[resourceName] -= amount;
+        return true;
+    }
+    
+    #endregion
+    
+    #region Getters and Utility
+    
+    /// <summary>
+    /// Get amount of a resource
+    /// </summary>
+    public float GetResourceAmount(string resourceName)
+    {
+        if (!resources.ContainsKey(resourceName))
+        {
+            return 0;
+        }
+        
+        return resources[resourceName];
+    }
+    
+    /// <summary>
+    /// Get all resources for display
+    /// </summary>
+    public Dictionary<string, float> GetAllResources()
+    {
+        return new Dictionary<string, float>(resources);
+    }
+    
+    /// <summary>
+    /// Get production rate for a resource
+    /// </summary>
+    public float GetProductionRate(string resourceName)
+    {
+        if (!productionRates.ContainsKey(resourceName))
+        {
+            return 0;
+        }
+        
+        return productionRates[resourceName];
+    }
+    
+    /// <summary>
+    /// Get consumption rate for a resource
+    /// </summary>
+    public float GetConsumptionRate(string resourceName)
+    {
+        if (!consumptionRates.ContainsKey(resourceName))
+        {
+            return 0;
+        }
+        
+        return consumptionRates[resourceName];
+    }
+    
+    /// <summary>
+    /// Get all production rates
+    /// </summary>
+    public Dictionary<string, float> GetAllProductionRates()
+    {
+        return new Dictionary<string, float>(productionRates);
+    }
+    
+    /// <summary>
+    /// Get all consumption rates
+    /// </summary>
+    public Dictionary<string, float> GetAllConsumptionRates()
+    {
+        return new Dictionary<string, float>(consumptionRates);
+    }
+    
+    /// <summary>
+    /// Get resource definitions
+    /// </summary>
+    public Dictionary<string, ResourceDataSO> GetResourceDefinitions()
+    {
+        return new Dictionary<string, ResourceDataSO>(resourceDefinitions);
+    }
+    
+    /// <summary>
+    /// Check if region has consumption needs
+    /// </summary>
+    public bool HasConsumptionNeeds()
+    {
+        foreach (var entry in consumptionRates) {
+            if (entry.Value > 0) return true;
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// Get consumption factor based on wealth
+    /// </summary>
+    public float GetWealthConsumptionFactor(int wealth)
+    {
+        return 1.0f + (wealth * wealthConsumptionMultiplier);
+    }
+
+    /// <summary>
+    /// Get consumption factor based on size
+    /// </summary>
+    public float GetSizeConsumptionFactor(float size)
+    {
+        return 1.0f + (size * sizeConsumptionMultiplier);
+    }
+    
+    /// <summary>
+    /// Helper method to map resource types to sectors
+    /// </summary>
+    private string GetSectorForResourceType(ResourceDataSO.ResourceType resourceType)
+    {
+        switch (resourceType)
+        {
+            case ResourceDataSO.ResourceType.Food:
+                return "agriculture";
+            case ResourceDataSO.ResourceType.Material:
+                return resourceType == ResourceDataSO.ResourceType.Material ? "mining" : "industry";
+            case ResourceDataSO.ResourceType.Wealth:
+                return "commerce";
+            default:
+                return "industry";
+        }
+    }
+    
+    #endregion
 }

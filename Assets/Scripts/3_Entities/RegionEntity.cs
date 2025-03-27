@@ -227,7 +227,7 @@ public class RegionEntity
     }
 
 
-    // Add this method to your RegionEntity class
+
     public void ProcessTurn()
     {
         // Calculate base economic changes
@@ -277,7 +277,6 @@ public class RegionEntity
     }
 
 
-    // Add this helper method to RegionEntity
     private Dictionary<string, float> CalculateResourceBalance()
     {
         Dictionary<string, float> balance = new Dictionary<string, float>();
