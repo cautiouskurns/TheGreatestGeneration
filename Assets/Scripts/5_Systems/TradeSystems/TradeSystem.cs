@@ -231,18 +231,33 @@ public class TradeSystem : MonoBehaviour
     
     private void OnRegionSelected(object regionObj)
     {
+        string newRegionName = "";
+        
         if (regionObj is RegionEntity region)
         {
-            selectedRegionName = region.regionName;
-            RefreshTradeLines();
+            newRegionName = region.regionName;
         }
         else if (regionObj is string regionName)
         {
-            selectedRegionName = regionName;
-            RefreshTradeLines();
+            newRegionName = regionName;
         }
+        
+        // If clicking on the already selected region, deselect it
+        if (newRegionName == selectedRegionName)
+        {
+            selectedRegionName = "";
+            Debug.Log("TradeSystem: Deselected region, showing all trades");
+        }
+        else
+        {
+            selectedRegionName = newRegionName;
+            Debug.Log($"TradeSystem: Selected region {selectedRegionName}");
+        }
+        
+        // Refresh trade visualization
+        RefreshTradeLines();
     }
-    
+        
     #endregion
     
     #region Visualization
@@ -255,7 +270,7 @@ public class TradeSystem : MonoBehaviour
         // Skip if no visualization needed
         if (!showTradeLines) return;
         
-        if (showSelectedRegionTradesOnly && !string.IsNullOrEmpty(selectedRegionName))
+        if (showSelectedRegionTradesOnly && !string.IsNullOrEmpty(selectedRegionName) && regions.ContainsKey(selectedRegionName))
         {
             // Show only trades for selected region
             ShowSelectedRegionTradeLines();
@@ -264,7 +279,26 @@ public class TradeSystem : MonoBehaviour
         {
             // Show all trade lines
             ShowAllTradeLines();
+            
+            // If we're here because the region doesn't exist, clear the selection
+            if (!string.IsNullOrEmpty(selectedRegionName) && !regions.ContainsKey(selectedRegionName))
+            {
+                selectedRegionName = "";
+            }
         }
+    }
+
+    // Add this to the #region Public Methods section
+    public void ClearSelectedRegion()
+    {
+        // Clear the selected region
+        selectedRegionName = "";
+        
+        // Refresh the trade lines to show all trades
+        RefreshTradeLines();
+        
+        // Optionally log this action
+        Debug.Log("TradeSystem: Cleared selected region, showing all trades");
     }
     
     private void ShowSelectedRegionTradeLines()
