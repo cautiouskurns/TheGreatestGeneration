@@ -1,22 +1,23 @@
 using UnityEngine;
 using System.Collections.Generic;
+using System.Collections;
 using UnityEngine.UI;
 
-// Refactored TradeSystem with a more modular design
+// Main Trade System component that ties together trade calculation, recording, and visualization
 public class TradeSystem : MonoBehaviour
 {
     #region Configuration Properties
     
     // Trade calculation settings
-    [Header("Trade Calculation")]
+    [Header("Trade Configuration")]
     [Range(1, 5)] public int tradeRadius = 2;
     [Range(0.1f, 1.0f)] public float tradeEfficiency = 0.8f;
     [Range(1, 10)] public int maxTradingPartnersPerRegion = 3;
     
     // Visualization settings
-    [Header("Visualization")]
+    [Header("Visualization Settings")]
     public bool showTradeLines = true;
-    public float tradeLineWidth = 0.1f;
+    public float tradeLineWidth = 0.5f;
     public float tradeLineDuration = 2.0f;
     public Color importColor = new Color(0, 1, 0, 0.5f); // Semi-transparent green
     public Color exportColor = new Color(1, 0.5f, 0, 0.5f); // Semi-transparent orange
@@ -43,23 +44,51 @@ public class TradeSystem : MonoBehaviour
     
     private void Awake()
     {
-        // Create the recorder first as it doesn't depend on other components
+        // Initialize components
         recorder = new TradeRecorder();
         
-        // Create the visualizer with configuration
         visualizer = new TradeVisualizer(
             importColor, exportColor, 
             tradeLineWidth, tradeLineDuration, 
             minimumTradeVolumeToShow,
             showTradeLines);
-            
-        // Initialize regions - calculator will be created after we get regions
-        InitializeRegions();
+    }
+    
+    private void Start()
+    {
+        // Try to get regions after all objects are initialized
+        var gameManager = FindFirstObjectByType<GameManager>();
+        if (gameManager != null)
+        {
+            try
+            {
+                // Get regions from GameManager
+                regions = gameManager.GetAllRegions();
+                if (regions != null)
+                {
+                    Debug.Log($"TradeSystem: Got {regions.Count} regions from GameManager");
+                    
+                    // Initialize calculator with regions
+                    calculator = new TradeCalculator(
+                        regions,
+                        tradeEfficiency,
+                        maxTradingPartnersPerRegion,
+                        tradeRadius
+                    );
+                }
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError($"TradeSystem: Error getting regions from GameManager: {e.Message}");
+            }
+        }
+        
+        // Delayed initialization to ensure everything is properly set up
+        StartCoroutine(InitializeWithDelay());
     }
     
     private void OnEnable()
     {
-        // Subscribe to events
         EventBus.Subscribe("TurnEnded", ProcessTrade);
         EventBus.Subscribe("RegionSelected", OnRegionSelected);
         EventBus.Subscribe("RegionEntitiesReady", OnRegionsReady);
@@ -67,89 +96,81 @@ public class TradeSystem : MonoBehaviour
     
     private void OnDisable()
     {
-        // Unsubscribe from events
         EventBus.Unsubscribe("TurnEnded", ProcessTrade);
         EventBus.Unsubscribe("RegionSelected", OnRegionSelected);
         EventBus.Unsubscribe("RegionEntitiesReady", OnRegionsReady);
-    }
-    
-    private void Start()
-    {
-        // Perform a delayed initialization to ensure everything is set up
-        StartCoroutine(InitializeWithDelay());
     }
     
     #endregion
     
     #region Initialization
     
-    private void InitializeRegions()
-    {
-        // Try to get regions from GameManager
-        var gameManager = FindFirstObjectByType<GameManager>();
-        if (gameManager != null)
-        {
-            try
-            {
-                var allRegions = gameManager.GetAllRegions();
-                if (allRegions != null && allRegions.Count > 0)
-                {
-                    regions = allRegions;
-                    
-                    // Now we can create the calculator
-                    calculator = new TradeCalculator(
-                        regions, tradeEfficiency, maxTradingPartnersPerRegion);
-                    
-                    Debug.Log($"TradeSystem: Initialized with {regions.Count} regions");
-                    DebugTradeSystem();
-                }
-                else
-                {
-                    Debug.LogWarning("TradeSystem: No regions found from GameManager");
-                }
-            }
-            catch (System.Exception e)
-            {
-                Debug.LogError($"TradeSystem: Error initializing regions: {e.Message}");
-            }
-        }
-        else
-        {
-            Debug.LogError("TradeSystem: GameManager not found!");
-        }
-    }
-    
     private System.Collections.IEnumerator InitializeWithDelay()
     {
-        // Wait a couple of frames for everything to initialize
+        // Wait for two frames to ensure everything is properly initialized
         yield return null;
         yield return null;
         
-        // If we don't have regions yet, try again
-        if (regions.Count == 0)
+        // Get GameManager reference safely
+        var gameManager = FindFirstObjectByType<GameManager>();
+        if (gameManager == null)
         {
-            InitializeRegions();
+            Debug.LogError("TradeSystem: GameManager not found during delayed initialization");
+            yield break;
         }
         
-        // If we still don't have regions, warn but don't fail
-        if (regions.Count == 0)
+        Debug.Log("TradeSystem: Found GameManager, attempting to get regions");
+        
+        try
         {
-            Debug.LogWarning("TradeSystem: Could not initialize regions after delay");
+            // Try to get regions
+            var allRegions = gameManager.GetAllRegions();
+            
+            // Check if the result is null
+            if (allRegions == null)
+            {
+                Debug.LogError("TradeSystem: GameManager.GetAllRegions() returned null");
+                yield break;
+            }
+            
+            // Success! Store the regions
+            regions = allRegions;
+            Debug.Log($"TradeSystem: Successfully retrieved {regions.Count} regions");
+            
+            // Initialize calculator with regions
+            calculator = new TradeCalculator(
+                regions,
+                tradeEfficiency,
+                maxTradingPartnersPerRegion,
+                tradeRadius
+            );
+            
+            // Debug the trade system
+            DebugTradeSystem();
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"TradeSystem: Detailed error: {e.Message}\nStack trace: {e.StackTrace}");
         }
     }
     
     private void OnRegionsReady(object regionsObj)
     {
-        // Handle regions from the event system
-        if (regionsObj is Dictionary<string, RegionEntity> regionDict)
+        // Store all regions for trade calculations
+        if (regionsObj is Dictionary<string, RegionEntity> regionsDict)
         {
-            regions = regionDict;
+            regions = regionsDict;
+            Debug.Log($"TradeSystem: Received {regions.Count} regions via RegionEntitiesReady");
             
-            // Create or update the calculator
+            // Update calculator with new regions
             calculator = new TradeCalculator(
-                regions, tradeEfficiency, maxTradingPartnersPerRegion);
-                
-            Debug.Log($"TradeSystem: Received {regions.Count} regions via event");
+                regions,
+                tradeEfficiency,
+                maxTradingPartnersPerRegion,
+                tradeRadius
+            );
+            
+            // Debug the trade system
             DebugTradeSystem();
         }
     }
@@ -160,88 +181,126 @@ public class TradeSystem : MonoBehaviour
     
     private void ProcessTrade(object _)
     {
-        // Clear previous trade data
+        // Clear old trade data
         recorder.ClearTradeData();
         visualizer.ClearTradeLines();
         
-        // Skip if we don't have the necessary components
+        // Skip if we don't have necessary components
         if (calculator == null || regions.Count == 0)
         {
-            Debug.LogWarning("TradeSystem: Cannot process trades - missing components or regions");
+            Debug.LogWarning("TradeSystem: Unable to process trades - missing calculator or regions");
             return;
         }
         
-        // Calculate all trades for this turn
+        // Calculate trades for this turn
         List<TradeTransaction> trades = calculator.CalculateTrades();
         
-        // Process each trade
+        Debug.Log($"TradeSystem: Processing {trades.Count} trades this turn");
+        
+        // Execute and record each trade
         foreach (var trade in trades)
         {
-            // Execute the actual resource transfer
+            // Execute the trade (transfer resources)
             trade.Execute();
             
-            // Record this trade for history and UI
+            // Record for history and UI
             recorder.RecordTrade(trade);
             
-            // Show visualization
-            visualizer.ShowTradeLine(trade.Exporter, trade.Importer, exportColor, trade.Amount);
-            
-            // Log the trade
+            // Log the transaction
             Debug.Log($"Trade: {trade.Exporter.regionName} exported {trade.Amount} {trade.ResourceName} " +
-                      $"to {trade.Importer.regionName} (received {trade.ReceivedAmount} after transport)");
+                     $"to {trade.Importer.regionName} (received {trade.ReceivedAmount} after transport)");
+        }
+        
+        // Refresh trade visualizations
+        RefreshTradeLines();
+        
+        // Debug trading partner information
+        var partnerCounts = calculator.GetTradingPartnersCount();
+        foreach (var entry in partnerCounts)
+        {
+            if (entry.Value > 0)
+            {
+                Debug.Log($"Region {entry.Key} trading with {entry.Value} partners");
+            }
         }
     }
     
     #endregion
     
-    #region Event Handlers
+    #region Region Selection
     
     private void OnRegionSelected(object regionObj)
     {
-        // Update selected region and refresh visualizations
         if (regionObj is RegionEntity region)
         {
             selectedRegionName = region.regionName;
+            RefreshTradeLines();
         }
         else if (regionObj is string regionName)
         {
             selectedRegionName = regionName;
+            RefreshTradeLines();
         }
-        
-        // Refresh the trade visualizations for the selected region
-        RefreshTradeLines();
     }
     
     #endregion
     
-    #region Visualization Methods
+    #region Visualization
     
-    // Refresh trade lines based on selection
     private void RefreshTradeLines()
     {
+        // Clear existing lines
         visualizer.ClearTradeLines();
         
-        // Skip if no trade recorder or no regions
-        if (recorder == null || regions.Count == 0) return;
+        // Skip if no visualization needed
+        if (!showTradeLines) return;
         
-        if (!showSelectedRegionTradesOnly)
+        if (showSelectedRegionTradesOnly && !string.IsNullOrEmpty(selectedRegionName))
+        {
+            // Show only trades for selected region
+            ShowSelectedRegionTradeLines();
+        }
+        else
         {
             // Show all trade lines
             ShowAllTradeLines();
         }
-        else if (!string.IsNullOrEmpty(selectedRegionName) && regions.ContainsKey(selectedRegionName))
+    }
+    
+    private void ShowSelectedRegionTradeLines()
+    {
+        // Skip if selected region doesn't exist
+        if (!regions.ContainsKey(selectedRegionName)) return;
+        
+        RegionEntity selectedRegion = regions[selectedRegionName];
+        
+        // Show imports
+        var imports = recorder.GetRecentImports(selectedRegionName);
+        foreach (var trade in imports)
         {
-            // Show only trade lines for the selected region
-            ShowSelectedRegionTradeLines();
+            if (!regions.ContainsKey(trade.partnerName)) continue;
+            
+            RegionEntity exporter = regions[trade.partnerName];
+            visualizer.ShowTradeLine(exporter, selectedRegion, importColor, trade.amount);
+        }
+        
+        // Show exports
+        var exports = recorder.GetRecentExports(selectedRegionName);
+        foreach (var trade in exports)
+        {
+            if (!regions.ContainsKey(trade.partnerName)) continue;
+            
+            RegionEntity importer = regions[trade.partnerName];
+            visualizer.ShowTradeLine(selectedRegion, importer, exportColor, trade.amount);
         }
     }
     
     private void ShowAllTradeLines()
     {
-        // Get all trades from the recorder
-        Dictionary<string, List<TradeInfo>> allExports = recorder.GetAllExports();
+        // Get all exports
+        var allExports = recorder.GetAllExports();
         
-        // Show each export as a line
+        // Show a line for each export
         foreach (var exportPair in allExports)
         {
             string exporterName = exportPair.Key;
@@ -250,43 +309,13 @@ public class TradeSystem : MonoBehaviour
             
             RegionEntity exporter = regions[exporterName];
             
-            foreach (var tradeInfo in exportPair.Value)
+            foreach (var trade in exportPair.Value)
             {
-                if (!regions.ContainsKey(tradeInfo.partnerName)) continue;
+                if (!regions.ContainsKey(trade.partnerName)) continue;
                 
-                RegionEntity importer = regions[tradeInfo.partnerName];
-                
-                visualizer.ShowTradeLine(exporter, importer, exportColor, tradeInfo.amount);
+                RegionEntity importer = regions[trade.partnerName];
+                visualizer.ShowTradeLine(exporter, importer, exportColor, trade.amount);
             }
-        }
-    }
-    
-    private void ShowSelectedRegionTradeLines()
-    {
-        // Get imports and exports for the selected region
-        List<TradeInfo> imports = recorder.GetRecentImports(selectedRegionName);
-        List<TradeInfo> exports = recorder.GetRecentExports(selectedRegionName);
-        
-        // Show import lines
-        foreach (var tradeInfo in imports)
-        {
-            if (!regions.ContainsKey(tradeInfo.partnerName)) continue;
-            
-            RegionEntity exporter = regions[tradeInfo.partnerName];
-            RegionEntity importer = regions[selectedRegionName];
-            
-            visualizer.ShowTradeLine(exporter, importer, importColor, tradeInfo.amount);
-        }
-        
-        // Show export lines
-        foreach (var tradeInfo in exports)
-        {
-            if (!regions.ContainsKey(tradeInfo.partnerName)) continue;
-            
-            RegionEntity exporter = regions[selectedRegionName];
-            RegionEntity importer = regions[tradeInfo.partnerName];
-            
-            visualizer.ShowTradeLine(exporter, importer, exportColor, tradeInfo.amount);
         }
     }
     
@@ -294,29 +323,35 @@ public class TradeSystem : MonoBehaviour
     
     #region Public Methods
     
-    // Public methods for accessing trade data (for UI, etc.)
+    // Access methods for UI
     public List<TradeInfo> GetRecentImports(string regionName)
     {
-        return recorder?.GetRecentImports(regionName) ?? new List<TradeInfo>();
+        return recorder.GetRecentImports(regionName);
     }
     
     public List<TradeInfo> GetRecentExports(string regionName)
     {
-        return recorder?.GetRecentExports(regionName) ?? new List<TradeInfo>();
+        return recorder.GetRecentExports(regionName);
     }
     
-    // Debug method to check trade system state
+    // Get color for heatmap visualization
+    public Color GetRegionTradeColor(string regionName)
+    {
+        return recorder.GetRegionTradeColor(regionName, Color.blue, Color.red);
+    }
+    
+    // Debug method to check resources available for trade
     public void DebugTradeSystem()
     {
         if (regions.Count == 0)
         {
-            Debug.Log("TradeSystem: No regions to debug");
+            Debug.Log("TradeSystem: No regions available for debugging");
             return;
         }
         
-        Debug.Log($"TradeSystem: {regions.Count} regions available for trade");
+        Debug.Log($"TradeSystem has {regions.Count} regions registered");
         
-        // Check each region for tradable resources
+        // Check if regions have resources that can be traded
         foreach (var region in regions.Values)
         {
             if (region.resources == null)
@@ -328,10 +363,11 @@ public class TradeSystem : MonoBehaviour
             var resources = region.resources.GetAllResources();
             var consumption = region.resources.GetAllConsumptionRates();
             
-            // Calculate potential surpluses and deficits
-            Dictionary<string, float> surpluses = new Dictionary<string, float>();
-            Dictionary<string, float> deficits = new Dictionary<string, float>();
+            Debug.Log($"Region {region.regionName}:");
+            Debug.Log($"  Resources: {string.Join(", ", resources.Keys)}");
+            Debug.Log($"  Consumption: {string.Join(", ", consumption.Keys)}");
             
+            // Calculate potential surpluses
             foreach (var entry in resources)
             {
                 string resourceName = entry.Key;
@@ -340,10 +376,11 @@ public class TradeSystem : MonoBehaviour
                 
                 if (amount > consumed * 1.2f)
                 {
-                    surpluses[resourceName] = amount - (consumed * 1.2f);
+                    Debug.Log($"  SURPLUS: {resourceName} = {amount - (consumed * 1.2f):F1}");
                 }
             }
             
+            // Calculate deficits
             foreach (var entry in consumption)
             {
                 string resourceName = entry.Key;
@@ -352,38 +389,11 @@ public class TradeSystem : MonoBehaviour
                 
                 if (needed > available)
                 {
-                    deficits[resourceName] = needed - available;
-                }
-            }
-            
-            // Report on surpluses and deficits
-            if (surpluses.Count > 0 || deficits.Count > 0)
-            {
-                Debug.Log($"Region {region.regionName}:");
-                
-                if (surpluses.Count > 0)
-                {
-                    Debug.Log("  Surpluses: " + string.Join(", ", FormatDictionary(surpluses)));
-                }
-                
-                if (deficits.Count > 0)
-                {
-                    Debug.Log("  Deficits: " + string.Join(", ", FormatDictionary(deficits)));
+                    Debug.Log($"  DEFICIT: {resourceName} = {needed - available:F1}");
                 }
             }
         }
     }
     
-    private List<string> FormatDictionary(Dictionary<string, float> dict)
-    {
-        List<string> result = new List<string>();
-        
-        foreach (var entry in dict)
-        {
-            result.Add($"{entry.Key}={entry.Value:F1}");
-        }
-        
-        return result;
-    }
     #endregion
 }
