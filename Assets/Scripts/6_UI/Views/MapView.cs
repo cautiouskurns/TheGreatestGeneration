@@ -49,7 +49,7 @@ public class MapView : MonoBehaviour
         }
         else
         {
-            Debug.LogError("MapData is not assigned to MapView!");
+//            Debug.LogError("MapData is not assigned to MapView!");
         }
     }
 
@@ -204,7 +204,7 @@ public class MapView : MonoBehaviour
                 }
             }
             
-            Debug.Log($"Generated centered map with bounds: ({minX},{minY}) to ({maxX},{maxY})");
+//            Debug.Log($"Generated centered map with bounds: ({minX},{minY}) to ({maxX},{maxY})");
         }
         else
         {

@@ -261,7 +261,7 @@ public class MapGenerator
                         nationMap[x, y] = i;
                         nationSeeds.Add(new Vector2Int(x, y));
                         validPlacement = true;
-                        Debug.Log($"Placed seed for nation {template.name} at ({x}, {y})");
+//                        Debug.Log($"Placed seed for nation {template.name} at ({x}, {y})");
                     }
                     else
                     {

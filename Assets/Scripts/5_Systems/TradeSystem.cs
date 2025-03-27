@@ -43,7 +43,7 @@ private List<GameObject> activeTradeLines = new List<GameObject>();
         if (gameManager != null)
         {
             // We'll need to add a method to GameManager to get regions
-            Debug.Log("TradeSystem: Found GameManager");
+//            Debug.Log("TradeSystem: Found GameManager");
         }
         else
         {
@@ -70,7 +70,7 @@ private List<GameObject> activeTradeLines = new List<GameObject>();
                 if (allRegions != null)
                 {
                     regions = allRegions;
-                    Debug.Log($"TradeSystem: Got {regions.Count} regions from GameManager");
+//                    Debug.Log($"TradeSystem: Got {regions.Count} regions from GameManager");
                     
                     // Only call DebugTradeSystem if we have regions
                     if (regions.Count > 0)
@@ -117,7 +117,7 @@ private List<GameObject> activeTradeLines = new List<GameObject>();
         yield return null;
         yield return null;
         
-        Debug.Log("TradeSystem: Starting delayed initialization");
+//        Debug.Log("TradeSystem: Starting delayed initialization");
         
         // Get GameManager reference safely
         var gameManager = FindFirstObjectByType<GameManager>();
@@ -127,7 +127,7 @@ private List<GameObject> activeTradeLines = new List<GameObject>();
             yield break;
         }
         
-        Debug.Log("TradeSystem: Found GameManager, attempting to get regions");
+//        Debug.Log("TradeSystem: Found GameManager, attempting to get regions");
         
         try
         {
@@ -151,7 +151,7 @@ private List<GameObject> activeTradeLines = new List<GameObject>();
             
             // Success! Store the regions
             regions = allRegions;
-            Debug.Log($"TradeSystem: Successfully retrieved {regions.Count} regions");
+//            Debug.Log($"TradeSystem: Successfully retrieved {regions.Count} regions");
             
             // Debug the trade system
             DebugTradeSystem();
@@ -521,7 +521,7 @@ private List<GameObject> activeTradeLines = new List<GameObject>();
     // Add to TradeSystem - call this from the Unity Editor if needed
     public void DebugTradeSystem()
     {
-        Debug.Log($"Trade System has {regions.Count} regions registered");
+//        Debug.Log($"Trade System has {regions.Count} regions registered");
         
         // Check if regions have resources that can be traded
         foreach (var region in regions.Values)
@@ -529,9 +529,9 @@ private List<GameObject> activeTradeLines = new List<GameObject>();
             var resources = region.resources.GetAllResources();
             var consumption = region.resources.GetAllConsumptionRates();
             
-            Debug.Log($"Region {region.regionName}:");
-            Debug.Log($"  Resources: {string.Join(", ", resources.Keys)}");
-            Debug.Log($"  Consumption: {string.Join(", ", consumption.Keys)}");
+//            Debug.Log($"Region {region.regionName}:");
+//            Debug.Log($"  Resources: {string.Join(", ", resources.Keys)}");
+//            Debug.Log($"  Consumption: {string.Join(", ", consumption.Keys)}");
             
             // Calculate potential surpluses
             foreach (var entry in resources)
@@ -542,7 +542,7 @@ private List<GameObject> activeTradeLines = new List<GameObject>();
                 
                 if (amount > consumed * 1.2f)
                 {
-                    Debug.Log($"  SURPLUS: {resourceName} = {amount - (consumed * 1.2f):F1}");
+//                    Debug.Log($"  SURPLUS: {resourceName} = {amount - (consumed * 1.2f):F1}");
                 }
             }
             
@@ -555,7 +555,7 @@ private List<GameObject> activeTradeLines = new List<GameObject>();
                 
                 if (needed > available)
                 {
-                    Debug.Log($"  DEFICIT: {resourceName} = {needed - available:F1}");
+//                    Debug.Log($"  DEFICIT: {resourceName} = {needed - available:F1}");
                 }
             }
         }

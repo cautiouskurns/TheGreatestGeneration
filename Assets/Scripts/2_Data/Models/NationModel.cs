@@ -31,7 +31,7 @@ public class NationModel
             nations.Add(nationData.nationName, nation);
         }
         
-        Debug.Log($"NationModel: Initialized {nations.Count} nations");
+//        Debug.Log($"NationModel: Initialized {nations.Count} nations");
     }
     
     // Add a region to its nation
@@ -45,7 +45,7 @@ public class NationModel
         if (nations.ContainsKey(nationName))
         {
             nations[nationName].AddRegion(region);
-            Debug.Log($"Region {region.regionName} registered to nation {nationName}");
+//            Debug.Log($"Region {region.regionName} registered to nation {nationName}");
         }
         else
         {

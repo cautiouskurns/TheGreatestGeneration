@@ -9,7 +9,7 @@ public class RegionInfoUI : MonoBehaviour
 
     private void Start()
     {
-        Debug.Log("RegionInfoUI Start method called");
+//        Debug.Log("RegionInfoUI Start method called");
         
         if (infoText == null)
         {
@@ -17,7 +17,7 @@ public class RegionInfoUI : MonoBehaviour
         }
         else
         {
-            Debug.Log("InfoText reference is valid");
+////            Debug.Log("InfoText reference is valid");
             infoText.text = "Waiting for region selection...";
         }
         

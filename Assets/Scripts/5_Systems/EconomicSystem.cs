@@ -7,7 +7,7 @@ public class EconomicSystem : MonoBehaviour
 
     private void Awake()
     {
-        Debug.Log("EconomicSystem initializing...");
+//        Debug.Log("EconomicSystem initializing...");
         // Trigger this at the start to ensure MapView can pick it up
         EventBus.Trigger("EconomicSystemReady", this);
     }
@@ -15,7 +15,7 @@ public class EconomicSystem : MonoBehaviour
     private void Start()
     {
         // In case MapView subscribes after Awake, trigger again in Start
-        Debug.Log("EconomicSystem ready!");
+//        Debug.Log("EconomicSystem ready!");
         EventBus.Trigger("EconomicSystemReady", this);
     }
 

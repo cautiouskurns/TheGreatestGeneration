@@ -46,7 +46,7 @@ public class GameManager : MonoBehaviour
             if (useSavedTerrainMap && savedTerrainMap != null)
             {
                 // Use the saved terrain map parameters
-                Debug.Log($"Using saved terrain map (Seed: {savedTerrainMap.seed})");
+//                Debug.Log($"Using saved terrain map (Seed: {savedTerrainMap.seed})");
                 generator = new MapGenerator(
                     savedTerrainMap.width,
                     savedTerrainMap.height,
@@ -89,7 +89,7 @@ public class GameManager : MonoBehaviour
             if (nationTemplates != null && nationTemplates.Length > 0)
             {
                 generator.SetNationTemplates(nationTemplates);
-                Debug.Log($"Using {nationTemplates.Length} nation templates for map generation");
+//                Debug.Log($"Using {nationTemplates.Length} nation templates for map generation");
             }
 
             // Generate the map
@@ -126,9 +126,9 @@ public class GameManager : MonoBehaviour
         // Register all regions with the NationModel
         RegisterRegionsWithNations();
         
-        Debug.Log("GameManager initialized with " + 
-                  (useProceduralMap ? "procedurally generated" : "predefined") + 
-                  " map and nation model");
+// //        Debug.Log("GameManager initialized with " + 
+//                   (useProceduralMap ? "procedurally generated" : "predefined") + 
+//                   " map and nation model");
 
          // Find or create TradeSystem
         tradeSystem = FindFirstObjectByType<TradeSystem>();
@@ -154,7 +154,7 @@ public class GameManager : MonoBehaviour
             nationModel.RegisterRegion(region);
         }
         
-        Debug.Log("Registered all regions with their nations");
+//        Debug.Log("Registered all regions with their nations");
     }
 
     private void InitializeResources()
@@ -165,7 +165,7 @@ public class GameManager : MonoBehaviour
             return;
         }
         
-        Debug.Log($"Initializing {availableResources.Length} resource types for all regions");
+//        Debug.Log($"Initializing {availableResources.Length} resource types for all regions");
         
         // Load resources into all regions
         foreach (var region in mapModel.GetAllRegions().Values)
@@ -190,14 +190,14 @@ public class GameManager : MonoBehaviour
             if (regionArray[0].resources != null)
             {
                 regionArray[0].resources.AddResource("Crops", 100);
-                Debug.Log($"Added 100 Crops to {regionArray[0].regionName} for trade testing");
+//                Debug.Log($"Added 100 Crops to {regionArray[0].regionName} for trade testing");
             }
             
             // Give second region excess iron
             if (regionArray[1].resources != null)
             {
                 regionArray[1].resources.AddResource("Iron Ore", 100);
-                Debug.Log($"Added 100 Iron Ore to {regionArray[1].regionName} for trade testing");
+  //              Debug.Log($"Added 100 Iron Ore to {regionArray[1].regionName} for trade testing");
             }
         }
     }

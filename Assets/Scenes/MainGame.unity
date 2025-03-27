@@ -977,7 +977,7 @@ MonoBehaviour:
   exportColor: {r: 1, g: 0.5, b: 0, a: 0.5}
   showTradeHeatmap: 0
   maxTradingPartnersPerRegion: 1
-  showSelectedRegionTradesOnly: 0
+  showSelectedRegionTradesOnly: 1
   minimumTradeVolumeToShow: 0.5
 --- !u!1 &1011756824
 GameObject:
@@ -1285,7 +1285,7 @@ MonoBehaviour:
   useProceduralMap: 1
   predefinedMapData: {fileID: 0}
   useSavedTerrainMap: 1
-  savedTerrainMap: {fileID: 11400000, guid: 9652cfc4555414f20933bfe9463ad96d, type: 2}
+  savedTerrainMap: {fileID: 11400000, guid: 120657c9002d24e97834cf57a588e644, type: 2}
   mapWidth: 50
   mapHeight: 50
   nationCount: 3
@@ -2019,9 +2019,9 @@ MonoBehaviour:
   showNationMap: 1
   elevationScale: 30
   moistureScale: 50
-  seed: 100
-  mapWidth: 30
-  mapHeight: 30
+  seed: 200
+  mapWidth: 10
+  mapHeight: 10
   terrainTypes:
   - {fileID: 11400000, guid: 1a9429df4eead42578a54166ab7f3878, type: 2}
   - {fileID: 11400000, guid: 7378eb603bca54df29701006296ef891, type: 2}

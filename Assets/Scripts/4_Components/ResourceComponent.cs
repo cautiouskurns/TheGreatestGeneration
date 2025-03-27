@@ -63,7 +63,7 @@ public class ResourceComponent
         // Don't do anything if we don't have resource definitions yet
         if (resourceDefinitions.Count == 0)
         {
-            Debug.LogWarning("No resource definitions available for initialization");
+            //Debug.LogWarning("No resource definitions available for initialization");
             return;
         }
         
