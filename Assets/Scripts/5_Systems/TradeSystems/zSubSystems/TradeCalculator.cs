@@ -8,7 +8,7 @@ public class TradeCalculator
     private readonly Dictionary<string, RegionEntity> regions;
     private readonly float tradeEfficiency;
     private readonly int maxTradingPartnersPerRegion;
-    private readonly float tradeRadius; // Added trade radius parameter
+    private readonly float tradeRadius;
     
     // Track trading partners for each region across all resources
     private Dictionary<string, HashSet<string>> tradingPartnersByRegion = new Dictionary<string, HashSet<string>>();
@@ -17,7 +17,7 @@ public class TradeCalculator
         Dictionary<string, RegionEntity> regions,
         float tradeEfficiency,
         int maxTradingPartnersPerRegion,
-        float tradeRadius) // Added trade radius parameter
+        float tradeRadius)
     {
         this.regions = regions;
         this.tradeEfficiency = tradeEfficiency;
@@ -55,65 +55,98 @@ public class TradeCalculator
             }
         }
         
-        // Debug check - log all regions with deficits
-        Debug.Log($"TradeCalculator: Found {allDeficits.Count} regions with resource deficits");
-        
-        // Second pass: Process trades in order of most critical needs first
-        // Process regions with the fewest deficits first to give them priority in partner selection
+        // Process all regions' deficits
         foreach (var regionEntry in allDeficits.OrderBy(r => r.Value.Count))
         {
             string regionName = regionEntry.Key;
-            var deficits = regionEntry.Value;
+            Dictionary<string, float> deficits = regionEntry.Value;
             
-            if (!regions.ContainsKey(regionName))
-            {
-                Debug.LogWarning($"TradeCalculator: Region {regionName} not found in regions dictionary");
-                continue;
-            }
+            if (!regions.ContainsKey(regionName)) continue;
             
             RegionEntity importer = regions[regionName];
+            HashSet<string> currentPartners = tradingPartnersByRegion[regionName];
             
-            // Debug check - count current trading partners
-            int currentPartnerCount = tradingPartnersByRegion[regionName].Count;
-            Debug.Log($"TradeCalculator: Processing {regionName} with {deficits.Count} deficits and {currentPartnerCount} current partners");
-            
-            // Skip if already at max partners
-            if (currentPartnerCount >= maxTradingPartnersPerRegion)
+            // First, prioritize critical resources (most deficit)
+            foreach (var deficitEntry in deficits.OrderByDescending(d => d.Value))
             {
-                Debug.Log($"TradeCalculator: Region {regionName} already at max partners ({maxTradingPartnersPerRegion})");
-                continue;
-            }
-            
-            // Process each deficit for this region
-            foreach (var entry in deficits.OrderByDescending(d => d.Value))
-            {
-                string resourceName = entry.Key;
-                float deficitAmount = entry.Value;
+                string resourceName = deficitEntry.Key;
+                float deficitAmount = deficitEntry.Value;
                 
-                // Skip if already at max partners after processing previous resources
-                if (tradingPartnersByRegion[regionName].Count >= maxTradingPartnersPerRegion)
+                // Stop if we've reached our partner limit
+                if (currentPartners.Count >= maxTradingPartnersPerRegion)
                 {
-                    Debug.Log($"TradeCalculator: Region {regionName} reached max partners while processing resource {resourceName}");
                     break;
                 }
                 
-                // Find potential trade partners for this resource
-                var tradingPartners = FindTradingPartners(importer, resourceName);
+                // Find potential partners
+                var potentialPartners = FindTradingPartners(importer, resourceName);
                 
-                // Process imports while respecting partner limits
-                var newTrades = ProcessImportsFromPartners(importer, resourceName, deficitAmount, tradingPartners);
+                // Sort partners (existing partners first, then by surplus)
+                var orderedPartners = potentialPartners
+                    .OrderByDescending(p => currentPartners.Contains(p.regionName) ? 1 : 0)
+                    .ThenByDescending(p => CalculateSurplus(p, resourceName))
+                    .ToList();
                 
-                // Add new trades to the result list
-                trades.AddRange(newTrades);
-                
-                // Debug check - update partner count
-                currentPartnerCount = tradingPartnersByRegion[regionName].Count;
-                Debug.Log($"TradeCalculator: After processing {resourceName}, {regionName} now has {currentPartnerCount} partners");
+                // Process each potential partner
+                foreach (var partner in orderedPartners)
+                {
+                    // Skip if would exceed limit for either region
+                    if (!currentPartners.Contains(partner.regionName))
+                    {
+                        if (currentPartners.Count >= maxTradingPartnersPerRegion)
+                        {
+                            continue; // Skip - importer at max partners
+                        }
+                        
+                        var partnerPartners = tradingPartnersByRegion[partner.regionName];
+                        if (partnerPartners.Count >= maxTradingPartnersPerRegion && 
+                            !partnerPartners.Contains(regionName))
+                        {
+                            continue; // Skip - exporter at max partners
+                        }
+                    }
+                    
+                    // Calculate how much can be traded
+                    var (tradeAmount, actualAmount) = CalculateTradeAmount(partner, resourceName, deficitAmount);
+                    
+                    // Skip if trade amount is too small
+                    if (actualAmount < 0.1f) continue;
+                    
+                    // Create transaction
+                    TradeTransaction trade = new TradeTransaction
+                    {
+                        Exporter = partner,
+                        Importer = importer,
+                        ResourceName = resourceName,
+                        Amount = tradeAmount,
+                        ReceivedAmount = actualAmount
+                    };
+                    
+                    // Add the trade
+                    trades.Add(trade);
+                    
+                    // Update trading partners
+                    if (!currentPartners.Contains(partner.regionName))
+                    {
+                        currentPartners.Add(partner.regionName);
+                    }
+                    
+                    if (!tradingPartnersByRegion[partner.regionName].Contains(regionName))
+                    {
+                        tradingPartnersByRegion[partner.regionName].Add(regionName);
+                    }
+                    
+                    // Reduce deficit
+                    deficitAmount -= actualAmount;
+                    
+                    // Stop if deficit satisfied
+                    if (deficitAmount <= 0) break;
+                }
             }
         }
         
-        // Final verification of partner constraints
-        VerifyPartnerConstraints();
+        // Verify partner limits weren't exceeded
+        VerifyPartnerLimits();
         
         return trades;
     }
@@ -154,13 +187,9 @@ public class TradeCalculator
         
         // Skip if no position data (we need it to calculate distance)
         Vector2 regionPos = GetRegionPosition(region.regionName);
-        if (regionPos == Vector2.negativeInfinity) 
-        {
-            // Fall back to checking all regions if positions are not available
-            return FindAllPotentialPartners(region, resourceName);
-        }
+        bool useDistance = regionPos != Vector2.negativeInfinity;
         
-        // Find partners within trade radius that have a surplus
+        // Find partners with surplus
         foreach (var potentialPartner in regions.Values)
         {
             // Skip self
@@ -171,15 +200,17 @@ public class TradeCalculator
             if (potentialPartner.resources == null)
                 continue;
             
-            // Check distance (if we have position data)
-            Vector2 partnerPos = GetRegionPosition(potentialPartner.regionName);
-            if (partnerPos != Vector2.negativeInfinity)
+            // Check distance
+            if (useDistance)
             {
-                float distance = Vector2.Distance(regionPos, partnerPos);
-                if (distance > tradeRadius)
+                Vector2 partnerPos = GetRegionPosition(potentialPartner.regionName);
+                if (partnerPos != Vector2.negativeInfinity)
                 {
-                    // Too far to trade
-                    continue;
+                    float distance = Vector2.Distance(regionPos, partnerPos);
+                    if (distance > tradeRadius)
+                    {
+                        continue; // Too far to trade
+                    }
                 }
             }
                 
@@ -206,166 +237,39 @@ public class TradeCalculator
         return partners;
     }
     
-    // Fallback method to find partners without using distance
-    private List<RegionEntity> FindAllPotentialPartners(RegionEntity region, string resourceName)
-    {
-        List<RegionEntity> partners = new List<RegionEntity>();
-        
-        // Check all regions for ones with a surplus
-        foreach (var potentialPartner in regions.Values)
-        {
-            // Skip self
-            if (potentialPartner.regionName == region.regionName)
-                continue;
-                
-            // Skip regions without resources
-            if (potentialPartner.resources == null)
-                continue;
-                
-            // Check if partner has a surplus of this resource
-            var partnerResources = potentialPartner.resources.GetAllResources();
-            var partnerConsumption = potentialPartner.resources.GetAllConsumptionRates();
-            
-            if (partnerResources.ContainsKey(resourceName))
-            {
-                float available = partnerResources[resourceName];
-                float needed = 0;
-                
-                if (partnerConsumption.ContainsKey(resourceName))
-                    needed = partnerConsumption[resourceName];
-                
-                // If partner has more than it needs, it can trade
-                if (available > needed * 1.2f) // 20% buffer
-                {
-                    partners.Add(potentialPartner);
-                }
-            }
-        }
-        
-        return partners;
-    }
-    
-    // Get region position, returns Vector2.negativeInfinity if no position data available
+    // Get region position from GameObject
     private Vector2 GetRegionPosition(string regionName)
     {
-        // Look for a GameObject with the region name
         GameObject regionObj = GameObject.Find(regionName);
         if (regionObj != null)
         {
             return regionObj.transform.position;
         }
-        
         return Vector2.negativeInfinity;
     }
     
-    private List<TradeTransaction> ProcessImportsFromPartners(
-        RegionEntity importer, 
-        string resourceName, 
-        float deficitAmount, 
-        List<RegionEntity> partners)
+    // Calculate how much can be traded
+    private (float, float) CalculateTradeAmount(RegionEntity exporter, string resourceName, float deficitAmount)
     {
-        List<TradeTransaction> trades = new List<TradeTransaction>();
+        var resources = exporter.resources.GetAllResources();
+        var consumption = exporter.resources.GetAllConsumptionRates();
         
-        // Get current trading partners for this importer
-        HashSet<string> currentPartners = tradingPartnersByRegion[importer.regionName];
+        float available = resources.ContainsKey(resourceName) ? resources[resourceName] : 0;
+        float needed = consumption.ContainsKey(resourceName) ? consumption[resourceName] : 0;
         
-        // Make sure we don't exceed the maximum number of partners
-        int availablePartnerSlots = maxTradingPartnersPerRegion - currentPartners.Count;
-        if (availablePartnerSlots <= 0)
-        {
-            // Already at max partners, no more trades possible
-            Debug.Log($"TradeCalculator: {importer.regionName} already has {currentPartners.Count} partners, max is {maxTradingPartnersPerRegion}");
-            return trades;
-        }
+        // Calculate surplus (keep 20% buffer)
+        float surplus = available - needed * 1.2f;
         
-        // First, prioritize partners we're already trading with
-        List<RegionEntity> orderedPartners = new List<RegionEntity>();
+        // Can't trade if no surplus
+        if (surplus <= 0) return (0, 0);
         
-        // Add existing partners first
-        foreach (var partner in partners)
-        {
-            if (currentPartners.Contains(partner.regionName))
-            {
-                orderedPartners.Add(partner);
-            }
-        }
+        // Calculate trade amount
+        float tradeAmount = Mathf.Min(surplus, deficitAmount);
         
-        // Then add new potential partners, sorted by surplus
-        List<RegionEntity> newPartners = partners
-            .Where(p => !currentPartners.Contains(p.regionName))
-            .OrderByDescending(p => CalculateSurplus(p, resourceName))
-            .ToList();
-            
-        // Limit new partners to available slots
-        if (newPartners.Count > availablePartnerSlots)
-        {
-            newPartners = newPartners.Take(availablePartnerSlots).ToList();
-        }
+        // Apply trade efficiency
+        float actualAmount = tradeAmount * tradeEfficiency;
         
-        // Add these to our ordered list
-        orderedPartners.AddRange(newPartners);
-        
-        float remainingDeficit = deficitAmount;
-        
-        foreach (var partner in orderedPartners)
-        {
-            // Make absolutely sure we don't exceed partner limits
-            if (!currentPartners.Contains(partner.regionName) && 
-                currentPartners.Count >= maxTradingPartnersPerRegion)
-            {
-                Debug.Log($"TradeCalculator: Skipping new partner {partner.regionName} for {importer.regionName} due to partner limit");
-                continue;
-            }
-            
-            if (remainingDeficit <= 0)
-                break;
-                
-            // Calculate how much this partner can provide
-            var partnerResources = partner.resources.GetAllResources();
-            var partnerConsumption = partner.resources.GetAllConsumptionRates();
-            
-            float partnerAvailable = partnerResources.ContainsKey(resourceName) ? 
-                                    partnerResources[resourceName] : 0;
-            float partnerNeeded = partnerConsumption.ContainsKey(resourceName) ? 
-                                partnerConsumption[resourceName] : 0;
-            
-            // Skip if partner doesn't have this resource
-            if (partnerAvailable <= 0) continue;
-            
-            float surplus = partnerAvailable - partnerNeeded * 1.2f; // Keep 20% buffer
-            
-            // Only trade if there's an actual surplus
-            if (surplus <= 0) continue;
-            
-            float tradeAmount = Mathf.Min(surplus, remainingDeficit);
-            
-            // Apply trade efficiency (representing logistics/transport cost)
-            float actualTradeAmount = tradeAmount * tradeEfficiency;
-            
-            // Skip meaningless trades
-            if (actualTradeAmount < 0.1f) continue;
-            
-            // Create a trade transaction
-            TradeTransaction trade = new TradeTransaction
-            {
-                Exporter = partner,
-                Importer = importer,
-                ResourceName = resourceName,
-                Amount = tradeAmount,
-                ReceivedAmount = actualTradeAmount
-            };
-            
-            trades.Add(trade);
-            
-            // Add to trading partners for both regions
-            currentPartners.Add(partner.regionName);
-            tradingPartnersByRegion[partner.regionName].Add(importer.regionName);
-            
-            // Update remaining deficit
-            remainingDeficit -= actualTradeAmount;
-        }
-        
-        return trades;
+        return (tradeAmount, actualAmount);
     }
     
     private float CalculateSurplus(RegionEntity region, string resourceName)
@@ -379,17 +283,20 @@ public class TradeCalculator
         return available - needed * 1.2f;
     }
     
-    // Verify that no region has more partners than allowed
-    private void VerifyPartnerConstraints()
+    // Verification method to catch any violations
+    private void VerifyPartnerLimits()
     {
         foreach (var entry in tradingPartnersByRegion)
         {
             string regionName = entry.Key;
-            int partnerCount = entry.Value.Count;
+            HashSet<string> partners = entry.Value;
             
-            if (partnerCount > maxTradingPartnersPerRegion)
+            if (partners.Count > maxTradingPartnersPerRegion)
             {
-                Debug.LogError($"TradeCalculator: Region {regionName} has {partnerCount} partners, exceeding max of {maxTradingPartnersPerRegion}");
+                Debug.LogError($"LIMIT EXCEEDED: Region {regionName} has {partners.Count} partners, max is {maxTradingPartnersPerRegion}!");
+                
+                // Log all partners for debugging
+                Debug.LogError($"Partners for {regionName}: {string.Join(", ", partners)}");
             }
         }
     }

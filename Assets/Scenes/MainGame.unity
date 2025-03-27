@@ -970,7 +970,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   tradeRadius: 4
   tradeEfficiency: 0.91
-  maxTradingPartnersPerRegion: 2
+  maxTradingPartnersPerRegion: 3
   showTradeLines: 1
   tradeLineWidth: 0.5
   tradeLineDuration: 50
@@ -978,7 +978,7 @@ MonoBehaviour:
   exportColor: {r: 1, g: 0.5, b: 0, a: 0.5}
   showTradeHeatmap: 0
   showSelectedRegionTradesOnly: 1
-  minimumTradeVolumeToShow: 0.5
+  minimumTradeVolumeToShow: 0.2
 --- !u!1 &1011756824
 GameObject:
   m_ObjectHideFlags: 0
