@@ -7,6 +7,13 @@ public class GameManager : MonoBehaviour
     #region References
     public MapView mapView;
     public RegionInfoUI regionInfoUI;
+    public GameObject eventDialoguePrefab;
+    //public GameObject cabinetDialoguePrefab;
+    
+    private EventDialogueManager eventManager;
+    private GameStateManager stateManager; // Add this line
+
+    //private CabinetDialogueUI cabinetManager;
     #endregion
 
     #region Map Generation Settings
@@ -144,7 +151,37 @@ public class GameManager : MonoBehaviour
     {
         // Initialize resources after everything else is set up
         InitializeResources();
+        stateManager = FindObjectOfType<GameStateManager>();
+        if (stateManager == null)
+        {
+            Debug.LogError("GameStateManager not found in scene!");
+            // Optionally create one
+            // stateManager = new GameObject("GameStateManager").AddComponent<GameStateManager>();
+        }
+
+        // Instantiate UI prefabs
+        Canvas mainCanvas = FindObjectOfType<Canvas>();
+        if (mainCanvas != null)
+        {
+            // Instantiate as a child of the canvas
+            var eventDialogueObj = Instantiate(eventDialoguePrefab, mainCanvas.transform);
+            eventManager = eventDialogueObj.GetComponent<EventDialogueManager>();
+            eventDialogueObj.SetActive(false);
+        }
+        
+
     }
+
+        // Methods to show dialogues when needed
+    public void ShowEventDialogue(StoryEvent storyEvent)
+    {
+        EventDialogueManager.ShowEventDialogue(storyEvent, stateManager);
+    }
+    
+    // public void ShowCabinetDialogue(CabinetMember advisor, string topic)
+    // {
+    //     cabinetManager.ShowDialogue(advisor, topic);
+    // }
 
     // Register existing regions with nations
     private void RegisterRegionsWithNations()

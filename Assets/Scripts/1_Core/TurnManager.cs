@@ -66,7 +66,24 @@ public class TurnManager : MonoBehaviour
     {
         if (isPlayerTurn)
         {
-            ProcessTurnEnd();
+            Debug.Log("Player Turn Ended. AI's turn now.");
+            
+            // Create GameStateManager if it doesn't exist
+            if (GameStateManager.Instance == null)
+            {
+                GameObject gameStateObj = new GameObject("GameStateManager");
+                gameStateObj.AddComponent<GameStateManager>();
+                Debug.Log("Created GameStateManager as it was missing.");
+            }
+            
+            // Now safely call the sync method
+            GameStateManager.Instance.SyncWithGameSystems();
+            
+            EventBus.Trigger("TurnStarted");
+            EventBus.Trigger("TurnEnded");
+            EventBus.Trigger("PlayerTurnEnded");
+            
+            isPlayerTurn = false;
         }
     }
     
