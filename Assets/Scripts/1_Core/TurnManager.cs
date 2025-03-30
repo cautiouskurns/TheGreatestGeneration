@@ -62,14 +62,36 @@ public class TurnManager : MonoBehaviour
     #endregion
 
     #region Turn Management
+    // Add to TurnManager.cs within the EndTurn method
     public void EndTurn()
     {
         if (isPlayerTurn)
         {
             ProcessTurnEnd();
+            Debug.Log("Player Turn Ended. AI's turn now.");
+            
+            // Create GameStateManager if it doesn't exist
+            if (GameStateManager.Instance == null)
+            {
+                GameObject gameStateObj = new GameObject("GameStateManager");
+                gameStateObj.AddComponent<GameStateManager>();
+                Debug.Log("Created GameStateManager as it was missing.");
+            }
+            
+            // Increment turn counter
+            GameStateManager.Instance.IncrementTurn();
+            
+            // Sync game state
+            GameStateManager.Instance.SyncWithGameSystems();
+            
+            // Trigger events
+            EventBus.Trigger("TurnEnded");
+            EventBus.Trigger("PlayerTurnEnded");
+            
+            isPlayerTurn = false;
         }
     }
-    
+        
     private void ProcessTurnEnd()
     {
         Debug.Log("Player Turn Ended. AI's turn now.");
