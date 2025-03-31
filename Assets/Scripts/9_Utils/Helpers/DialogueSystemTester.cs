@@ -14,6 +14,9 @@ public class DialogueSystemTester : MonoBehaviour
     public Button testConditionalButton;
     public Button testWithOutcomesButton;
     
+    [Header("Game State References")]
+    public GameStateDisplay stateDisplay; // Optional reference to refresh display immediately
+    
     // Sample dialogue events
     private List<SimpleDialogueEvent> sampleEvents = new List<SimpleDialogueEvent>();
     
@@ -239,15 +242,29 @@ public class DialogueSystemTester : MonoBehaviour
         sampleEvents.Add(conditionalEvent);
         sampleEvents.Add(outcomesEvent);
     }
-    
+    // In DialogueSystemTester.cs - Update ShowBasicEvent method
+
     void ShowBasicEvent()
     {
         // Make sure we have a GameStateManager to test with
         EnsureGameStateManager();
         
+        // Set specific values for testing
+        if (GameStateManager.Instance != null)
+        {
+            GameStateManager.Instance.Economy.CurrentEconomicCyclePhase = "Growth";
+            // Add more test values here
+            
+            Debug.Log($"Set economic phase to 'Growth' and turn to {GameStateManager.Instance.GetCurrentTurn()}");
+        }
+        
+        // Update the state display
+        RefreshStateDisplayIfAvailable();
+        
+        // Show the event
         EventDialogueManager.ShowEvent(sampleEvents[0]);
     }
-    
+        
     void ShowConditionalEvent()
     {
         // Make sure we have a GameStateManager to test with
@@ -261,6 +278,9 @@ public class DialogueSystemTester : MonoBehaviour
                 
             Debug.Log("Added Iron to resource shortages for testing");
         }
+        
+        // Update the state display
+        RefreshStateDisplayIfAvailable();
         
         EventDialogueManager.ShowEvent(sampleEvents[1]);
     }
@@ -291,6 +311,9 @@ public class DialogueSystemTester : MonoBehaviour
             Debug.Log("Set up GameState for testing outcomes (Expansion phase, added Westoria and MiningRegion)");
         }
         
+        // Update the state display
+        RefreshStateDisplayIfAvailable();
+        
         EventDialogueManager.ShowEvent(sampleEvents[2]);
     }
     
@@ -302,6 +325,18 @@ public class DialogueSystemTester : MonoBehaviour
             GameObject gameStateObj = new GameObject("GameStateManager");
             gameStateObj.AddComponent<GameStateManager>();
             Debug.Log("Created GameStateManager as it was missing");
+            
+            // Initialize the state with some values for testing
+            GameStateManager.Instance.IncrementTurn(); // Set to turn 1
+        }
+    }
+    
+    // Helper to refresh state display
+    private void RefreshStateDisplayIfAvailable()
+    {
+        if (stateDisplay != null)
+        {
+            stateDisplay.RefreshDisplay();
         }
     }
 }

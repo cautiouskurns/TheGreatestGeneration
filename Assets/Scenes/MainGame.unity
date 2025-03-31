@@ -1176,7 +1176,7 @@ MonoBehaviour:
   m_HandleRect: {fileID: 101908170}
   m_Direction: 0
   m_Value: 1
-  m_Size: 1
+  m_Size: 0.9999999
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
@@ -3800,6 +3800,7 @@ MonoBehaviour:
   testBasicEventButton: {fileID: 245520614}
   testConditionalButton: {fileID: 877451900}
   testWithOutcomesButton: {fileID: 1011242334}
+  stateDisplay: {fileID: 177933034}
 --- !u!1 &1149125484
 GameObject:
   m_ObjectHideFlags: 0
@@ -4252,7 +4253,7 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 247818307}
   m_HandleRect: {fileID: 247818306}
   m_Direction: 2
-  m_Value: 0.99999255
+  m_Value: 0.9999933
   m_Size: 0.7258667
   m_NumberOfSteps: 0
   m_OnValueChanged:

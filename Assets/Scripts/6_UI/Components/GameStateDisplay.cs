@@ -13,6 +13,25 @@ public class GameStateDisplay : MonoBehaviour
         if (refreshButton != null)
             refreshButton.onClick.AddListener(RefreshDisplay);
             
+        // Register for events to update after dialogues
+        EventBus.Subscribe("DialogueEnded", OnDialogueEnded);
+        
+        // Initial refresh
+        RefreshDisplay();
+    }
+    
+    void OnDestroy()
+    {
+        // Clean up event subscription
+        EventBus.Unsubscribe("DialogueEnded", OnDialogueEnded);
+        
+        if (refreshButton != null)
+            refreshButton.onClick.RemoveListener(RefreshDisplay);
+    }
+    
+    private void OnDialogueEnded(object _)
+    {
+        // Refresh display when dialogue ends
         RefreshDisplay();
     }
     
@@ -21,51 +40,90 @@ public class GameStateDisplay : MonoBehaviour
         var stateManager = GameStateManager.Instance;
         if (stateManager == null)
         {
-            stateText.text = "GameStateManager not found!";
+            if (stateText != null)
+                stateText.text = "GameStateManager not found!";
             return;
         }
         
-        string display = "--- Game State ---\n\n";
+        string display = "<size=20><b>Game State</b></size>\n\n";
         
         // Basic info
-        display += $"Turn: {stateManager.GetCurrentTurn()}\n";
-        display += $"Economic Phase: {stateManager.Economy.CurrentEconomicCyclePhase}\n";
-        display += $"Turns in Phase: {stateManager.Economy.TurnsInCurrentPhase}\n\n";
+        display += $"<b>Turn:</b> {stateManager.GetCurrentTurn()}\n";
+        display += $"<b>Economic Phase:</b> {stateManager.Economy.CurrentEconomicCyclePhase}\n";
+        display += $"<b>Turns in Phase:</b> {stateManager.Economy.TurnsInCurrentPhase}\n\n";
         
         // Resources
-        display += "Resource Shortages:\n";
-        foreach (var resource in stateManager.Economy.ResourcesInShortage)
+        display += "<b>Resource Shortages:</b>\n";
+        if (stateManager.Economy.ResourcesInShortage.Count == 0)
         {
-            display += $"- {resource}\n";
+            display += "None\n";
+        }
+        else
+        {
+            foreach (var resource in stateManager.Economy.ResourcesInShortage)
+            {
+                display += $"• {resource}\n";
+            }
         }
         
-        display += "\nResource Surpluses:\n";
-        foreach (var resource in stateManager.Economy.ResourcesInSurplus)
+        display += "\n<b>Resource Surpluses:</b>\n";
+        if (stateManager.Economy.ResourcesInSurplus.Count == 0)
         {
-            display += $"- {resource}\n";
+            display += "None\n";
+        }
+        else
+        {
+            foreach (var resource in stateManager.Economy.ResourcesInSurplus)
+            {
+                display += $"• {resource}\n";
+            }
         }
         
         // Diplomatic relations
-        display += "\nDiplomatic Relations:\n";
-        foreach (var relation in stateManager.Diplomacy.NationRelations)
+        display += "\n<b>Diplomatic Relations:</b>\n";
+        if (stateManager.Diplomacy.NationRelations.Count == 0)
         {
-            display += $"- {relation.Key}: {relation.Value:F1}\n";
+            display += "No relations established\n";
+        }
+        else
+        {
+            foreach (var relation in stateManager.Diplomacy.NationRelations)
+            {
+                string relationColor = relation.Value >= 0 ? "green" : "red";
+                display += $"• {relation.Key}: <color={relationColor}>{relation.Value:F1}</color>\n";
+            }
         }
         
         // Regions
-        display += "\nRegions:\n";
-        foreach (var region in stateManager.RegionStates)
+        display += "\n<b>Regions:</b>\n";
+        if (stateManager.RegionStates.Count == 0)
         {
-            display += $"- {region.Key}: Satisfaction {region.Value.Satisfaction:F2}\n";
+            display += "No regions defined\n";
+        }
+        else
+        {
+            foreach (var region in stateManager.RegionStates)
+            {
+                string satisfactionColor = region.Value.Satisfaction >= 0.5f ? "green" : "red";
+                display += $"• {region.Key}: Satisfaction <color={satisfactionColor}>{region.Value.Satisfaction:F2}</color>\n";
+            }
         }
         
         // Decisions
-        display += "\nSignificant Decisions:\n";
-        foreach (var decision in stateManager.History.SignificantDecisions)
+        display += "\n<b>Significant Decisions:</b>\n";
+        if (stateManager.History.SignificantDecisions.Count == 0)
         {
-            display += $"- {decision}\n";
+            display += "No decisions made yet\n";
+        }
+        else
+        {
+            foreach (var decision in stateManager.History.SignificantDecisions)
+            {
+                display += $"• {decision}\n";
+            }
         }
         
-        stateText.text = display;
+        if (stateText != null)
+            stateText.text = display;
     }
 }

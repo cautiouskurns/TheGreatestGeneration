@@ -57,7 +57,7 @@ public class ScreenSpaceResourceVisualization : MonoBehaviour
         // Find main canvas if not set
         if (mainCanvas == null)
         {
-            mainCanvas = FindObjectOfType<Canvas>();
+            mainCanvas = FindFirstObjectByType<Canvas>();
             if (mainCanvas == null)
             {
                 Debug.LogError("No Canvas found in scene! Please assign a Canvas in the inspector.");

@@ -107,10 +107,13 @@ public class EventDialogueManager : MonoBehaviour
         DisplayChoices(choiceTexts);
     }
     
-    // NEW: Method to show a dialogue event with state integration
     public void ShowDialogueEvent(SimpleDialogueEvent dialogueEvent)
     {
         currentEvent = dialogueEvent;
+        
+        // Make sure we have the latest reference to the state manager
+        if (stateManager == null)
+            stateManager = GameStateManager.Instance;
         
         // Process lines with state variables
         if (dialogueEvent.lines.Count > 0)
@@ -118,7 +121,13 @@ public class EventDialogueManager : MonoBehaviour
             List<string> processedLines = new List<string>();
             foreach (var line in dialogueEvent.lines)
             {
-                processedLines.Add(ProcessTextWithStateVariables(line.text));
+                // IMPORTANT: Use the line's GetProcessedText method instead
+                string processedText = line.GetProcessedText(stateManager);
+                processedLines.Add(processedText);
+                
+                // Log for debugging
+                Debug.Log($"Original line: '{line.text}'");
+                Debug.Log($"Processed line: '{processedText}'");
             }
             
             // Use existing ShowDialogue method with processed lines
@@ -135,27 +144,25 @@ public class EventDialogueManager : MonoBehaviour
             ShowSimpleDialogue(dialogueEvent.title, ProcessTextWithStateVariables(dialogueEvent.description));
         }
     }
-    
+        
     // Helper method to process text with state variables
     private string ProcessTextWithStateVariables(string text)
     {
-        if (stateManager == null) return text;
+        if (stateManager == null)
+        {
+            stateManager = GameStateManager.Instance;
+            if (stateManager == null)
+            {
+                Debug.LogWarning("GameStateManager not found for text processing");
+                return text;
+            }
+        }
         
         string processed = text;
         
-        // Replace economic phase
-        processed = processed.Replace("{EconomicPhase}", 
-            stateManager.Economy.CurrentEconomicCyclePhase);
-        
-        // Replace turn count
-        processed = processed.Replace("{CurrentTurn}", 
-            stateManager.GetCurrentTurn().ToString());
-        
-        // Replace generation
-        processed = processed.Replace("{Generation}", 
-            stateManager.History.GenerationNumber.ToString());
-        
-        // Add more replacements as needed
+        // Direct replacements (same as in DialogueLine.GetProcessedText)
+        processed = processed.Replace("{EconomicPhase}", stateManager.Economy.CurrentEconomicCyclePhase);
+        processed = processed.Replace("{CurrentTurn}", stateManager.GetCurrentTurn().ToString());
         
         return processed;
     }
@@ -459,6 +466,8 @@ public class EventDialogueManager : MonoBehaviour
     {
         dialoguePanel.SetActive(false);
         currentEvent = null;
+
+        EventBus.Trigger("DialogueEnded");
     }
     
     // Typewriter effect coroutine (unchanged)

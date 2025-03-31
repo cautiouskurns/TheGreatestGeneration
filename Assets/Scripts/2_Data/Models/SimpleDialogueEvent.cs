@@ -26,7 +26,11 @@ public class DialogueLine
     // Method to process text with state variables
     public string GetProcessedText(GameStateManager stateManager)
     {
-        if (stateManager == null) return text;
+        if (stateManager == null) 
+        {
+            Debug.LogWarning("Cannot process text variables: GameStateManager is null");
+            return text;
+        }
         
         string processedText = text;
         
@@ -38,7 +42,7 @@ public class DialogueLine
         processedText = processedText.Replace("{CurrentTurn}", 
             stateManager.GetCurrentTurn().ToString());
         
-        // Add more replacements as needed
+        Debug.Log($"Processed text: '{text}' -> '{processedText}'");
         
         return processedText;
     }
