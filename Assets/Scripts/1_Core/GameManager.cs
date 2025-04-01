@@ -1,87 +1,159 @@
-// GameManager.cs - Updated to use gameConfiguration
 using UnityEngine;
 using System.Collections.Generic;
 
+/// <summary>
+/// Central game management class responsible for high-level game initialization and coordination
+/// Follows MVC and ECS architectural patterns
+/// </summary>
 public class GameManager : MonoBehaviour
 {
-    #region References
-    public MapView mapView;
-    public RegionInfoUI regionInfoUI;
+    #region Configuration References
+    [Header("Game Configuration")]
     [SerializeField] private GameConfigurationSO gameConfiguration;
+    
+    [Header("Resource Definitions")]
+    [SerializeField] private ResourceDataSO[] availableResources;
+    
+    [Header("Nation Templates")]
+    [SerializeField] private NationTemplate[] nationTemplates;
     #endregion
 
-    #region Models
+    #region System References
+    [Header("View References")]
+    public MapView mapView;
+    public RegionInfoUI regionInfoUI;
+    #endregion
+
+    #region Game Systems
     private MapModel mapModel;
     private NationModel nationModel;
     private TradeSystem tradeSystem;
     #endregion
 
-    #region Content Data
-    [Header("Nation Templates")]
-    public NationTemplate[] nationTemplates;
-
-    [Header("Resources")]
-    public ResourceDataSO[] availableResources;
+    #region Initialization Components
+    private MapGenerationFactory mapGenerationFactory;
+    private GameSystemInitializer systemInitializer;
+    private ResourceInitializer resourceInitializer;
     #endregion
 
-    #region Initialization
     private void Awake()
     {
-        // Check if gameConfiguration is assigned
-        if (gameConfiguration == null)
-        {
-            Debug.LogError("GameConfiguration is not assigned! Using default values.");
-        }
+        // Initialize factories and initializers
+        InitializeComponents();
 
-    // Create map using the factory
-    MapGenerationFactory mapFactory = new MapGenerationFactory();
-    MapDataSO mapData = mapFactory.CreateMap(
-        gameConfiguration,
-        mapView.availableTerrainTypes,
-        nationTemplates
-    );
-    
-    // Assign generated map data to MapView
-    mapView.mapData = mapData;
-    
-    // Create terrain dictionary
-    Dictionary<string, TerrainTypeDataSO> terrainTypesDict = 
-        mapFactory.CreateTerrainDictionary(mapView.availableTerrainTypes);
-    
-    // Initialize models
-    mapModel = new MapModel(mapData, terrainTypesDict);
-    nationModel = new NationModel(mapData);
-        
-        // Register all regions with the NationModel
-        RegisterRegionsWithNations();
+        // Generate map data
+        MapDataSO mapData = GenerateMapData();
 
-        // Find or create TradeSystem with configured settings
-        tradeSystem = FindFirstObjectByType<TradeSystem>();
-        if (tradeSystem == null)
-        {
-            GameObject tradeSystemObj = new GameObject("TradeSystem");
-            tradeSystem = tradeSystemObj.AddComponent<TradeSystem>();
-            
-            // Apply trade system configuration
-            if (gameConfiguration.tradeSystemConfig != null)
-            {
-                tradeSystem.tradeRadius = gameConfiguration.tradeSystemConfig.baseTradeRadius;
-            }
-        }
-        
-        // Set game speed from configuration
-        Time.timeScale = gameConfiguration.gameSpeed;
+        // Create terrain type dictionary
+        Dictionary<string, TerrainTypeDataSO> terrainTypes = CreateTerrainDictionary();
+
+        // Initialize core game systems
+        InitializeCoreGameSystems(mapData, terrainTypes);
+
+        // Assign map data to view
+        mapView.mapData = mapData;
     }
 
     private void Start()
     {
-        // Initialize resources after everything else is set up
+        // Initialize resources after other systems are set up
         InitializeResources();
         
-        // Apply any global game settings from configuration
+        // Apply global settings from configuration
         ApplyGlobalSettings();
     }
+
+    #region Initialization Methods
+    /// <summary>
+    /// Initialize helper components
+    /// </summary>
+    private void InitializeComponents()
+    {
+        mapGenerationFactory = new MapGenerationFactory();
+        systemInitializer = new GameSystemInitializer();
+        resourceInitializer = new ResourceInitializer();
+    }
+
+    /// <summary>
+    /// Generate map data based on configuration
+    /// </summary>
+    private MapDataSO GenerateMapData()
+    {
+        // Validate configuration
+        if (gameConfiguration == null)
+        {
+            Debug.LogError("Game Configuration is missing!");
+            return null;
+        }
+
+        // Generate map using configuration and terrain types
+        return mapGenerationFactory.CreateMap(
+            gameConfiguration, 
+            mapView.availableTerrainTypes,
+            nationTemplates
+        );
+    }
+
+    /// <summary>
+    /// Create a dictionary of terrain types for easy lookup
+    /// </summary>
+    private Dictionary<string, TerrainTypeDataSO> CreateTerrainDictionary()
+    {
+        return mapGenerationFactory.CreateTerrainDictionary(mapView.availableTerrainTypes);
+    }
+
+    /// <summary>
+    /// Initialize core game systems and models
+    /// </summary>
+    private void InitializeCoreGameSystems(
+        MapDataSO mapData, 
+        Dictionary<string, TerrainTypeDataSO> terrainTypes)
+    {
+        // Validate inputs
+        if (mapData == null)
+        {
+            Debug.LogError("Cannot initialize game systems: MapData is null");
+            return;
+        }
+
+        // Initialize game systems
+        var systemsConfig = systemInitializer.InitializeGameSystems(
+            mapData, 
+            terrainTypes, 
+            nationTemplates  // Pass nationTemplates instead of gameConfiguration
+        );
+
+        // Store references to initialized systems
+        if (systemsConfig != null)
+        {
+            mapModel = systemsConfig.MapModel;
+            nationModel = systemsConfig.NationModel;
+            tradeSystem = systemsConfig.TradeSystem;
+        }
+    }
+
+    /// <summary>
+    /// Initialize resources for all regions
+    /// </summary>
+    private void InitializeResources()
+    {
+        // Ensure map model exists before initializing resources
+        if (mapModel == null)
+        {
+            Debug.LogError("Cannot initialize resources: MapModel is null");
+            return;
+        }
+
+        // Initialize resources
+        resourceInitializer.InitializeRegionResources(
+            mapModel.GetAllRegions(), 
+            availableResources
+        );
+    }
     
+    /// <summary>
+    /// Apply global settings from configuration
+    /// </summary>
     private void ApplyGlobalSettings()
     {
         // Apply global economic modifiers if configured
@@ -97,54 +169,8 @@ public class GameManager : MonoBehaviour
             }
         }
         
-    }
-
-    private void RegisterRegionsWithNations()
-    {
-        foreach (var regionEntry in mapModel.GetAllRegions())
-        {
-            RegionEntity region = regionEntry.Value;
-            nationModel.RegisterRegion(region);
-        }
-    }
-
-    private void InitializeResources()
-    {
-        if (availableResources == null || availableResources.Length == 0)
-        {
-            Debug.LogWarning("No resource definitions assigned to GameManager!");
-            return;
-        }
-        
-        // Load resources into all regions
-        foreach (var region in mapModel.GetAllRegions().Values)
-        {
-            if (region.resources != null)
-            {
-                region.resources.LoadResourceDefinitions(availableResources);
-                region.productionComponent.ActivateRecipe("Basic Iron Smelting");
-            }
-        }
-
-        // Manually create some deficits and surpluses for testing
-        var regions = mapModel.GetAllRegions();
-        if (regions.Count >= 2)
-        {
-            var regionArray = new RegionEntity[regions.Count];
-            regions.Values.CopyTo(regionArray, 0);
-            
-            // Give first region excess food
-            if (regionArray[0].resources != null)
-            {
-                regionArray[0].resources.AddResource("Crops", 100);
-            }
-            
-            // Give second region excess iron
-            if (regionArray[1].resources != null)
-            {
-                regionArray[1].resources.AddResource("Iron Ore", 100);
-            }
-        }
+        // Set game speed from configuration
+        Time.timeScale = gameConfiguration.gameSpeed;
     }
     #endregion
 
@@ -161,67 +187,88 @@ public class GameManager : MonoBehaviour
 
     private void OnTurnEnded(object _)
     {
-        // Process turn for all regions first
-        mapModel.ProcessTurn();
+        // Process turn for map model
+        mapModel?.ProcessTurn();
         
-        // Then update nation-level data
-        nationModel.ProcessTurn();
+        // Process turn for nation model
+        nationModel?.ProcessTurn();
         
         Debug.Log("Turn ended, region and nation processing complete");
     }
     #endregion
 
-    #region Region Management
-    public void SelectRegion(string regionName)
-    {
-        mapModel.SelectRegion(regionName);
-    }
-    
+    #region Public Access Methods
+    /// <summary>
+    /// Get a specific region by name
+    /// </summary>
     public RegionEntity GetRegion(string regionName)
     {
-        return mapModel.GetRegion(regionName);
+        return mapModel?.GetRegion(regionName);
     }
 
+    /// <summary>
+    /// Get all regions in the game
+    /// </summary>
     public Dictionary<string, RegionEntity> GetAllRegions()
     {
-        return mapModel.GetAllRegions();
+        return mapModel?.GetAllRegions();
     }
-    
-    // For registering new regions if created during gameplay
-    public void RegisterNewRegion(RegionEntity region)
+
+    /// <summary>
+    /// Select a specific region
+    /// </summary>
+    public void SelectRegion(string regionName)
     {
-        // Add to map model if needed
-        // mapModel.AddRegion(region); - Would need to implement this method
-        
-        // Register with nation model
-        nationModel.RegisterRegion(region);
+        mapModel?.SelectRegion(regionName);
     }
-    
+
+    /// <summary>
+    /// Get the current map data
+    /// </summary>
     public MapDataSO GetMapData()
     {
-        return mapModel.GetMapData();
+        return mapModel?.GetMapData();
     }
-    #endregion
-
-    #region Nation Management
+    
+    /// <summary>
+    /// Get a nation by name
+    /// </summary>
     public NationEntity GetNation(string nationName)
     {
-        return nationModel.GetNation(nationName);
+        return nationModel?.GetNation(nationName);
     }
 
+    /// <summary>
+    /// Select a specific nation
+    /// </summary>
     public void SelectNation(string nationName)
     {
-        nationModel.SelectNation(nationName);
+        nationModel?.SelectNation(nationName);
     }
 
+    /// <summary>
+    /// Get the currently selected nation
+    /// </summary>
     public NationEntity GetSelectedNation()
     {
-        return nationModel.GetSelectedNation();
+        return nationModel?.GetSelectedNation();
     }
 
+    /// <summary>
+    /// Get all nations in the game
+    /// </summary>
     public Dictionary<string, NationEntity> GetAllNations()
     {
-        return nationModel.GetAllNations();
+        return nationModel?.GetAllNations();
+    }
+    
+    /// <summary>
+    /// Register a new region with the appropriate nation
+    /// </summary>
+    public void RegisterNewRegion(RegionEntity region)
+    {
+        // Register with nation model
+        nationModel?.RegisterRegion(region);
     }
     #endregion
 }
