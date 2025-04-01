@@ -1,5 +1,8 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
+using TMPro;
+using System.Linq;
 
 /// <summary>
 /// Manages resources for a region, handling storage, production, and consumption.
@@ -284,22 +287,45 @@ public class ResourceComponent
     /// <summary>
     /// Calculate demand based on population
     /// </summary>
+    // Add to ResourceComponent
+    // Add this method to your existing ResourceComponent class
+
+    /// <summary>
+    /// Calculate demand based on population, wealth, and market prices
+    /// </summary>
     public void CalculateDemand()
     {
+        // Get reference to global market prices
+        var market = ResourceMarket.Instance;
+        
         // Clear existing consumption rates
         consumptionRates.Clear();
 
         // For each resource
         foreach (var resource in resourceDefinitions.Keys)
         {
-            // Base consumption per capita (default or from definition)
+            // Base consumption per capita
             float perCapitaNeed = 0.1f; // Default
             if (baseConsumptionPerCapita.ContainsKey(resource))
                 perCapitaNeed = baseConsumptionPerCapita[resource];
 
-            // Total consumption = population × per capita need × wealth multiplier
+            // Get market price if available
+            float priceMultiplier = 1.0f;
+            if (market != null)
+            {
+                float currentPrice = market.GetCurrentPrice(resource);
+                float basePrice = market.GetBasePrice(resource);
+                
+                // Calculate price elasticity effect (higher price = lower demand)
+                // Uses sqrt for dampening to avoid extreme swings
+                float priceRatio = currentPrice / basePrice;
+                priceMultiplier = Mathf.Pow(1.0f / priceRatio, 0.5f);
+            }
+
+            // Total consumption with price elasticity
             float totalDemand = ownerRegion.laborAvailable * perCapitaNeed *
-                                (1.0f + ownerRegion.wealth * 0.001f); // Wealth increases consumption
+                            (1.0f + ownerRegion.wealth * 0.001f) * // Wealth effect
+                            priceMultiplier; // Price elasticity effect
 
             consumptionRates[resource] = totalDemand;
         }

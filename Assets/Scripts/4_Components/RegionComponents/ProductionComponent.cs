@@ -122,9 +122,14 @@ public class ProductionComponent
         return true;
     }
     
-    // Execute a recipe, consuming inputs and creating outputs
     private void ProduceRecipe(ResourceProductionRecipe recipe)
     {
+        // Store original efficiency
+        float originalEfficiency = productionEfficiency;
+        
+        // Check dependencies first
+        CheckResourceDependencies(recipe);
+        
         // First, consume all inputs
         if (recipe.inputs != null && recipe.inputs.Length > 0)
         {
@@ -140,18 +145,32 @@ public class ProductionComponent
         }
         
         // Then produce the output
-        // We need to determine which resource this recipe produces
         string outputResource = DetermineOutputResource(recipe);
         if (!string.IsNullOrEmpty(outputResource))
         {
-            float outputAmount = recipe.outputAmount * productionEfficiency;
+            // Apply efficiency multiplier
+            float efficiencyFactor = productionEfficiency * recipe.efficiencyMultiplier;
+            float outputAmount = recipe.outputAmount * efficiencyFactor;
+            
+            // Apply quality impact if enabled
+            if (recipe.qualityAffectsOutput)
+            {
+                // Calculate quality factor based on input resources and dependencies
+                float qualityFactor = CalculateQualityFactor(recipe);
+                outputAmount *= qualityFactor;
+            }
+            
             resourceComponent.AddResource(outputResource, outputAmount);
             
-            // Log the production for debugging
-            Debug.Log($"Produced {outputAmount} of {outputResource} using recipe {recipe.recipeName}");
+            // Log the production with efficiency
+            Debug.Log($"Produced {outputAmount:F1} of {outputResource} " +
+                    $"(efficiency: {efficiencyFactor:P0}) using recipe {recipe.recipeName}");
         }
+        
+        // Restore original efficiency for other recipes
+        productionEfficiency = originalEfficiency;
     }
-    
+
     // Determine which resource this recipe produces
     private string DetermineOutputResource(ResourceProductionRecipe recipe)
     {
@@ -180,6 +199,40 @@ public class ProductionComponent
         return string.Empty;
     }
     
+    private float CalculateQualityFactor(ResourceProductionRecipe recipe)
+    {
+        // Base quality is 1.0
+        float qualityFactor = 1.0f;
+        
+        // Adjust based on input amount surplus
+        if (recipe.inputs != null && recipe.inputs.Length > 0)
+        {
+            float totalQualityContribution = 0f;
+            
+            foreach (var input in recipe.inputs)
+            {
+                if (input.resource == null) continue;
+                
+                // Get available amount
+                float available = resourceComponent.GetResourceAmount(input.resource.resourceName);
+                
+                // If we have a surplus beyond what's required, it can improve quality
+                if (available > input.amount * 1.5f)
+                {
+                    // Cap the bonus to prevent extreme values
+                    float surplus = Mathf.Min(available / input.amount, 3.0f) - 1.0f;
+                    totalQualityContribution += surplus * 0.1f; // 10% quality boost per doubling of input
+                }
+            }
+            
+            // Apply quality contribution with the recipe's quality impact factor
+            qualityFactor += totalQualityContribution * recipe.qualityImpact;
+        }
+        
+        // Cap quality factor to reasonable range
+        return Mathf.Clamp(qualityFactor, 0.5f, 1.5f);
+    }
+
     // Activate a recipe for production
     public void ActivateRecipe(string recipeName)
     {
@@ -247,4 +300,55 @@ public class ProductionComponent
         
         return available;
     }
+
+    /// <summary>
+    /// Check if we have all required dependencies for a recipe
+    /// </summary>
+    /// <param name="recipe">The recipe to check</param>
+    /// <returns>True if all dependencies are available, otherwise false with reduced efficiency</returns>
+    private bool CheckResourceDependencies(ResourceProductionRecipe recipe)
+    {
+        // Skip if no dependencies
+        if (recipe.dependencies == null || recipe.dependencies.Length == 0)
+            return true;
+        
+        // Track original efficiency to restore if needed
+        float originalEfficiency = productionEfficiency;
+        bool allDependenciesMet = true;
+        
+        // Check each dependency
+        foreach (var dependency in recipe.dependencies)
+        {
+            // Get amount of dependency available
+            float available = resourceComponent.GetResourceAmount(dependency.resourceName);
+            
+            // If we don't have enough of the dependency, reduce efficiency
+            if (available < dependency.requiredAmount)
+            {
+                allDependenciesMet = false;
+                
+                // Only reduce efficiency if this dependency affects it
+                if (dependency.affectsEfficiency)
+                {
+                    // Calculate efficiency reduction
+                    float ratio = available / dependency.requiredAmount;
+                    
+                    // Apply impact weight to determine how much this affects efficiency
+                    float impact = Mathf.Pow(ratio, dependency.impactWeight);
+                    
+                    // Apply to production efficiency (proportional reduction)
+                    productionEfficiency *= Mathf.Max(0.1f, impact);
+                }
+            }
+        }
+        
+        // Log if efficiency was reduced
+        if (productionEfficiency < originalEfficiency)
+        {
+            Debug.Log($"Production efficiency reduced to {productionEfficiency:P0} due to missing dependencies");
+        }
+        
+        return allDependenciesMet;
+    }
+
 }

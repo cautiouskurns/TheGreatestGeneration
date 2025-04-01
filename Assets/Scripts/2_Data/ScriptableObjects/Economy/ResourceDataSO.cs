@@ -60,6 +60,16 @@ public class ResourceProductionRecipe
     public float productionTime = 1.0f; // How many turns it takes to complete
     public string requiredInfrastructureType; // What infrastructure is needed
     public int minimumInfrastructureLevel = 1; // Minimum level required
+    
+    // Add dependencies that affect production but aren't directly consumed
+    public ResourceDependency[] dependencies;
+    
+    // Efficiency scaling based on technology/skill
+    [Range(0.5f, 2.0f)] public float efficiencyMultiplier = 1.0f;
+    
+    // Optional output scaling based on inputs quality
+    public bool qualityAffectsOutput = false;
+    [Range(0.1f, 0.5f)] public float qualityImpact = 0.2f;
 }
 
 // Class for resource inputs in recipes
