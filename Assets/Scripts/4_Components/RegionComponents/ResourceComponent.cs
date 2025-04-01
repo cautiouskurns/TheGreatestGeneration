@@ -29,7 +29,7 @@ public class ResourceComponent
     private RegionEntity ownerRegion;
     
     // Consumption modifiers
-    private float baseConsumptionFactor = 1.0f;
+    // private float baseConsumptionFactor = 1.0f;
     private float wealthConsumptionMultiplier = 0.01f; // Consumption increases 1% per wealth point
     private float sizeConsumptionMultiplier = 0.2f;    // Consumption increases 20% per "size unit"
     

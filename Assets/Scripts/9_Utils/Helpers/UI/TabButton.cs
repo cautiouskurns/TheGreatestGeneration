@@ -5,7 +5,7 @@ using UnityEngine.EventSystems;
 /// <summary>
 /// Represents a selectable tab in a tab group
 /// </summary>
-public class TabButton : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
+public class UITabButton : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
 {
     private TabGroup tabGroup;
     private Image background;

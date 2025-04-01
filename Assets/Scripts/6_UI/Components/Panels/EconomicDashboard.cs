@@ -216,10 +216,28 @@ public class EconomicDashboard : MonoBehaviour
     {
         if (gameManager == null) return;
         
-        // Clear existing items
-        foreach (Transform child in resourceListContainer)
+        // Clear existing items in a safe way
+        if (resourceListContainer != null)
         {
-            Destroy(child.gameObject);
+            foreach (Transform child in resourceListContainer)
+            {
+                if (child.gameObject != null)
+                {
+                    // Use DestroyImmediate only in editor, otherwise use Destroy
+                    #if UNITY_EDITOR
+                    if (Application.isEditor && !Application.isPlaying)
+                    {
+                        DestroyImmediate(child.gameObject);
+                    }
+                    else
+                    {
+                        Destroy(child.gameObject);
+                    }
+                    #else
+                    Destroy(child.gameObject);
+                    #endif
+                }
+            }
         }
         
         // Get all regions

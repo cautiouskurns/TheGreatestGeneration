@@ -10,7 +10,7 @@ using TMPro;
 public class TabGroup : MonoBehaviour
 {
     [Header("Tab References")]
-    public List<TabButton> tabButtons = new List<TabButton>();
+    public List<UITabButton> tabButtons = new List<UITabButton>();
     public List<GameObject> tabPages = new List<GameObject>();
     
     [Header("Tab Styling")]
@@ -18,7 +18,7 @@ public class TabGroup : MonoBehaviour
     public Color tabHover = new Color(0.7f, 0.7f, 0.7f);
     public Color tabActive = Color.white;
     
-    private TabButton selectedTab;
+    private UITabButton selectedTab;
     
     private void Start()
     {
@@ -42,7 +42,7 @@ public class TabGroup : MonoBehaviour
         }
     }
     
-    public void OnTabSelected(TabButton button)
+    public void OnTabSelected(UITabButton button)
     {
         selectedTab = button;
         
@@ -62,7 +62,7 @@ public class TabGroup : MonoBehaviour
         }
     }
     
-    public void OnTabEnter(TabButton button)
+    public void OnTabEnter(UITabButton button)
     {
         // Only highlight if not the selected tab
         if (button != selectedTab)
@@ -71,7 +71,7 @@ public class TabGroup : MonoBehaviour
         }
     }
     
-    public void OnTabExit(TabButton button)
+    public void OnTabExit(UITabButton button)
     {
         // Restore idle color if not the selected tab
         if (button != selectedTab)
