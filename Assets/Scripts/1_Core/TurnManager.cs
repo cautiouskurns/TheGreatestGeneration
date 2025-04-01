@@ -3,226 +3,198 @@ using UnityEngine.UI;
 using System.Collections;
 using TMPro;
 
+/// <summary>
+/// Manages turn progression, including player and AI turns
+/// Supports both manual and auto-simulation modes
+/// </summary>
 public class TurnManager : MonoBehaviour
 {
-    #region Inspector Fields
-    [Header("Auto-Simulation Settings")]
-    public bool enableAutoSimulation = false;
-    public float timeBetweenTurns = 3.0f;
-    public int maxAutoTurns = 100;
-    public TextMeshProUGUI simulationStatusText;
-    public Toggle autoSimulationToggle;
+    #region Configuration
+    [Header("Configuration")]
+    [SerializeField] private TurnManagerConfigSO turnConfig;
+    
+    [Header("UI References")]
+    [SerializeField] private TextMeshProUGUI simulationStatusText;
+    [SerializeField] private Toggle autoSimulationToggle;
     #endregion
 
-    #region Private Fields
-    private bool isPlayerTurn = true;
-    private bool isAutoSimulating = false;
-    private int currentAutoTurn = 0;
-    private Coroutine autoSimulationCoroutine;
+    #region State Management
+    private TurnState turnState;
+    private AutoSimulationManager autoSimManager;
     #endregion
 
     #region Unity Lifecycle Methods
-    void Start()
+    private void Awake()
     {
-        // Start with player's turn
-        isPlayerTurn = true;
-        
-        // Setup auto-simulation toggle if assigned
-        if (autoSimulationToggle != null)
-        {
-            autoSimulationToggle.isOn = enableAutoSimulation;
-            autoSimulationToggle.onValueChanged.AddListener(OnAutoSimulationToggleChanged);
-        }
-        
-        // Initialize simulation status
+        // Initialize state and managers
+        InitializeComponents();
+    }
+
+    private void Start()
+    {
+        // Setup UI interactions
+        ConfigureAutoSimulationToggle();
         UpdateSimulationStatus();
     }
-    
-    void Update()
+
+    private void OnEnable()
     {
-        // Allow pressing spacebar to toggle auto-simulation
+        // Subscribe to game events
+        EventBus.Subscribe("AITurnsCompleted", OnAITurnsCompleted);
+    }
+
+    private void OnDisable()
+    {
+        // Unsubscribe from events
+        EventBus.Unsubscribe("AITurnsCompleted", OnAITurnsCompleted);
+        
+        // Stop auto-simulation
+        autoSimManager.StopAutoSimulation();
+    }
+
+    private void Update()
+    {
+        // Quick toggle for auto-simulation via spacebar
         if (Input.GetKeyDown(KeyCode.Space))
         {
             ToggleAutoSimulation();
         }
     }
+    #endregion
 
-    private void OnEnable()
+    #region Initialization
+    private void InitializeComponents()
     {
-        EventBus.Subscribe("AITurnsCompleted", OnAITurnsCompleted);
+        // Ensure configuration exists
+        if (turnConfig == null)
+        {
+            turnConfig = ScriptableObject.CreateInstance<TurnManagerConfigSO>();
+            Debug.LogWarning("Created default TurnManagerConfig");
+        }
+
+        // Initialize turn state
+        turnState = new TurnState
+        {
+            DefaultAutoSimulation = turnConfig.defaultAutoSimulation
+        };
+
+        // Initialize auto-simulation manager
+        autoSimManager = new AutoSimulationManager(this, turnConfig, turnState);
     }
-    
-    private void OnDisable()
+
+    private void ConfigureAutoSimulationToggle()
     {
-        EventBus.Unsubscribe("AITurnsCompleted", OnAITurnsCompleted);
-        
-        // Make sure to stop auto-simulation when disabled
-        StopAutoSimulation();
+        if (autoSimulationToggle != null)
+        {
+            // Set initial state
+            autoSimulationToggle.isOn = turnState.IsAutoSimulationEnabled;
+            
+            // Add listener for toggle changes
+            autoSimulationToggle.onValueChanged.AddListener(OnAutoSimulationToggleChanged);
+        }
     }
     #endregion
 
     #region Turn Management
-    // Add to TurnManager.cs within the EndTurn method
     public void EndTurn()
     {
-        if (isPlayerTurn)
+        // Only process if it's the player's turn
+        if (turnState.IsPlayerTurn)
         {
             ProcessTurnEnd();
-            Debug.Log("Player Turn Ended. AI's turn now.");
             
-            // Create GameStateManager if it doesn't exist
-            if (GameStateManager.Instance == null)
-            {
-                GameObject gameStateObj = new GameObject("GameStateManager");
-                gameStateObj.AddComponent<GameStateManager>();
-                Debug.Log("Created GameStateManager as it was missing.");
-            }
+            // Ensure GameStateManager exists
+            EnsureGameStateManager();
             
-            // Increment turn counter
-            GameStateManager.Instance.IncrementTurn();
-            
-            // Sync game state
-            GameStateManager.Instance.SyncWithGameSystems();
-            
-            // Trigger events
+            // Trigger turn-related events
             EventBus.Trigger("TurnEnded");
             EventBus.Trigger("PlayerTurnEnded");
-            
-            isPlayerTurn = false;
         }
     }
-        
+
     private void ProcessTurnEnd()
     {
-        Debug.Log("Player Turn Ended. AI's turn now.");
-        EventBus.Trigger("TurnStarted"); // Optional: Add this if you want pre-turn processing
-        EventBus.Trigger("TurnEnded");
-        EventBus.Trigger("PlayerTurnEnded"); // New event for AI to listen to
+        // Log turn progression
+        Debug.Log($"Ending Player Turn. Current Turn: {turnState.CurrentTurn}");
         
-        isPlayerTurn = false;
+        // Trigger pre-turn and turn-end events
+        EventBus.Trigger("TurnStarted");
+        
+        // Switch turn state
+        turnState.AdvanceTurn();
     }
-    
+
     private void OnAITurnsCompleted(object _)
     {
-        Debug.Log("AI Turns Completed. Player's turn now.");
-        EventBus.Trigger("TurnProcessed"); // Update UI after all processing
+        // Log AI turn completion
+        Debug.Log("AI Turns Completed. Returning to Player's turn.");
         
-        isPlayerTurn = true;
+        // Trigger post-processing event
+        EventBus.Trigger("TurnProcessed");
         
-        // If auto-simulation is active, the coroutine will automatically
-        // process the next turn after the delay
+        // Switch back to player turn
+        turnState.SetPlayerTurn(true);
     }
     #endregion
 
-    #region Auto-Simulation Management
+    #region Auto-Simulation Methods
     public void ToggleAutoSimulation()
     {
-        enableAutoSimulation = !enableAutoSimulation;
+        // Toggle auto-simulation state
+        turnState.ToggleAutoSimulation();
         
-        // Update UI toggle if it exists
-        if (autoSimulationToggle != null)
-        {
-            autoSimulationToggle.isOn = enableAutoSimulation;
-        }
+        // Update UI
+        UpdateUIForAutoSimulation();
         
-        if (enableAutoSimulation)
+        // Start or stop simulation
+        if (turnState.IsAutoSimulationEnabled)
         {
-            StartAutoSimulation();
+            autoSimManager.StartAutoSimulation();
         }
         else
         {
-            StopAutoSimulation();
+            autoSimManager.StopAutoSimulation();
         }
-        
-        UpdateSimulationStatus();
     }
-    
+
     private void OnAutoSimulationToggleChanged(bool isOn)
     {
-        enableAutoSimulation = isOn;
+        // Sync toggle state with turn state
+        turnState.SetAutoSimulation(isOn);
+        UpdateUIForAutoSimulation();
         
-        if (enableAutoSimulation)
+        // Manage auto-simulation
+        if (isOn)
         {
-            StartAutoSimulation();
+            autoSimManager.StartAutoSimulation();
         }
         else
         {
-            StopAutoSimulation();
-        }
-        
-        UpdateSimulationStatus();
-    }
-    
-    private void StartAutoSimulation()
-    {
-        if (!isAutoSimulating)
-        {
-            isAutoSimulating = true;
-            currentAutoTurn = 0;
-            autoSimulationCoroutine = StartCoroutine(AutoSimulationRoutine());
-            
-            Debug.Log("Auto-simulation started");
-        }
-    }
-    
-    private void StopAutoSimulation()
-    {
-        if (isAutoSimulating)
-        {
-            isAutoSimulating = false;
-            
-            if (autoSimulationCoroutine != null)
-            {
-                StopCoroutine(autoSimulationCoroutine);
-                autoSimulationCoroutine = null;
-            }
-            
-            Debug.Log("Auto-simulation stopped");
-        }
-    }
-    
-    private IEnumerator AutoSimulationRoutine()
-    {
-        while (isAutoSimulating && currentAutoTurn < maxAutoTurns)
-        {
-            // Process turn if it's the player's turn (wait for AI to complete otherwise)
-            if (isPlayerTurn)
-            {
-                ProcessTurnEnd();
-                currentAutoTurn++;
-                UpdateSimulationStatus();
-            }
-            
-            // Wait between turns
-            yield return new WaitForSeconds(timeBetweenTurns);
-        }
-        
-        // If we've reached max turns, stop auto-simulation
-        if (currentAutoTurn >= maxAutoTurns)
-        {
-            enableAutoSimulation = false;
-            isAutoSimulating = false;
-            Debug.Log($"Auto-simulation completed after {maxAutoTurns} turns");
-            
-            // Update UI toggle
-            if (autoSimulationToggle != null)
-            {
-                autoSimulationToggle.isOn = false;
-            }
-            
-            UpdateSimulationStatus();
+            autoSimManager.StopAutoSimulation();
         }
     }
     #endregion
 
     #region UI Management
+    private void UpdateUIForAutoSimulation()
+    {
+        // Update toggle if exists
+        if (autoSimulationToggle != null)
+        {
+            autoSimulationToggle.isOn = turnState.IsAutoSimulationEnabled;
+        }
+        
+        // Update status text
+        UpdateSimulationStatus();
+    }
+
     private void UpdateSimulationStatus()
     {
         if (simulationStatusText != null)
         {
-            if (enableAutoSimulation)
+            if (turnState.IsAutoSimulationEnabled)
             {
-                simulationStatusText.text = $"Auto-Simulation: ON (Turn {currentAutoTurn}/{maxAutoTurns})";
+                simulationStatusText.text = $"Auto-Simulation: ON (Turn {turnState.CurrentAutoTurn}/{turnConfig.maxAutoTurns})";
                 simulationStatusText.color = Color.green;
             }
             else
@@ -231,6 +203,22 @@ public class TurnManager : MonoBehaviour
                 simulationStatusText.color = Color.white;
             }
         }
+    }
+    #endregion
+
+    #region Utility Methods
+    private void EnsureGameStateManager()
+    {
+        if (GameStateManager.Instance == null)
+        {
+            GameObject gameStateObj = new GameObject("GameStateManager");
+            gameStateObj.AddComponent<GameStateManager>();
+            Debug.Log("Created GameStateManager");
+        }
+        
+        // Increment turn and sync state
+        GameStateManager.Instance.IncrementTurn();
+        GameStateManager.Instance.SyncWithGameSystems();
     }
     #endregion
 }
