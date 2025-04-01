@@ -33,112 +33,24 @@ public class GameManager : MonoBehaviour
             Debug.LogError("GameConfiguration is not assigned! Using default values.");
         }
 
-        // Generate or use predefined map
-        MapDataSO mapData;
-        
-        if (gameConfiguration.useProceduralMap)
-        {
-            // Create map generator
-            MapGenerator generator;
-            
-            if (gameConfiguration.useSavedTerrainMap && gameConfiguration.savedTerrainMap != null)
-            {
-                // Use the saved terrain map parameters
-                generator = new MapGenerator(
-                    gameConfiguration.savedTerrainMap.width,
-                    gameConfiguration.savedTerrainMap.height,
-                    gameConfiguration.nationCount,
-                    gameConfiguration.regionsPerNation,
-                    gameConfiguration.savedTerrainMap.seed
-                );
-                generator.SetTerrainParameters(
-                    gameConfiguration.savedTerrainMap.elevationScale,
-                    gameConfiguration.savedTerrainMap.moistureScale
-                );
-            }
-            else
-            {
-                // Generate with configured parameters
-                Debug.Log("Generating map with configured terrain parameters");
-                int randomSeed = gameConfiguration.useRandomSeed ? 
-                    Random.Range(0, 100000) : gameConfiguration.mapSeed;
-                    
-                generator = new MapGenerator(
-                    gameConfiguration.mapWidth, 
-                    gameConfiguration.mapHeight, 
-                    gameConfiguration.nationCount, 
-                    gameConfiguration.regionsPerNation, 
-                    randomSeed);
-                    
-                generator.SetTerrainParameters(
-                    gameConfiguration.elevationScale, 
-                    gameConfiguration.moistureScale);
-            }
-            
-            // Set terrain types
-            if (mapView.availableTerrainTypes != null && mapView.availableTerrainTypes.Length > 0)
-            {
-                Dictionary<string, TerrainTypeDataSO> terrainTypes = new Dictionary<string, TerrainTypeDataSO>();
-                foreach (var terrain in mapView.availableTerrainTypes)
-                {
-                    if (terrain != null)
-                    {
-                        terrainTypes[terrain.terrainName] = terrain;
-                    }
-                }
-                
-                if (terrainTypes.Count > 0)
-                {
-                    generator.SetTerrainTypes(terrainTypes);
-                }
-            }
-            // Set nation templates if available
-            if (nationTemplates != null && nationTemplates.Length > 0)
-            {
-                generator.SetNationTemplates(nationTemplates);
-            }
-
-            // Generate the map
-            mapData = generator.GenerateMap();
-        }
-        else
-        {
-            // Use predefined map
-            mapData = gameConfiguration.predefinedMapData;
-            
-            if (mapData == null)
-            {
-                Debug.LogError("No predefined map data assigned! Falling back to procedural generation.");
-                
-                // Fall back to a basic procedural generation
-                MapGenerator fallbackGenerator = new MapGenerator(
-                    10, 10, 3, 5, Random.Range(0, 100000));
-                    
-                mapData = fallbackGenerator.GenerateMap();
-            }
-        }
-        
-        // Assign generated map data to MapView
-        mapView.mapData = mapData;
-        
-        // Initialize model with the map data and terrain types
-        Dictionary<string, TerrainTypeDataSO> terrainTypesDict = new Dictionary<string, TerrainTypeDataSO>();
-        if (mapView.availableTerrainTypes != null)
-        {
-            foreach (var terrain in mapView.availableTerrainTypes)
-            {
-                if (terrain != null)
-                {
-                    terrainTypesDict[terrain.terrainName] = terrain;
-                }
-            }
-        }
-
-        // Initialize MapModel
-        mapModel = new MapModel(mapData, terrainTypesDict);
-        
-        // Initialize NationModel with the same map data
-        nationModel = new NationModel(mapData);
+    // Create map using the factory
+    MapGenerationFactory mapFactory = new MapGenerationFactory();
+    MapDataSO mapData = mapFactory.CreateMap(
+        gameConfiguration,
+        mapView.availableTerrainTypes,
+        nationTemplates
+    );
+    
+    // Assign generated map data to MapView
+    mapView.mapData = mapData;
+    
+    // Create terrain dictionary
+    Dictionary<string, TerrainTypeDataSO> terrainTypesDict = 
+        mapFactory.CreateTerrainDictionary(mapView.availableTerrainTypes);
+    
+    // Initialize models
+    mapModel = new MapModel(mapData, terrainTypesDict);
+    nationModel = new NationModel(mapData);
         
         // Register all regions with the NationModel
         RegisterRegionsWithNations();
