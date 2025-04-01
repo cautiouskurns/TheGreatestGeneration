@@ -257,4 +257,10 @@ public class ResourceMarket : MonoBehaviour
         
         return 1.0f;
     }
+
+    public void AdjustPrice(string resourceType, float newPrice)
+    {
+        // Implementation to adjust the price of a specific resource
+        // You might want to store this in a dictionary or other data structure
+    }
 }

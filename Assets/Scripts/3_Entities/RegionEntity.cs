@@ -53,6 +53,11 @@ public class RegionEntity
         set { economy.productionDelta = value; }
     }
     
+    public float infrastructureLevel {
+        get { return economy.infrastructureLevel; }
+        set { economy.infrastructureLevel = value; }
+    }
+    
     // Population properties
     public int laborAvailable {
         get { return population.laborAvailable; }

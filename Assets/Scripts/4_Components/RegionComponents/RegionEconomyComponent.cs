@@ -10,6 +10,8 @@ public class RegionEconomyComponent
     public int production;
     public float productionEfficiency = 1.0f;
     public float capitalInvestment = 10.0f;
+
+    public float infrastructureLevel = 1.0f;
     
     // Change tracking
     public int wealthDelta = 0;

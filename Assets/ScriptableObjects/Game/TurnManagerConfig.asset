@@ -13,5 +13,5 @@ MonoBehaviour:
   m_Name: TurnManagerConfig
   m_EditorClassIdentifier: 
   defaultAutoSimulation: 0
-  timeBetweenTurns: 3
+  timeBetweenTurns: 1
   maxAutoTurns: 100
