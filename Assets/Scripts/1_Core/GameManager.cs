@@ -197,6 +197,11 @@ public class GameManager : MonoBehaviour
     }
     #endregion
 
+    public MapModel GetMapModel()
+    {
+        return mapModel;
+    }
+
     #region Public Access Methods
     /// <summary>
     /// Get a specific region by name

@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using TMPro;
 using System.Collections;
 
-public class MapView : MonoBehaviour
+public partial class MapView : MonoBehaviour
 {
     [Header("Map Data")]
     public MapDataSO mapData;
@@ -381,45 +381,45 @@ public class MapView : MonoBehaviour
     }
     
     // Updated visual colors method
-    private void UpdateRegionVisualColors(RegionEntity region)
-    {
-        if (!regionObjects.ContainsKey(region.regionName))
-            return;
+    // private void UpdateRegionVisualColors(RegionEntity region)
+    // {
+    //     if (!regionObjects.ContainsKey(region.regionName))
+    //         return;
                 
-        GameObject regionParent = regionObjects[region.regionName];
+    //     GameObject regionParent = regionObjects[region.regionName];
         
-        // Update terrain color
-        Transform terrainTransform = regionParent.transform.Find("Terrain");
-        Transform borderTransform = regionParent.transform.Find("Border");
+    //     // Update terrain color
+    //     Transform terrainTransform = regionParent.transform.Find("Terrain");
+    //     Transform borderTransform = regionParent.transform.Find("Border");
         
-        if (terrainTransform != null && borderTransform != null)
-        {
-            SpriteRenderer terrainRenderer = terrainTransform.GetComponent<SpriteRenderer>();
-            SpriteRenderer borderRenderer = borderTransform.GetComponent<SpriteRenderer>();
+    //     if (terrainTransform != null && borderTransform != null)
+    //     {
+    //         SpriteRenderer terrainRenderer = terrainTransform.GetComponent<SpriteRenderer>();
+    //         SpriteRenderer borderRenderer = borderTransform.GetComponent<SpriteRenderer>();
             
-            // Set border color to nation color
-            borderRenderer.color = region.regionColor;
+    //         // Set border color to nation color
+    //         borderRenderer.color = region.regionColor;
             
-            // Set terrain color based on terrain type if available
-            if (showTerrainColors && regionTerrainMap.ContainsKey(region.regionName))
-            {
-                TerrainTypeDataSO terrain = regionTerrainMap[region.regionName];
-                terrainRenderer.color = terrain.baseColor;
-            }
-            else
-            {
-                // If not showing terrain colors, use a lighter version of the nation color
-                terrainRenderer.color = Color.Lerp(region.regionColor, Color.white, 0.3f);
-            }
+    //         // Set terrain color based on terrain type if available
+    //         if (showTerrainColors && regionTerrainMap.ContainsKey(region.regionName))
+    //         {
+    //             TerrainTypeDataSO terrain = regionTerrainMap[region.regionName];
+    //             terrainRenderer.color = terrain.baseColor;
+    //         }
+    //         else
+    //         {
+    //             // If not showing terrain colors, use a lighter version of the nation color
+    //             terrainRenderer.color = Color.Lerp(region.regionColor, Color.white, 0.3f);
+    //         }
             
-            // Update highlight data if it exists
-            HighlightData highlightData = regionParent.GetComponent<HighlightData>();
-            if (highlightData != null)
-            {
-                highlightData.originalBorderColor = region.regionColor;
-            }
-        }
-    }
+    //         // Update highlight data if it exists
+    //         HighlightData highlightData = regionParent.GetComponent<HighlightData>();
+    //         if (highlightData != null)
+    //         {
+    //             highlightData.originalBorderColor = region.regionColor;
+    //         }
+    //     }
+    // }
 
     // Show economy changes with visual effects
     public void ShowEconomyChanges(RegionEntity region)
@@ -518,4 +518,145 @@ public class MapView : MonoBehaviour
         }
     }
 
+}
+
+
+public partial class MapView : MonoBehaviour
+{
+    // Add this enum at the top of the file, with your other enums or at class level
+    public enum MapOverlayMode
+    {
+        Default,      // Normal terrain view
+        Wealth,       // Color based on region wealth
+        Population,   // Color based on population
+        Production    // Color based on production
+    }
+
+    // Add this field with your other header attributes
+    [Header("Overlay Visualization")]
+    public MapOverlayMode currentOverlayMode = MapOverlayMode.Default;
+    
+    private MapModel mapModel;
+
+    // Add this method to your existing methods
+    public void SetOverlayMode(MapOverlayMode newMode)
+    {
+        currentOverlayMode = newMode;
+        UpdateAllRegionVisuals();
+    }
+
+    // Modify your existing UpdateRegionVisualColors method
+    private void UpdateRegionVisualColors(RegionEntity region)
+    {
+        if (!regionObjects.ContainsKey(region.regionName))
+            return;
+                
+        GameObject regionParent = regionObjects[region.regionName];
+        
+        // Update terrain color
+        Transform terrainTransform = regionParent.transform.Find("Terrain");
+        Transform borderTransform = regionParent.transform.Find("Border");
+        
+        if (terrainTransform != null && borderTransform != null)
+        {
+            SpriteRenderer terrainRenderer = terrainTransform.GetComponent<SpriteRenderer>();
+            SpriteRenderer borderRenderer = borderTransform.GetComponent<SpriteRenderer>();
+            
+            // Set border color to nation color
+            borderRenderer.color = region.regionColor;
+            
+            // Determine terrain color based on current overlay mode
+            Color terrainColor = GetTerrainColorForOverlayMode(region);
+            
+            terrainRenderer.color = terrainColor;
+        }
+    }
+
+    // Add these helper methods
+    private Color GetTerrainColorForOverlayMode(RegionEntity region)
+    {
+        switch (currentOverlayMode)
+        {
+            case MapOverlayMode.Default:
+                return GetDefaultTerrainColor(region);
+            
+            case MapOverlayMode.Wealth:
+                return GetWealthColor(region);
+            
+            case MapOverlayMode.Population:
+                return GetPopulationColor(region);
+            
+            case MapOverlayMode.Production:
+                return GetProductionColor(region);
+            
+            default:
+                return GetDefaultTerrainColor(region);
+        }
+    }
+
+    private Color GetDefaultTerrainColor(RegionEntity region)
+    {
+        // If terrain type exists, use its base color
+        if (region.terrainType != null)
+        {
+            return region.terrainType.baseColor;
+        }
+        
+        // Fallback to a light version of nation color
+        return Color.Lerp(region.regionColor, Color.white, 0.3f);
+    }
+
+    private Color GetWealthColor(RegionEntity region)
+    {
+        // Normalize wealth (assuming 0-1000 range)
+        float normalizedWealth = Mathf.Clamp01(region.wealth / 1000f);
+        
+        // Interpolate between light yellow (low wealth) and dark yellow (high wealth)
+        Color lowWealth = new Color(1f, 1f, 0.7f); // Light yellow
+        Color highWealth = new Color(1f, 0.8f, 0f); // Dark yellow
+        
+        return Color.Lerp(lowWealth, highWealth, normalizedWealth);
+    }
+
+    private Color GetPopulationColor(RegionEntity region)
+    {
+        // Normalize population (assuming 0-500 range)
+        float normalizedPopulation = Mathf.Clamp01(region.laborAvailable / 500f);
+        
+        // Interpolate between light green (low population) and dark green (high population)
+        Color lowPopulation = new Color(0.8f, 1f, 0.8f); // Light green
+        Color highPopulation = new Color(0f, 0.6f, 0f); // Dark green
+        
+        return Color.Lerp(lowPopulation, highPopulation, normalizedPopulation);
+    }
+
+    private Color GetProductionColor(RegionEntity region)
+    {
+        // Normalize production (assuming 0-100 range)
+        float normalizedProduction = Mathf.Clamp01(region.production / 100f);
+        
+        // Interpolate between light blue (low production) and dark blue (high production)
+        Color lowProduction = new Color(0.8f, 0.9f, 1f); // Light blue
+        Color highProduction = new Color(0f, 0f, 0.8f); // Dark blue
+        
+        return Color.Lerp(lowProduction, highProduction, normalizedProduction);
+    }
+
+    // Method to update all region visuals (call this when changing overlay mode)
+    private void UpdateAllRegionVisuals()
+    {
+        // Ensure mapModel is available before trying to use it
+        if (mapModel == null)
+        {
+            mapModel = FindFirstObjectByType<GameManager>()?.GetMapModel();
+        }
+
+        if (mapModel != null)
+        {
+            foreach (var regionEntry in mapModel.GetAllRegions())
+            {
+                UpdateRegionVisualColors(regionEntry.Value);
+            }
+        }
+    }
 }
