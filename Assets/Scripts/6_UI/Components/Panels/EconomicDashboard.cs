@@ -216,26 +216,21 @@ public class EconomicDashboard : MonoBehaviour
     {
         if (gameManager == null) return;
         
-        // Clear existing items in a safe way
+        // Create a pool of existing items for reuse
+        List<GameObject> pooledItems = new List<GameObject>();
+        
+        // Move all existing items to our pool
         if (resourceListContainer != null)
         {
-            foreach (Transform child in resourceListContainer)
+            int childCount = resourceListContainer.childCount;
+            for (int i = 0; i < childCount; i++)
             {
-                if (child.gameObject != null)
+                Transform child = resourceListContainer.GetChild(i);
+                if (child != null && child.gameObject != null)
                 {
-                    // Use DestroyImmediate only in editor, otherwise use Destroy
-                    #if UNITY_EDITOR
-                    if (Application.isEditor && !Application.isPlaying)
-                    {
-                        DestroyImmediate(child.gameObject);
-                    }
-                    else
-                    {
-                        Destroy(child.gameObject);
-                    }
-                    #else
-                    Destroy(child.gameObject);
-                    #endif
+                    // Disable but keep in hierarchy
+                    child.gameObject.SetActive(false);
+                    pooledItems.Add(child.gameObject);
                 }
             }
         }
@@ -347,12 +342,26 @@ public class EconomicDashboard : MonoBehaviour
             return balanceA.CompareTo(balanceB);
         });
         
-        // Create list items
+        // Create or reuse list items
+        int itemIndex = 0;
         foreach (var resource in filteredResources)
         {
-            GameObject item = Instantiate(resourceItemPrefab, resourceListContainer);
-            var resourceItem = item.GetComponent<ResourceListItem>();
+            GameObject item;
             
+            // Reuse an item from the pool if available
+            if (itemIndex < pooledItems.Count)
+            {
+                item = pooledItems[itemIndex];
+                item.SetActive(true);
+                itemIndex++;
+            }
+            else
+            {
+                // Create new item if needed
+                item = Instantiate(resourceItemPrefab, resourceListContainer);
+            }
+            
+            var resourceItem = item.GetComponent<ResourceListItem>();
             if (resourceItem != null)
             {
                 float amount = totalResources[resource];
@@ -368,6 +377,12 @@ public class EconomicDashboard : MonoBehaviour
                     balance
                 );
             }
+        }
+        
+        // Deactivate any remaining pooled items that weren't used
+        for (int i = itemIndex; i < pooledItems.Count; i++)
+        {
+            pooledItems[i].SetActive(false);
         }
         
         // Update resource dropdown for price graph

@@ -1,4 +1,4 @@
-// GameManager.cs - Updated version with NationModel integration
+// GameManager.cs - Updated to use gameConfiguration
 using UnityEngine;
 using System.Collections.Generic;
 
@@ -7,22 +7,7 @@ public class GameManager : MonoBehaviour
     #region References
     public MapView mapView;
     public RegionInfoUI regionInfoUI;
-    #endregion
-
-    #region Map Generation Settings
-    [Header("Map Generation")]
-    public bool useProceduralMap = true;
-    public MapDataSO predefinedMapData;
-    
-    [Header("Terrain Generation")]
-    public bool useSavedTerrainMap = true;
-    public TerrainMapDataSO savedTerrainMap;
-    
-    [Header("Procedural Map Settings")]
-    public int mapWidth = 10;
-    public int mapHeight = 10;
-    public int nationCount = 3;
-    public int regionsPerNation = 5;
+    [SerializeField] private GameConfigurationSO gameConfiguration;
     #endregion
 
     #region Models
@@ -42,36 +27,52 @@ public class GameManager : MonoBehaviour
     #region Initialization
     private void Awake()
     {
+        // Check if gameConfiguration is assigned
+        if (gameConfiguration == null)
+        {
+            Debug.LogError("GameConfiguration is not assigned! Using default values.");
+        }
+
         // Generate or use predefined map
         MapDataSO mapData;
         
-        if (useProceduralMap)
+        if (gameConfiguration.useProceduralMap)
         {
             // Create map generator
             MapGenerator generator;
             
-            if (useSavedTerrainMap && savedTerrainMap != null)
+            if (gameConfiguration.useSavedTerrainMap && gameConfiguration.savedTerrainMap != null)
             {
                 // Use the saved terrain map parameters
                 generator = new MapGenerator(
-                    savedTerrainMap.width,
-                    savedTerrainMap.height,
-                    nationCount,
-                    regionsPerNation,
-                    savedTerrainMap.seed
+                    gameConfiguration.savedTerrainMap.width,
+                    gameConfiguration.savedTerrainMap.height,
+                    gameConfiguration.nationCount,
+                    gameConfiguration.regionsPerNation,
+                    gameConfiguration.savedTerrainMap.seed
                 );
                 generator.SetTerrainParameters(
-                    savedTerrainMap.elevationScale,
-                    savedTerrainMap.moistureScale
+                    gameConfiguration.savedTerrainMap.elevationScale,
+                    gameConfiguration.savedTerrainMap.moistureScale
                 );
             }
             else
             {
-                // Generate with random parameters
-                Debug.Log("Generating map with random terrain parameters");
-                int randomSeed = Random.Range(0, 100000);
-                generator = new MapGenerator(mapWidth, mapHeight, nationCount, regionsPerNation, randomSeed);
-                generator.SetTerrainParameters(30f, 50f); // Default values
+                // Generate with configured parameters
+                Debug.Log("Generating map with configured terrain parameters");
+                int randomSeed = gameConfiguration.useRandomSeed ? 
+                    Random.Range(0, 100000) : gameConfiguration.mapSeed;
+                    
+                generator = new MapGenerator(
+                    gameConfiguration.mapWidth, 
+                    gameConfiguration.mapHeight, 
+                    gameConfiguration.nationCount, 
+                    gameConfiguration.regionsPerNation, 
+                    randomSeed);
+                    
+                generator.SetTerrainParameters(
+                    gameConfiguration.elevationScale, 
+                    gameConfiguration.moistureScale);
             }
             
             // Set terrain types
@@ -103,7 +104,18 @@ public class GameManager : MonoBehaviour
         else
         {
             // Use predefined map
-            mapData = predefinedMapData;
+            mapData = gameConfiguration.predefinedMapData;
+            
+            if (mapData == null)
+            {
+                Debug.LogError("No predefined map data assigned! Falling back to procedural generation.");
+                
+                // Fall back to a basic procedural generation
+                MapGenerator fallbackGenerator = new MapGenerator(
+                    10, 10, 3, 5, Random.Range(0, 100000));
+                    
+                mapData = fallbackGenerator.GenerateMap();
+            }
         }
         
         // Assign generated map data to MapView
@@ -131,22 +143,50 @@ public class GameManager : MonoBehaviour
         // Register all regions with the NationModel
         RegisterRegionsWithNations();
 
-        // Find or create TradeSystem
+        // Find or create TradeSystem with configured settings
         tradeSystem = FindFirstObjectByType<TradeSystem>();
         if (tradeSystem == null)
         {
             GameObject tradeSystemObj = new GameObject("TradeSystem");
             tradeSystem = tradeSystemObj.AddComponent<TradeSystem>();
+            
+            // Apply trade system configuration
+            if (gameConfiguration.tradeSystemConfig != null)
+            {
+                tradeSystem.tradeRadius = gameConfiguration.tradeSystemConfig.baseTradeRadius;
+            }
         }
+        
+        // Set game speed from configuration
+        Time.timeScale = gameConfiguration.gameSpeed;
     }
 
     private void Start()
     {
         // Initialize resources after everything else is set up
         InitializeResources();
+        
+        // Apply any global game settings from configuration
+        ApplyGlobalSettings();
+    }
+    
+    private void ApplyGlobalSettings()
+    {
+        // Apply global economic modifiers if configured
+        if (gameConfiguration.economicModifiers != null)
+        {
+            foreach (var region in mapModel.GetAllRegions().Values)
+            {
+                // Apply global production modifier
+                if (region.economy != null)
+                {
+                    region.economy.productionEfficiency *= gameConfiguration.economicModifiers.globalProductionModifier;
+                }
+            }
+        }
+        
     }
 
-    // Register existing regions with nations
     private void RegisterRegionsWithNations()
     {
         foreach (var regionEntry in mapModel.GetAllRegions())

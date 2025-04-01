@@ -1,0 +1,36 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: edf0949b2069e43b0a145149c4cf964c, type: 3}
+  m_Name: GameConfiguration
+  m_EditorClassIdentifier: 
+  useProceduralMap: 1
+  predefinedMapData: {fileID: 0}
+  useSavedTerrainMap: 1
+  savedTerrainMap: {fileID: 11400000, guid: 120657c9002d24e97834cf57a588e644, type: 2}
+  mapWidth: 10
+  mapHeight: 10
+  nationCount: 3
+  regionsPerNation: 5
+  useRandomSeed: 1
+  mapSeed: 12345
+  elevationScale: 30
+  moistureScale: 50
+  gameSpeed: 1
+  difficultyLevel: 1
+  tradeSystemConfig:
+    baseTradeRadius: 5
+    tradeCostPerDistance: 0.1
+    maxTradeVolume: 100
+  economicModifiers:
+    globalProductionModifier: 1
+    globalWealthModifier: 1
+    resourceGrowthRate: 1
