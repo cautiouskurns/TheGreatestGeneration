@@ -21,7 +21,7 @@ public class EconomicSystem : MonoBehaviour
 
     private void OnEnable()
     {
-        EventBus.Subscribe("TurnEnded", ProcessEconomy);
+        //EventBus.Subscribe("TurnEnded", ProcessEconomy);
     }
 
     private void OnDisable()

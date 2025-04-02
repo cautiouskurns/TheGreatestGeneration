@@ -19,6 +19,7 @@ public class EnhancedEconomicModelSO : ScriptableObject
             { "Materials", 0.5f },
             { "Luxury", 0.7f }
         };
+        
 
         [Tooltip("Cross-price elasticity between resource types")]
         public Dictionary<string, Dictionary<string, float>> crossPriceElasticityMap = 
@@ -206,3 +207,4 @@ public class EnhancedEconomicModelSO : ScriptableObject
             Debug.LogWarning("Price volatility should be between 0 and 1!");
     }
 }
+

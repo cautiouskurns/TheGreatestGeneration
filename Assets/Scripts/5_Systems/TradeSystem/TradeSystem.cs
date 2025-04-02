@@ -457,9 +457,9 @@ public class TradeSystem : MonoBehaviour
             var resources = region.resources.GetAllResources();
             var consumption = region.resources.GetAllConsumptionRates();
             
-            Debug.Log($"Region {region.regionName}:");
-            Debug.Log($"  Resources: {string.Join(", ", resources.Keys)}");
-            Debug.Log($"  Consumption: {string.Join(", ", consumption.Keys)}");
+//            Debug.Log($"Region {region.regionName}:");
+//            Debug.Log($"  Resources: {string.Join(", ", resources.Keys)}");
+//            Debug.Log($"  Consumption: {string.Join(", ", consumption.Keys)}");
             
             // Calculate potential surpluses
             foreach (var entry in resources)
@@ -470,7 +470,7 @@ public class TradeSystem : MonoBehaviour
                 
                 if (amount > consumed * 1.2f)
                 {
-                    Debug.Log($"  SURPLUS: {resourceName} = {amount - (consumed * 1.2f):F1}");
+//                    Debug.Log($"  SURPLUS: {resourceName} = {amount - (consumed * 1.2f):F1}");
                 }
             }
             
@@ -483,7 +483,7 @@ public class TradeSystem : MonoBehaviour
                 
                 if (needed > available)
                 {
-                    Debug.Log($"  DEFICIT: {resourceName} = {needed - available:F1}");
+//                    Debug.Log($"  DEFICIT: {resourceName} = {needed - available:F1}");
                 }
             }
         }

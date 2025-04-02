@@ -36,6 +36,8 @@ public class GameManager : MonoBehaviour
     private ResourceInitializer resourceInitializer;
     #endregion
 
+    private EnhancedEconomicSystem enhancedEconomicSystem;
+
     private void Awake()
     {
         // Initialize factories and initializers
@@ -61,6 +63,16 @@ public class GameManager : MonoBehaviour
         
         // Apply global settings from configuration
         ApplyGlobalSettings();
+
+        enhancedEconomicSystem = FindFirstObjectByType<EnhancedEconomicSystem>();
+        if (enhancedEconomicSystem == null)
+        {
+            GameObject economicSystemObj = new GameObject("EnhancedEconomicSystem");
+            enhancedEconomicSystem = economicSystemObj.AddComponent<EnhancedEconomicSystem>();
+            
+            // Configure with model
+            //enhancedEconomicSystem.economicModel = /* reference to your EnhancedEconomicModelSO */;
+        }
     }
 
     #region Initialization Methods
@@ -274,6 +286,10 @@ public class GameManager : MonoBehaviour
     {
         // Register with nation model
         nationModel?.RegisterRegion(region);
+    }
+
+    public EnhancedEconomicSystem GetEnhancedEconomicSystem() {
+    return enhancedEconomicSystem;
     }
     #endregion
 }

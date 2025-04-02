@@ -12,6 +12,14 @@ public class EnhancedEconomicSystem : MonoBehaviour
     private TradeSystem tradeSystem;
     private ResourceMarket resourceMarket;
 
+    // Add a button in the Inspector to manually trigger debug
+    [ContextMenu("Debug Economic State")]
+    public void InvokeDebugEconomicState()
+    {
+        DebugEconomicState();
+    }
+
+
     private void Awake()
     {
         // Ensure we have an economic model
@@ -35,17 +43,49 @@ public class EnhancedEconomicSystem : MonoBehaviour
 
     private void ProcessEconomicTurn(object _)
     {
+        // Log the start of processing
+        Debug.Log("EnhancedEconomicSystem: Beginning turn processing...");
+
         // Lazy initialization of systems
         InitializeSystems();
 
+        // Check if economic model is assigned
+        if (economicModel == null)
+        {
+            Debug.LogError("EnhancedEconomicSystem: No economic model assigned! Cannot process turn.");
+            return;
+        }
+
+        // Start processing with timestamps
+        System.Diagnostics.Stopwatch stopwatch = new System.Diagnostics.Stopwatch();
+        stopwatch.Start();
+
         // Comprehensive economic turn processing
+        Debug.Log("EnhancedEconomicSystem: Processing supply and demand...");
         ProcessSupplyAndDemand();
+
+        Debug.Log("EnhancedEconomicSystem: Processing production...");
         ProcessProduction();
+
+        Debug.Log("EnhancedEconomicSystem: Processing infrastructure...");
         ProcessInfrastructure();
+
+        Debug.Log("EnhancedEconomicSystem: Processing population consumption...");
         ProcessPopulationConsumption();
+
+        Debug.Log("EnhancedEconomicSystem: Processing economic cycle...");
         ProcessEconomicCycle();
+
+        Debug.Log("EnhancedEconomicSystem: Processing price volatility...");
         ProcessPriceVolatility();
+
+        stopwatch.Stop();
+        Debug.Log($"EnhancedEconomicSystem: Turn processing completed in {stopwatch.ElapsedMilliseconds}ms");
+
+        // Trigger custom event to notify about completion
+        EventBus.Trigger("EnhancedEconomicProcessed", null);
     }
+
 
     private void InitializeSystems()
     {
@@ -327,49 +367,105 @@ public class EnhancedEconomicSystem : MonoBehaviour
     // Comprehensive debug method to output economic state
     public void DebugEconomicState()
     {
-        Debug.Log("--- Comprehensive Economic State ---");
+        Debug.Log("--- Comprehensive Economic State Debug ---");
+        
+        // Ensure all required systems are found if not already referenced
+        if (mapModel == null)
+        {
+            var gameManager = FindFirstObjectByType<GameManager>();
+            if (gameManager != null)
+            {
+                mapModel = gameManager.GetMapModel(); // Ensure this method exists in GameManager
+            }
+        }
+        
+        if (resourceMarket == null)
+        {
+            resourceMarket = FindFirstObjectByType<ResourceMarket>();
+        }
+        
+        var gameStateManager = GameStateManager.Instance;
+        
+        // Check for null references before accessing
+        if (gameStateManager == null)
+        {
+            Debug.LogWarning("GameStateManager is null. Cannot retrieve economic phase information.");
+            return;
+        }
         
         // Economic Cycle Information
-        var gameStateManager = GameStateManager.Instance;
-        Debug.Log($"Current Economic Phase: {gameStateManager.Economy.CurrentEconomicCyclePhase}");
-        Debug.Log($"Turns in Current Phase: {gameStateManager.Economy.TurnsInCurrentPhase}");
+        Debug.Log($"Current Economic Phase: {gameStateManager.Economy?.CurrentEconomicCyclePhase ?? "Unknown"}");
+        Debug.Log($"Turns in Current Phase: {gameStateManager.Economy?.TurnsInCurrentPhase ?? 0}");
         
         // Resource Market Overview
-        Debug.Log("--- Resource Market Prices ---");
-        foreach (var resourceType in resourceMarket.GetAllCurrentPrices().Keys)
+        if (resourceMarket != null)
         {
-            float currentPrice = resourceMarket.GetCurrentPrice(resourceType);
-            float basePrice = resourceMarket.GetBasePrice(resourceType);
-            
-            Debug.Log($"{resourceType}: Current Price = {currentPrice:F2}, Base Price = {basePrice:F2}");
+            Debug.Log("--- Resource Market Prices ---");
+            var currentPrices = resourceMarket.GetAllCurrentPrices();
+            if (currentPrices != null)
+            {
+                foreach (var resourceType in currentPrices.Keys)
+                {
+                    float currentPrice = resourceMarket.GetCurrentPrice(resourceType);
+                    float basePrice = resourceMarket.GetBasePrice(resourceType);
+                    
+                    Debug.Log($"{resourceType}: Current Price = {currentPrice:F2}, Base Price = {basePrice:F2}");
+                }
+            }
+            else
+            {
+                Debug.LogWarning("No resource prices available.");
+            }
+        }
+        else
+        {
+            Debug.LogWarning("ResourceMarket is null. Cannot retrieve market prices.");
         }
         
         // Detailed Region Economic Breakdown
-        Debug.Log("--- Region Economic Details ---");
-        foreach (var region in mapModel.GetAllRegions().Values)
+        if (mapModel != null)
         {
-            Debug.Log($"Region: {region.regionName}");
-            Debug.Log($"  Population: {region.laborAvailable}");
-            Debug.Log($"  Wealth: {region.wealth}");
-            Debug.Log($"  Production: {region.production}");
-            Debug.Log($"  Satisfaction: {region.satisfaction:P2}");
-            
-            // Resource details
-            if (region.resources != null)
+            Debug.Log("--- Region Economic Details ---");
+            var regions = mapModel.GetAllRegions();
+            if (regions != null)
             {
-                Debug.Log("  Resource Details:");
-                var resources = region.resources.GetAllResources();
-                var production = region.resources.GetAllProductionRates();
-                var consumption = region.resources.GetAllConsumptionRates();
-                
-                foreach (var resourceType in resources.Keys)
+                foreach (var regionEntry in regions)
                 {
-                    Debug.Log($"    {resourceType}:");
-                    Debug.Log($"      Amount: {resources[resourceType]:F2}");
-                    Debug.Log($"      Production: {production.GetValueOrDefault(resourceType, 0):F2}");
-                    Debug.Log($"      Consumption: {consumption.GetValueOrDefault(resourceType, 0):F2}");
+                    var region = regionEntry.Value;
+                    if (region == null) continue;
+
+                    Debug.Log($"Region: {region.regionName}");
+                    Debug.Log($"  Population: {region.laborAvailable}");
+                    Debug.Log($"  Wealth: {region.wealth}");
+                    Debug.Log($"  Production: {region.production}");
+                    Debug.Log($"  Satisfaction: {region.satisfaction:P2}");
+                    
+                    // Resource details
+                    if (region.resources != null)
+                    {
+                        Debug.Log("  Resource Details:");
+                        var resources = region.resources.GetAllResources();
+                        var production = region.resources.GetAllProductionRates();
+                        var consumption = region.resources.GetAllConsumptionRates();
+                        
+                        foreach (var resourceType in resources.Keys)
+                        {
+                            Debug.Log($"    {resourceType}:");
+                            Debug.Log($"      Amount: {resources[resourceType]:F2}");
+                            Debug.Log($"      Production: {production.GetValueOrDefault(resourceType, 0):F2}");
+                            Debug.Log($"      Consumption: {consumption.GetValueOrDefault(resourceType, 0):F2}");
+                        }
+                    }
                 }
             }
+            else
+            {
+                Debug.LogWarning("No regions found in MapModel.");
+            }
+        }
+        else
+        {
+            Debug.LogWarning("MapModel is null. Cannot retrieve region details.");
         }
     }
 }
