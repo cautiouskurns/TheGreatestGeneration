@@ -1,3 +1,29 @@
+/// CLASS PURPOSE:
+/// AIActionDisplay is responsible for visually displaying a queue of recent AI actions
+/// in a text panel using Unity UI. Messages are color-coded per nation and fade out after a delay.
+///
+/// CORE RESPONSIBILITIES:
+/// - Enqueue and display recent AI action messages
+/// - Apply nation-specific color formatting to messages
+/// - Auto-clear messages after a timed duration
+///
+/// KEY COLLABORATORS:
+/// - Unity TextMeshProUGUI: Renders the messages to screen
+/// - AI or Event systems: Call DisplayAction to notify of new decisions
+///
+/// CURRENT ARCHITECTURE NOTES:
+/// - Uses a queue to store up to `maxMessages` entries
+/// - Starts a coroutine to clear messages after a duration proportional to message count
+///
+/// REFACTORING SUGGESTIONS:
+/// - Add support for scrolling or fading text transitions
+/// - Allow per-message duration or custom animation hooks
+///
+/// EXTENSION OPPORTUNITIES:
+/// - Integrate with a notification system or message history
+/// - Add audio feedback or iconography for different action types
+/// - Support filtering by AI faction or event category
+
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;

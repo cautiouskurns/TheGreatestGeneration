@@ -1,3 +1,34 @@
+/// CLASS PURPOSE:
+/// NationGenerator procedurally generates nations across a terrain map by placing seeds
+/// and expanding them into territories based on terrain type and proximity rules.
+/// It produces a MapDataSO object containing nation and region information used at runtime.
+/// 
+/// CORE RESPONSIBILITIES:
+/// - Initialize and validate terrain map data
+/// - Place initial nation seeds using distance and terrain constraints
+/// - Expand nation territories using influence rules and terrain resistance
+/// - Generate and return a MapDataSO with fully constructed nations and regions
+/// 
+/// KEY COLLABORATORS:
+/// - TerrainMapDataSO: Supplies terrain data and seed for procedural logic
+/// - MapDataSO: Output object representing the generated nations and their regions
+/// - UnityEngine.Debug: Logs progress and issues during generation
+/// 
+/// CURRENT ARCHITECTURE NOTES:
+/// - Expansion uses a checkerboard iteration pattern for organic borders
+/// - Terrain resistance modifies influence strength per tile
+/// - Nation data includes name, color, and generated region list
+/// 
+/// REFACTORING SUGGESTIONS:
+/// - Move terrain resistance logic into a configurable data profile or ScriptableObject
+/// - Separate seed placement and expansion into strategy classes
+/// - Add more robust validation for terrain and nation parameters
+/// 
+/// EXTENSION OPPORTUNITIES:
+/// - Support factions, capital placement rules, or weighted terrain preferences
+/// - Visualize generation process in editor or runtime
+/// - Enable saving and reloading of generated maps
+
 using UnityEngine;
 using System.Collections.Generic;
 
@@ -301,8 +332,4 @@ public class NationGenerator
         
         return mapData;
     }
-
-    
-
-    
 }

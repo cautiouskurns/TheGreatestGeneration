@@ -2,6 +2,37 @@ using UnityEngine;
 using UnityEngine.UI;
 using System.Collections.Generic;
 
+/// CLASS PURPOSE:
+/// DialogueSystemTester is a development/debugging utility for testing different types of dialogue interactions
+/// in the game. It provides test buttons for basic and state-based dialogue events, including conditional logic
+/// and game state integration.
+/// 
+/// CORE RESPONSIBILITIES:
+/// - Trigger basic dialogue formats: single-line, multi-line, and choice-based.
+/// - Trigger state-based events with embedded outcomes and game state effects.
+/// - Provide sample dialogue events and simulate dynamic scenarios via GameStateManager.
+/// - Refresh UI feedback via GameStateDisplay if available.
+/// 
+/// KEY COLLABORATORS:
+/// - EventDialogueManager: Handles rendering and processing of dialogue events.
+/// - GameStateManager: Supplies context and stores updated game state from outcomes.
+/// - GameStateDisplay: (Optional) Provides visual feedback of the current state for validation.
+/// 
+/// CURRENT ARCHITECTURE NOTES:
+/// - Designed for editor testing and gameplay simulation, not included in final gameplay builds.
+/// - Contains hardcoded test data suitable for development validation.
+/// - Directly manipulates GameStateManager for testing conditional and outcome logic.
+/// 
+/// REFACTORING SUGGESTIONS:
+/// - Externalize sample event definitions to a ScriptableObject or JSON config for modularity.
+/// - Split button setup into a utility or base class for other testing scripts.
+/// - Consider runtime inspector integration to dynamically trigger and monitor test cases.
+/// 
+/// EXTENSION OPPORTUNITIES:
+/// - Integrate more complex scenario templates (e.g., branching chains).
+/// - Enable in-editor simulation runner for multi-turn test scenarios.
+/// - Add support for live preview of outcomes and resulting game state changes.
+
 public class DialogueSystemTester : MonoBehaviour
 {
     [Header("Basic Dialogue Tests")]

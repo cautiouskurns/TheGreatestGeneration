@@ -1,4 +1,31 @@
-// MapManager.cs - Updated version
+/// CLASS PURPOSE:
+/// MapManager handles the instantiation and interaction of 2D region GameObjects
+/// in the Unity scene using data from a RegionMapDataSO asset. It provides user
+/// interaction for selecting regions and displays relevant information in the UI.
+/// 
+/// CORE RESPONSIBILITIES:
+/// - Generate region GameObjects based on static region data
+/// - Handle selection and visual highlighting of regions
+/// - Display selected region name in a UI text field
+/// 
+/// KEY COLLABORATORS:
+/// - RegionMapDataSO: Provides serialized region names, colors, and positions
+/// - RegionBehavior: Attached to region GameObjects to forward interaction events
+/// - TextMeshProUGUI: UI element that displays selected region information
+/// 
+/// CURRENT ARCHITECTURE NOTES:
+/// - Uses a dictionary to track region GameObjects by name
+/// - Highlights selected regions by changing their SpriteRenderer color
+/// 
+/// REFACTORING SUGGESTIONS:
+/// - Separate UI and visual logic into dedicated controller or display class
+/// - Encapsulate region color reset logic into a reusable method
+/// 
+/// EXTENSION OPPORTUNITIES:
+/// - Integrate with gameplay systems for region-based actions
+/// - Support multiple selection or lasso tool
+/// - Add tooltip or popup with richer region data
+
 using UnityEngine;
 using System.Collections.Generic;
 using TMPro;

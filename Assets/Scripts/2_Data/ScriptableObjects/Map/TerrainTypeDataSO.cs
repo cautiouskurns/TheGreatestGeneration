@@ -1,8 +1,32 @@
 using UnityEngine;
 
-/// <summary>
-/// Defines properties for different terrain types that can exist in regions
-/// </summary>
+/// CLASS PURPOSE:
+/// TerrainTypeDataSO defines the visual and gameplay properties of different terrain types
+/// that can be applied to regions across the map, affecting movement, economics, and appearance.
+///
+/// CORE RESPONSIBILITIES:
+/// - Store visual identifiers such as icons, textures, and base color
+/// - Define terrain modifiers that impact economic sectors (agriculture, mining, etc.)
+/// - Specify passability and natural border status to influence gameplay and AI logic
+///
+/// KEY COLLABORATORS:
+/// - MapManager: Applies terrain visuals and mechanics to map regions
+/// - RegionController: References terrain effects to calculate regional outputs and behaviors
+/// - UIManager: Displays terrain data in tooltips, summaries, or overlays
+///
+/// CURRENT ARCHITECTURE NOTES:
+/// - Uses scalar multipliers for sector-based bonuses
+/// - Sector multipliers are accessed via string-based lookup method
+///
+/// REFACTORING SUGGESTIONS:
+/// - Replace string-based lookup in GetMultiplierForSector with an enum-based system
+/// - Consider grouping sector bonuses into a dictionary or serializable structure for scalability
+///
+/// EXTENSION OPPORTUNITIES:
+/// - Add terrain-based movement cost or combat modifiers
+/// - Support dynamic effects or seasonal interactions
+/// - Integrate with event triggers for biome-specific events or bonuses
+
 [CreateAssetMenu(fileName = "NewTerrainType", menuName = "Game Data/Terrain Type")]
 public class TerrainTypeDataSO : ScriptableObject
 {

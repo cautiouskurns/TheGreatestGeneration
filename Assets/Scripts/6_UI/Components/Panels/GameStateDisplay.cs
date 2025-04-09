@@ -1,3 +1,32 @@
+/// CLASS PURPOSE:
+/// GameStateDisplay is a UI controller that formats and renders a summary of the current
+/// game state, including economic conditions, diplomatic relations, regional satisfaction,
+/// and decision history.
+///
+/// CORE RESPONSIBILITIES:
+/// - Display current turn, economic phase, and regional satisfaction
+/// - Show lists of resources in shortage or surplus
+/// - Present diplomatic relations and decision history
+/// - Refresh UI content on user interaction or dialogue completion
+///
+/// KEY COLLABORATORS:
+/// - GameStateManager: Primary data source for all displayed game state information
+/// - EventBus: Used to listen for dialogue-related or UI-refreshing events
+/// - Unity UI (TextMeshProUGUI, Button): Displays formatted state data and supports user interaction
+///
+/// CURRENT ARCHITECTURE NOTES:
+/// - Uses HTML-style formatting for rich UI text display
+/// - Event-driven and manual update triggers ensure the UI stays in sync with game state
+///
+/// REFACTORING SUGGESTIONS:
+/// - Split formatting logic into a separate builder class or helper methods
+/// - Improve modularity by using subcomponents or widgets for each section
+///
+/// EXTENSION OPPORTUNITIES:
+/// - Add filtering or sorting options for regions and decisions
+/// - Include graphs or charts for economic or satisfaction trends
+/// - Support multi-language or accessibility features in the UI
+
 using UnityEngine;
 using TMPro;
 using UnityEngine.UI;

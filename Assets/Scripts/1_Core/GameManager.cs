@@ -1,10 +1,42 @@
 using UnityEngine;
 using System.Collections.Generic;
 
-/// <summary>
-/// Central game management class responsible for high-level game initialization and coordination
-/// Follows MVC and ECS architectural patterns
-/// </summary>
+/// CLASS PURPOSE:
+/// GameManager serves as the central orchestration layer responsible for initializing and connecting
+/// the game's core systems and models at runtime, particularly during the early Unity lifecycle stages.
+///
+/// CORE RESPONSIBILITIES:
+/// - Load configuration data and resources (SO-based) for use during runtime
+/// - Initialize map, terrain, region, and nation structures
+/// - Set up core models: MapModel, NationModel, and TradeSystem
+/// - Configure and instantiate supporting systems (economic systems, resource logic)
+/// - Subscribe to core game events (e.g., TurnEnded) and dispatch processing logic
+///
+/// KEY COLLABORATORS:
+/// - GameConfigurationSO, NationTemplate, TerrainTypeDataSO: ScriptableObjects for static game data
+/// - MapModel, NationModel: Store game state for regions and nations
+/// - TradeSystem: Manages inter-region resource movement
+/// - EventBus: Facilitates loose coupling between components through event broadcasting
+/// - EnhancedEconomicSystem: Optional runtime economic logic system
+///
+/// CURRENT ARCHITECTURE NOTES:
+/// - Modular and well-isolated initialization logic through factories and helper classes
+/// - Region-based segmentation aids readability and maintenance
+/// - Hard references to serialized fields reduce flexibility (e.g., no DI or dynamic reloading)
+/// - Logic for game lifecycle and system startup still embedded directly in MonoBehaviour
+///
+/// REFACTORING SUGGESTIONS:
+/// - Introduce a GameLifecycleController to encapsulate start/stop/reset logic
+/// - Abstract initialization flows to allow for testability or custom modes (e.g., sandbox/test runs)
+/// - Replace direct component discovery (FindFirstObjectByType) with dependency injection
+/// - Consider breaking apart responsibilities across separate system setup classes
+///
+/// EXTENSION OPPORTUNITIES:
+/// - Centralized logging or analytics system to track state over time
+/// - Hook into mod systems for extensibility of map, nations, or economic rules
+/// - Scenario loader to dynamically apply different starting configurations
+///
+
 public class GameManager : MonoBehaviour
 {
     #region Configuration References

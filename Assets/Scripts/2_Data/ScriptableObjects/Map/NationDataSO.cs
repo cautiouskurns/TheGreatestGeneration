@@ -1,8 +1,33 @@
 using UnityEngine;
 
-/// <summary>
-/// Represents a nation template with its properties, regions, and starting conditions.
-/// </summary>
+/// CLASS PURPOSE:
+/// NationDataSO defines a template for a nation within the game, specifying its
+/// name, visual identity, constituent regions, starting resources, and national traits.
+///
+/// CORE RESPONSIBILITIES:
+/// - Store static metadata and initial economic conditions for a nation
+/// - Define the set of regions that make up the nation
+/// - Attach modifiers and traits that influence national behavior or strategy
+///
+/// KEY COLLABORATORS:
+/// - MapDataSO: References a collection of NationDataSOs to define the full game map
+/// - MapManager: Uses this data to instantiate nations and their regional entities
+/// - RegionEntity: Builds region behavior and characteristics based on RegionData
+///
+/// CURRENT ARCHITECTURE NOTES:
+/// - Regions are embedded directly in the nation as serializable structs
+/// - Region type references are string-based to avoid circular dependencies
+/// - Traits are configurable with sector-specific modifiers
+///
+/// REFACTORING SUGGESTIONS:
+/// - Separate RegionData into its own ScriptableObject to allow reuse or modular setups
+/// - Introduce enums or validated references for sectors and region types
+///
+/// EXTENSION OPPORTUNITIES:
+/// - Include diplomacy attributes, cultural tags, or faction alignment
+/// - Add support for dynamic starting conditions or procedural trait generation
+/// - Track historical data or events tied to the nation
+
 [CreateAssetMenu(fileName = "NewNation", menuName = "Game Data/Nation")]
 public class NationDataSO : ScriptableObject
 {

@@ -1,3 +1,33 @@
+/// CLASS PURPOSE:
+/// TabGroup manages a set of UITabButtons and associated content panels,
+/// handling tab selection, visual state updates, and page activation logic
+/// to support tab-based UI navigation in Unity.
+///
+/// CORE RESPONSIBILITIES:
+/// - Register and initialize UITabButtons and their corresponding content panels
+/// - Handle tab selection and invoke appropriate visual updates
+/// - Control panel visibility to reflect the currently selected tab
+/// - Provide hover feedback via OnTabEnter and OnTabExit
+///
+/// KEY COLLABORATORS:
+/// - UITabButton: Individual tab elements that report user interaction
+/// - Unity UI (Button, GameObject): Used to trigger and display tab pages
+///
+/// CURRENT ARCHITECTURE NOTES:
+/// - Uses lambda with index capture to ensure correct tab linkage
+/// - Defaults to selecting the first tab if available on Start
+/// - Handles tabs and pages in parallel lists based on index alignment
+///
+/// REFACTORING SUGGESTIONS:
+/// - Replace parallel list management with a data structure linking tabs to pages
+/// - Add null checks and validation for mismatched list lengths
+/// - Provide external API for programmatic tab switching
+///
+/// EXTENSION OPPORTUNITIES:
+/// - Animate transitions between tab pages
+/// - Add keyboard/gamepad navigation support
+/// - Track selected tab state for persistence or analytics
+
 using UnityEngine;
 
 using UnityEngine.UI;

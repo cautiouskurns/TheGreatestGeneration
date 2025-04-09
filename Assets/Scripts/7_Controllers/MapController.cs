@@ -1,4 +1,33 @@
-// MapController.cs - Aligned with EventBus
+/// CLASS PURPOSE:
+/// MapController acts as a bridge between the map view and the broader game logic,
+/// handling region selection events, updating the visual highlights, and displaying
+/// region information on the UI.
+///
+/// CORE RESPONSIBILITIES:
+/// - Listen to region click events and handle region selection
+/// - Delegate model updates to the GameManager
+/// - Control visual highlights on the map view
+/// - Update region-specific information text panel
+///
+/// KEY COLLABORATORS:
+/// - MapView: Applies visual highlights to selected regions
+/// - GameManager: Handles model-level selection and updates
+/// - EventBus: Listens for region click events dispatched by the user
+/// - TextMeshProUGUI: Displays region-specific info (e.g., wealth, production)
+///
+/// CURRENT ARCHITECTURE NOTES:
+/// - Utilizes EventBus for decoupled communication
+/// - Retrieves static region data from MapDataSO via MapView
+///
+/// REFACTORING SUGGESTIONS:
+/// - Decouple UI update logic into a separate display handler or panel controller
+/// - Store a cached region lookup dictionary for faster access
+///
+/// EXTENSION OPPORTUNITIES:
+/// - Add tooltip, contextual info, or region action menu
+/// - Allow deselection or multi-region selection support
+/// - Trigger additional updates (e.g., camera focus or audio feedback) on selection
+
 using UnityEngine;
 using TMPro;
 

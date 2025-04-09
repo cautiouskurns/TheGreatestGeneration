@@ -1,3 +1,30 @@
+/// CLASS PURPOSE:
+/// UITabButton represents a single interactive tab in a tab-based UI system.
+/// It manages its visual state and delegates interaction events to the parent TabGroup.
+///
+/// CORE RESPONSIBILITIES:
+/// - Handle mouse hover events to notify the parent tab group
+/// - Set its visual color based on active/inactive state
+/// - Store reference to the owning TabGroup for delegation
+///
+/// KEY COLLABORATORS:
+/// - TabGroup: Manages the collection of UITabButtons and controls tab logic
+/// - UnityEngine.UI.Image: Used to visually update the tab's background color
+/// - UnityEngine.EventSystems: Enables pointer enter/exit handling
+///
+/// CURRENT ARCHITECTURE NOTES:
+/// - Relies on background Image being present on the same GameObject
+/// - Uses color values provided by the TabGroup for visual consistency
+///
+/// REFACTORING SUGGESTIONS:
+/// - Add null checks or error handling for missing TabGroup or Image
+/// - Expose current state for querying or binding from other scripts
+///
+/// EXTENSION OPPORTUNITIES:
+/// - Add visual transitions or animations for state changes
+/// - Support additional states (e.g., disabled, hovered) with separate styles
+/// - Integrate audio feedback or accessibility support
+
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;

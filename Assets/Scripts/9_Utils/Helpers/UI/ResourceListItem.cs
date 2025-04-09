@@ -1,3 +1,31 @@
+/// CLASS PURPOSE:
+/// ResourceListItem is a UI helper component that populates a single line item in a
+/// resource display panel. It visualizes key metrics such as current amount, production,
+/// consumption, and net balance for a given resource, along with associated icons and trends.
+/// 
+/// CORE RESPONSIBILITIES:
+/// - Display resource name, quantity, and per-turn production/consumption
+/// - Format and color-code the net resource balance
+/// - Retrieve and assign resource icons from the ResourceRegistry
+/// - Indicate trend direction with an arrow-style image
+/// 
+/// KEY COLLABORATORS:
+/// - ResourceRegistry: Provides access to resource metadata including icons
+/// - Unity UI (TextMeshProUGUI, Image): Displays textual and visual elements of each resource line
+/// 
+/// CURRENT ARCHITECTURE NOTES:
+/// - Uses null checks for each UI reference to support flexible prefab setups
+/// - Formats floats with one decimal precision and visual cues for balance direction
+/// 
+/// REFACTORING SUGGESTIONS:
+/// - Move balance formatting logic into a helper method or formatter class
+/// - Consider caching the icon lookup if used repeatedly for performance
+/// 
+/// EXTENSION OPPORTUNITIES:
+/// - Add tooltip or extended data on hover
+/// - Animate trend indicator for dynamic feedback
+/// - Support different icon styles or rarity indicators per resource
+
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;

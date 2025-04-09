@@ -1,3 +1,36 @@
+/// CLASS PURPOSE:
+/// NationModel is responsible for managing all nations in the game world,
+/// initializing their data from static map configuration and tracking nation-level information.
+/// It acts as the central registry for nations and supports selection, updates, and turn progression.
+///
+/// CORE RESPONSIBILITIES:
+/// - Initialize NationEntity instances from MapDataSO
+/// - Register regions to appropriate nations
+/// - Support nation selection and notify systems via EventBus
+/// - Update nation-level economic and resource data each turn
+/// - Aggregate global resource balances across all nations
+///
+/// KEY COLLABORATORS:
+/// - MapDataSO: Supplies nation metadata (name, color)
+/// - RegionEntity: Represents constituent parts of each nation
+/// - NationEntity: Stores nation-level logic and aggregates
+/// - EventBus: Dispatches changes like selection or updates
+///
+/// CURRENT ARCHITECTURE NOTES:
+/// - Regions must call RegisterRegion after instantiation
+/// - Uses dictionary for fast nation lookups by name
+/// - Fires events on nation selection and update
+///
+/// REFACTORING SUGGESTIONS:
+/// - Consider making selection logic event-driven (e.g., subscribe to RegionSelected)
+/// - Add error handling for duplicate nation entries
+/// - Move GetGlobalResourceBalance to a dedicated economy manager if it grows
+///
+/// EXTENSION OPPORTUNITIES:
+/// - Add support for AI strategies and behaviors per nation
+/// - Include diplomatic relationships or alliances
+/// - Track nation-level historical metrics across turns
+
 using System.Collections.Generic;
 using UnityEngine;
 

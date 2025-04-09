@@ -1,3 +1,35 @@
+/// CLASS PURPOSE:
+/// EconomicDashboard manages the in-game economic overview panel, providing players
+/// with up-to-date statistics, trends, and trade data. It aggregates and visualizes
+/// resource production, consumption, population, and market behavior.
+///
+/// CORE RESPONSIBILITIES:
+/// - Display total wealth, production, population, and satisfaction metrics
+/// - Track and graph trends in key economic indicators
+/// - Show current market prices and recent price history
+/// - Filter and display resources, highlighting shortages
+/// - Present trade information including partners, top exports/imports, and volume
+///
+/// KEY COLLABORATORS:
+/// - GameManager: Supplies regional data and simulation state
+/// - GameStateManager: Provides economic phase and turn tracking
+/// - ResourceMarket: Supplies current and historical pricing information
+/// - TradeSystem: Provides import/export activity for regional trade summaries
+/// - UI Components: Various graphs, dropdowns, toggles, and text elements
+///
+/// CURRENT ARCHITECTURE NOTES:
+/// - Modular panel structure supports tabs for overview, resources, trends, and trade
+/// - Uses basic pooling to optimize UI list updates
+/// - Event-driven updates tied to turn processing and price changes
+///
+/// REFACTORING SUGGESTIONS:
+/// - Abstract panel logic into sub-classes or handlers for separation of concerns
+/// - Optimize graph and dropdown refresh logic for larger data sets
+///
+/// EXTENSION OPPORTUNITIES:
+/// - Add historical trend comparison or forecasting tools
+/// - Support region-specific views or filters
+/// - Enable export of economic data for post-game analysis
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;

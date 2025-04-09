@@ -1,3 +1,30 @@
+/// CLASS PURPOSE:
+/// NationEntity represents a runtime instance of a nation composed of multiple regions,
+/// maintaining aggregated statistics such as wealth, production, and resource flows.
+///
+/// CORE RESPONSIBILITIES:
+/// - Manage the collection of regions assigned to the nation
+/// - Aggregate and update national economic indicators from regional data
+/// - Expose runtime statistics such as total wealth, production, and resource balance
+///
+/// KEY COLLABORATORS:
+/// - RegionEntity: Provides economic data and resource rates for aggregation
+/// - EventBus: Receives "NationUpdated" trigger after each data refresh
+/// - UI or Debug Systems: Access GetNationSummary() for displaying nation status
+///
+/// CURRENT ARCHITECTURE NOTES:
+/// - Aggregated dictionaries are copied on access to preserve encapsulation
+/// - Assumes all regional data is valid and well-formed at time of aggregation
+///
+/// REFACTORING SUGGESTIONS:
+/// - Introduce lazy evaluation or dirty flags to reduce redundant recalculation
+/// - Move aggregation logic into a service or strategy pattern for testability
+///
+/// EXTENSION OPPORTUNITIES:
+/// - Add political systems, happiness metrics, or national traits
+/// - Track historical trends in economic data across turns
+/// - Integrate with diplomacy or AI systems for behavior modeling
+
 using System.Collections.Generic;
 using UnityEngine;
 

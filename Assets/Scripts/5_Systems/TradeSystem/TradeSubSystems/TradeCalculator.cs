@@ -1,3 +1,33 @@
+/// CLASS PURPOSE:
+/// TradeCalculator determines which trade transactions should occur between regions
+/// each turn based on resource deficits, surpluses, distance, and partner limits.
+///
+/// CORE RESPONSIBILITIES:
+/// - Calculate resource deficits for each region
+/// - Identify valid trading partners with sufficient surplus within a given radius
+/// - Generate trade transactions based on trade efficiency and partner caps
+/// - Track and enforce max trading partners per region
+///
+/// KEY COLLABORATORS:
+/// - RegionEntity: Supplies resource and consumption data for trade calculation
+/// - TradeTransaction: Represents individual trade flows between regions
+/// - GameObject/Transform: Used to determine spatial proximity of regions
+///
+/// CURRENT ARCHITECTURE NOTES:
+/// - Partner selection prioritizes existing relationships, then surplus magnitude
+/// - Trade efficiency reduces delivered goods based on config
+/// - Partner limits enforced for both importers and exporters
+///
+/// REFACTORING SUGGESTIONS:
+/// - Move distance and position logic to a region metadata provider or spatial service
+/// - Replace region name strings with direct references or GUIDs for robustness
+/// - Optimize by caching frequently used resource/accessor results per turn
+///
+/// EXTENSION OPPORTUNITIES:
+/// - Add transport cost modeling or infrastructure influence
+/// - Introduce dynamic trade agreements or policy-based partner selection
+/// - Support batch processing or multithreading for large maps
+
 using UnityEngine;
 using System.Collections.Generic;
 using System.Linq;

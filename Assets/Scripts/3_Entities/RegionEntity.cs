@@ -1,3 +1,35 @@
+/// CLASS PURPOSE:
+/// RegionEntity represents a runtime model of a region in the game, aggregating
+/// data from multiple components to simulate economic behavior, population dynamics,
+/// resource flow, and terrain impact.
+///
+/// CORE RESPONSIBILITIES:
+/// - Maintain and expose region-specific data such as wealth, production, and satisfaction
+/// - Coordinate updates across economic, population, and resource systems per turn
+/// - Integrate terrain and resource effects into economic simulation
+/// - Provide runtime descriptions and summaries for UI or debugging
+///
+/// KEY COLLABORATORS:
+/// - RegionEconomyComponent: Calculates and applies wealth/production changes
+/// - RegionPopulationComponent: Manages labor, satisfaction, and population effects
+/// - ResourceComponent: Handles production, demand, and net resource flows
+/// - ProductionComponent: Converts inputs into economic output
+/// - EventBus: Dispatches region update notifications for other systems
+///
+/// CURRENT ARCHITECTURE NOTES:
+/// - Uses component-based pattern with tight coupling via direct references
+/// - Exposes many properties directly for compatibility with existing systems
+/// - Includes compatibility accessors for economic and population metrics
+///
+/// REFACTORING SUGGESTIONS:
+/// - Introduce interfaces for major components to improve modularity and testing
+/// - Split complex logic in ProcessTurn into smaller strategy functions or delegates
+/// - Move GetDescription logic into a separate formatter or presenter class
+///
+/// EXTENSION OPPORTUNITIES:
+/// - Track regional policy, cultural traits, or political stability
+/// - Add support for automation or AI decision-making at the regional level
+/// - Incorporate event history or turn-based logging per region
 using UnityEngine;
 using System.Collections.Generic;
 

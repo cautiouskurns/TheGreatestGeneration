@@ -1,3 +1,36 @@
+/// CLASS PURPOSE:
+/// GameConfigurationSO defines global settings for a game session, including
+/// map generation parameters, economic scaling, trade system configuration,
+/// difficulty tuning, and game speed. It serves as a centralized configuration
+/// object for initializing and controlling the overall gameplay experience.
+/// 
+/// CORE RESPONSIBILITIES:
+/// - Store parameters for procedural or predefined map generation
+/// - Control game pacing and difficulty level
+/// - Provide configuration for trade system behavior
+/// - Define global economic modifiers affecting resource production and growth
+/// 
+/// KEY COLLABORATORS:
+/// - GameManager: Reads these settings during initialization
+/// - MapGenerator: Uses map and terrain generation parameters
+/// - EconomicSystem: Applies global modifiers for simulation tuning
+/// - TradeSystem: Uses trade radius, cost, and volume limits
+/// 
+/// CURRENT ARCHITECTURE NOTES:
+/// - Exposes config via ScriptableObject for easy tuning in editor
+/// - Includes modular sub-objects (TradeSystemConfig, EconomicModifiers)
+/// - Difficulty setting is an enum, easily extendable
+/// 
+/// REFACTORING SUGGESTIONS:
+/// - Allow loading presets or profiles at runtime
+/// - Break out economic and trade settings into reusable SOs
+/// - Add validation and constraints for interdependent settings
+/// 
+/// EXTENSION OPPORTUNITIES:
+/// - Introduce game modes or scenario flags
+/// - Add support for player-selected modifiers or mutators
+/// - Support multiplayer/shared config serialization
+
 using UnityEngine;
 
 [CreateAssetMenu(fileName = "GameConfiguration", menuName = "Game Data/Game Configuration")]

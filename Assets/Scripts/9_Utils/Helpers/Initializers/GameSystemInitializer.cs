@@ -1,3 +1,35 @@
+/// CLASS PURPOSE:
+/// GameSystemInitializer is responsible for setting up all core game systems and models
+/// required at the start of a new game session. It ensures that necessary components
+/// like the map model, nation model, and trade system are initialized and interconnected.
+/// 
+/// CORE RESPONSIBILITIES:
+/// - Validate and process the provided map and terrain data
+/// - Instantiate and connect MapModel and NationModel
+/// - Register regions to their respective nations
+/// - Ensure the TradeSystem and GameStateManager exist in the scene
+/// - Return a configuration object with all initialized systems
+/// 
+/// KEY COLLABORATORS:
+/// - MapDataSO: Source of map and region layout data
+/// - TerrainTypeDataSO: Provides terrain type definitions for simulation logic
+/// - NationModel & MapModel: Core data models for regional and national structures
+/// - TradeSystem: Simulates inter-regional resource exchange
+/// - GameStateManager: Tracks game phase, turn state, and simulation lifecycle
+/// 
+/// CURRENT ARCHITECTURE NOTES:
+/// - Logic is split into small, private helper methods for clarity
+/// - Uses runtime instantiation for any missing MonoBehaviours
+/// 
+/// REFACTORING SUGGESTIONS:
+/// - Introduce interface-based abstraction for GameSystem creation
+/// - Consider dependency injection for testability and modularity
+/// 
+/// EXTENSION OPPORTUNITIES:
+/// - Add initialization hooks for additional systems (e.g., population, events)
+/// - Support different game modes or configuration profiles
+/// - Track and log initialization progress for debugging or loading screens
+
 using UnityEngine;
 using System.Collections.Generic;
 

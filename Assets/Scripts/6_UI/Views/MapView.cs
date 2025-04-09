@@ -1,4 +1,37 @@
 // MapView.cs - Updated version
+/// CLASS PURPOSE:
+/// MapView is responsible for visualizing the map layout in the game, creating and
+/// managing region GameObjects, handling UI overlays, and reacting to gameplay events
+/// such as selection and economic changes.
+///
+/// CORE RESPONSIBILITIES:
+/// - Generate and layout region tiles based on map data (positioned or grid)
+/// - Apply terrain and nation colors, and update visuals based on simulation state
+/// - Handle region highlighting and visual indicators (e.g., pulses, floating text)
+/// - Switch overlay modes (e.g., wealth, population, production) and update visuals
+/// - Respond to region update and selection events from the EventBus
+///
+/// KEY COLLABORATORS:
+/// - MapDataSO: Provides static configuration of nations and their regions
+/// - RegionEntity: Supplies runtime data for visual updates
+/// - GameManager: Provides access to the map model and region data
+/// - EventBus: Subscribes to "RegionUpdated" and "RegionSelected" events
+/// - TerrainTypeDataSO: Defines visuals and characteristics of terrain types
+///
+/// CURRENT ARCHITECTURE NOTES:
+/// - Uses a combination of dictionary lookups and partial class structure
+/// - Supports both position-based and grid-based layout generation
+/// - Modular update methods improve separation of visual concerns
+///
+/// REFACTORING SUGGESTIONS:
+/// - Separate rendering logic into its own class or service for better testability
+/// - Cache GameManager and MapModel references to reduce repeated lookups
+/// - Convert region prefab access into dependency injection or pooling
+///
+/// EXTENSION OPPORTUNITIES:
+/// - Add support for animated overlays or seasonal terrain effects
+/// - Include tooltip, click-and-drag selection, or zoom-based LOD
+/// - Enable runtime editing of region data or overlays via developer tools
 using UnityEngine;
 using System.Collections.Generic;
 using TMPro;

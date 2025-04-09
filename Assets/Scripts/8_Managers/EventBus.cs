@@ -1,3 +1,30 @@
+/// CLASS PURPOSE:
+/// EventBus provides a centralized messaging system for loosely coupling different parts
+/// of the application. It allows components to subscribe to and trigger named events
+/// without direct references between sender and receiver.
+///
+/// CORE RESPONSIBILITIES:
+/// - Maintain a dictionary of events keyed by string names
+/// - Allow listeners to subscribe and unsubscribe from named events
+/// - Trigger events with optional payloads, invoking all subscribed listeners
+///
+/// KEY COLLABORATORS:
+/// - Any MonoBehaviour or system script: Can publish or subscribe to events
+/// - Debugging and UI: May interact indirectly through event-based updates
+///
+/// CURRENT ARCHITECTURE NOTES:
+/// - Uses static methods and dictionary to globally manage event flow
+/// - Defensive programming handles null listener lists and safe invocation
+///
+/// REFACTORING SUGGESTIONS:
+/// - Replace string keys with a strongly typed enum or event ID struct for safety
+/// - Add support for multiple listener signatures using generics or overloads
+///
+/// EXTENSION OPPORTUNITIES:
+/// - Support priority-based event ordering
+/// - Add scoped or local event channels for sub-system isolation
+/// - Provide performance metrics or logging for event traffic analysis
+
 using System;
 using System.Collections.Generic;
 using UnityEngine;

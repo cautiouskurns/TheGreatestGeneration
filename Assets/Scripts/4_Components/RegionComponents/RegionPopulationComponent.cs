@@ -1,3 +1,31 @@
+/// CLASS PURPOSE:
+/// RegionPopulationComponent models the population dynamics within a region,
+/// including labor availability, satisfaction, and labor distribution across economic sectors.
+///
+/// CORE RESPONSIBILITIES:
+/// - Track population satisfaction and update it based on fulfilled needs
+/// - Simulate population growth or decline based on satisfaction thresholds
+/// - Manage labor allocation to sectors like agriculture, industry, and commerce
+///
+/// KEY COLLABORATORS:
+/// - RegionEntity: Owns this component and provides context for economic and resource behavior
+/// - RegionEconomyComponent: Receives capital investment updates tied to satisfaction
+/// - ResourceComponent: Supplies satisfaction inputs from fulfilled population needs
+///
+/// CURRENT ARCHITECTURE NOTES:
+/// - Simple scalar thresholds drive growth and decline logic
+/// - Satisfaction is averaged from input metrics and stored as a normalized float
+/// - Labor allocation is stored as normalized floats in a dictionary keyed by sector
+///
+/// REFACTORING SUGGESTIONS:
+/// - Replace string keys in laborAllocation with an enum or strongly typed structure
+/// - Decouple satisfaction logic into a service or strategy class for testing and reuse
+///
+/// EXTENSION OPPORTUNITIES:
+/// - Add demographic factors such as age distribution or education levels
+/// - Support sector-specific morale or productivity modifiers
+/// - Incorporate population migration between regions
+
 using UnityEngine;
 using System.Collections.Generic;
 
@@ -46,7 +74,9 @@ public class RegionPopulationComponent
         if (satisfaction < 0.5f)
         {
             // Low satisfaction leads to population decline
-            laborAvailable = Mathf.Max(50, laborAvailable - Mathf.RoundToInt((0.5f - satisfaction) * 10));
+            //laborAvailable = Mathf.Max(50, laborAvailable - Mathf.RoundToInt((0.5f - satisfaction) * 10));
+            laborAvailable = laborAvailable - Mathf.RoundToInt((0.5f - satisfaction) * 10);
+
         }
         else if (satisfaction > 0.8f)
         {

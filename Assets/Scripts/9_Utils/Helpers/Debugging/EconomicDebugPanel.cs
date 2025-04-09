@@ -1,3 +1,31 @@
+/// CLASS PURPOSE:
+/// EconomicDebugPanel provides a simple UI overlay for displaying internal debug output
+/// from the EnhancedEconomicSystem during simulation. It includes controls for toggling
+/// visibility and triggering manual state verification.
+///
+/// CORE RESPONSIBILITIES:
+/// - Display debug output text tied to EnhancedEconomicSystemDebug
+/// - Enable manual triggering of verification checks
+/// - Allow toggling visibility of the debug panel
+///
+/// KEY COLLABORATORS:
+/// - EnhancedEconomicSystemDebug: Supplies and updates debug text
+/// - EnhancedEconomicSystem: Source system being debugged
+/// - Unity UI (TextMeshProUGUI, Button): Provides user interaction and output display
+///
+/// CURRENT ARCHITECTURE NOTES:
+/// - Listeners are added and removed at runtime via UnityEvents
+/// - Debug text field is set by direct reference assignment
+///
+/// REFACTORING SUGGESTIONS:
+/// - Support runtime assignment or cycling of multiple debug sources
+/// - Add collapsible sections or category filters for output
+///
+/// EXTENSION OPPORTUNITIES:
+/// - Integrate log history, export, or search features
+/// - Enable remote or networked debug syncing for multiplayer
+/// - Add color-coding or formatting to enhance readability
+
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;

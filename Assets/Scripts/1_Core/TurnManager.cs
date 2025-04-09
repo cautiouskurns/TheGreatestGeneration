@@ -4,57 +4,96 @@ using System.Collections;
 using TMPro;
 
 /// <summary>
-/// Manages turn progression, including player and AI turns
-/// Supports both manual and auto-simulation modes
+/// CLASS PURPOSE:
+/// TurnManager is responsible for orchestrating the lifecycle of player and AI turns,
+/// managing the simulation flow, triggering turn-related events, and interfacing with the UI
+/// and GameStateManager to maintain a coherent turn-based experience.
+///
+/// CORE RESPONSIBILITIES:
+/// - Control turn transitions between player and AI
+/// - Manage auto-simulation and runtime toggling
+/// - Fire global events for TurnStarted, TurnEnded, TurnProcessed, etc.
+/// - Synchronize turn progression with GameStateManager
+/// - Handle related UI updates (toggle + status display)
+///
+/// KEY COLLABORATORS:
+/// - GameStateManager: Tracks and synchronizes turn state globally
+/// - AutoSimulationManager: Encapsulates logic for running turns in simulation mode
+/// - EventBus: Handles all event broadcasting during turn transitions
+/// - UI Elements (Toggle, TextMeshPro): Visual state representation
+///
+/// CURRENT ARCHITECTURE NOTES:
+/// - Class uses clear region-based segmentation
+/// - Composes with AutoSimulationManager for simulation control (good separation)
+/// - Mixes business logic with UI concerns (SRP violation potential)
+/// - Lacks abstraction or interfaces around UI and event names (tight coupling)
+///
+/// REFACTORING SUGGESTIONS:
+/// - Extract UI update logic (Toggle, StatusText) into TurnUIManager
+/// - Replace raw string event keys with enums or static constants for safety
+/// - Consider extracting rule logic into a TurnRuleEngine for testing/configurability
+/// - Enable DI or testing stubs for turn transitions and AI integration
+///
+/// EXTENSION OPPORTUNITIES:
+/// - Could be linked with event-driven narrative system (e.g., on TurnEnd)
+/// - Potential logging hooks for telemetry or player feedback
+/// - Support for modded/custom turn configurations
 /// </summary>
+/// 
+
 public class TurnManager : MonoBehaviour
 {
     #region Configuration
     [Header("Configuration")]
+    // Configuration asset controlling turn behavior
     [SerializeField] private TurnManagerConfigSO turnConfig;
     
     [Header("UI References")]
+    // Displays the current status of the simulation
     [SerializeField] private TextMeshProUGUI simulationStatusText;
+    // Toggle for enabling/disabling auto-simulation
     [SerializeField] private Toggle autoSimulationToggle;
     #endregion
 
     #region State Management
+    // Manages the current state of the turn
     private TurnState turnState;
+    // Handles automated turn progression
     private AutoSimulationManager autoSimManager;
     #endregion
 
     #region Unity Lifecycle Methods
+    // Initializes internal components
     private void Awake()
     {
-        // Initialize state and managers
         InitializeComponents();
     }
 
+    // Sets up UI interaction post-initialization
     private void Start()
     {
-        // Setup UI interactions
         ConfigureAutoSimulationToggle();
         UpdateSimulationStatus();
     }
 
+    // Manages event subscription
     private void OnEnable()
     {
-        // Subscribe to game events
         EventBus.Subscribe("AITurnsCompleted", OnAITurnsCompleted);
     }
 
+    // Manages event unsubscription
     private void OnDisable()
     {
-        // Unsubscribe from events
         EventBus.Unsubscribe("AITurnsCompleted", OnAITurnsCompleted);
         
         // Stop auto-simulation
         autoSimManager.StopAutoSimulation();
     }
 
+    // Handles debug/testing shortcuts (spacebar)
     private void Update()
     {
-        // Quick toggle for auto-simulation via spacebar
         if (Input.GetKeyDown(KeyCode.Space))
         {
             ToggleAutoSimulation();
@@ -63,90 +102,70 @@ public class TurnManager : MonoBehaviour
     #endregion
 
     #region Initialization
+    // Ensures all core components are created
     private void InitializeComponents()
     {
-        // Ensure configuration exists
         if (turnConfig == null)
         {
             turnConfig = ScriptableObject.CreateInstance<TurnManagerConfigSO>();
             Debug.LogWarning("Created default TurnManagerConfig");
         }
 
-        // Initialize turn state
         turnState = new TurnState
         {
             DefaultAutoSimulation = turnConfig.defaultAutoSimulation
         };
 
-        // Initialize auto-simulation manager
         autoSimManager = new AutoSimulationManager(this, turnConfig, turnState);
     }
 
+    // Binds the toggle UI to internal logic
     private void ConfigureAutoSimulationToggle()
     {
         if (autoSimulationToggle != null)
         {
-            // Set initial state
             autoSimulationToggle.isOn = turnState.IsAutoSimulationEnabled;
-            
-            // Add listener for toggle changes
             autoSimulationToggle.onValueChanged.AddListener(OnAutoSimulationToggleChanged);
         }
     }
     #endregion
 
     #region Turn Management
+    // Ends the player's turn and triggers relevant events
     public void EndTurn()
     {
-        // Only process if it's the player's turn
         if (turnState.IsPlayerTurn)
         {
             ProcessTurnEnd();
-            
-            // Ensure GameStateManager exists
             EnsureGameStateManager();
-            
-            // Trigger turn-related events
             EventBus.Trigger("TurnEnded");
             EventBus.Trigger("PlayerTurnEnded");
         }
     }
 
+    // Advances the turn state and triggers pre-turn logic
     private void ProcessTurnEnd()
     {
-        // Log turn progression
         Debug.Log($"Ending Player Turn. Current Turn: {turnState.CurrentTurn}");
-        
-        // Trigger pre-turn and turn-end events
         EventBus.Trigger("TurnStarted");
-        
-        // Switch turn state
         turnState.AdvanceTurn();
     }
 
+    // Returns control to the player after AI turn completion
     private void OnAITurnsCompleted(object _)
     {
-        // Log AI turn completion
         Debug.Log("AI Turns Completed. Returning to Player's turn.");
-        
-        // Trigger post-processing event
         EventBus.Trigger("TurnProcessed");
-        
-        // Switch back to player turn
         turnState.SetPlayerTurn(true);
     }
     #endregion
 
     #region Auto-Simulation Methods
+    // Toggles auto-simulation state
     public void ToggleAutoSimulation()
     {
-        // Toggle auto-simulation state
         turnState.ToggleAutoSimulation();
-        
-        // Update UI
         UpdateUIForAutoSimulation();
-        
-        // Start or stop simulation
         if (turnState.IsAutoSimulationEnabled)
         {
             autoSimManager.StartAutoSimulation();
@@ -157,13 +176,11 @@ public class TurnManager : MonoBehaviour
         }
     }
 
+    // Syncs toggle state with turn state
     private void OnAutoSimulationToggleChanged(bool isOn)
     {
-        // Sync toggle state with turn state
         turnState.SetAutoSimulation(isOn);
         UpdateUIForAutoSimulation();
-        
-        // Manage auto-simulation
         if (isOn)
         {
             autoSimManager.StartAutoSimulation();
@@ -176,18 +193,17 @@ public class TurnManager : MonoBehaviour
     #endregion
 
     #region UI Management
+    // Updates UI elements for auto-simulation
     private void UpdateUIForAutoSimulation()
     {
-        // Update toggle if exists
         if (autoSimulationToggle != null)
         {
             autoSimulationToggle.isOn = turnState.IsAutoSimulationEnabled;
         }
-        
-        // Update status text
         UpdateSimulationStatus();
     }
 
+    // Updates the simulation status text
     private void UpdateSimulationStatus()
     {
         if (simulationStatusText != null)
@@ -207,6 +223,7 @@ public class TurnManager : MonoBehaviour
     #endregion
 
     #region Utility Methods
+    // Guarantees the GameStateManager is active and synced
     private void EnsureGameStateManager()
     {
         if (GameStateManager.Instance == null)
@@ -216,7 +233,6 @@ public class TurnManager : MonoBehaviour
             Debug.Log("Created GameStateManager");
         }
         
-        // Increment turn and sync state
         GameStateManager.Instance.IncrementTurn();
         GameStateManager.Instance.SyncWithGameSystems();
     }

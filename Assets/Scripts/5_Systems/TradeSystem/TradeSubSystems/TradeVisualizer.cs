@@ -1,3 +1,32 @@
+/// CLASS PURPOSE:
+/// TradeVisualizer is responsible for rendering visual representations of trade activity
+/// between regions on the game map using curved lines and directional indicators.
+///
+/// CORE RESPONSIBILITIES:
+/// - Display curved lines representing import/export activity between regions
+/// - Scale line width and curve based on trade volume and direction
+/// - Attach directional arrowheads to indicate flow of trade
+/// - Automatically clean up visual elements after a set duration
+///
+/// KEY COLLABORATORS:
+/// - RegionEntity: Supplies trade source and target region names
+/// - UnityEngine.LineRenderer: Used to render dynamic curved lines
+/// - UnityEngine.Mesh: Used for directional arrowhead mesh
+///
+/// CURRENT ARCHITECTURE NOTES:
+/// - Uses quadratic Bezier curve to generate visually appealing trade lines
+/// - Stores active line GameObjects in a list for lifecycle management
+/// - Trade line orientation adapts when bidirectional trade exists between two regions
+///
+/// REFACTORING SUGGESTIONS:
+/// - Pool GameObjects for lines and arrows to improve performance and GC
+/// - Decouple visualization timing from MonoBehaviour destruction logic
+/// - Consider caching GameObject lookups or positions to avoid repeated Find calls
+///
+/// EXTENSION OPPORTUNITIES:
+/// - Enable toggling different resource types or trade routes independently
+/// - Support line fading or animation effects based on volume or time
+/// - Allow interaction with trade lines for analysis or UI overlays
 using UnityEngine;
 using System.Collections.Generic;
 

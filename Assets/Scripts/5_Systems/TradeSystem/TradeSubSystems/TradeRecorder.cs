@@ -1,7 +1,37 @@
+/// CLASS PURPOSE:
+/// TradeRecorder tracks historical trade data across the game world, including
+/// imports, exports, and trade volume per region. It is used to drive trade analytics,
+/// influence gameplay systems, or provide visual feedback.
+/// 
+/// CORE RESPONSIBILITIES:
+/// - Record and store trade transactions for both importers and exporters
+/// - Track trade volume per region to support data-driven gameplay
+/// - Provide access to recent trade history and aggregate statistics
+/// - Compute trade volume-based coloring for visual overlays
+/// 
+/// KEY COLLABORATORS:
+/// - TradeTransaction: Supplies trade data per turn
+/// - RegionEntity: Indirectly associated through trade activity
+/// - UI Systems: Use trade history and coloring for visual overlays and summaries
+/// 
+/// CURRENT ARCHITECTURE NOTES:
+/// - Internally uses dictionaries keyed by region name for fast lookup
+/// - TradeInfo used as a lightweight container for trade entries
+/// - Color interpolation based on relative trade activity
+/// 
+/// REFACTORING SUGGESTIONS:
+/// - Replace region name strings with GUIDs or references to avoid key mismatches
+/// - Add limits or rolling windows to bound trade history lists
+/// - Abstract color logic to a separate visual layer
+/// 
+/// EXTENSION OPPORTUNITIES:
+/// - Support trade partner preferences or diplomatic modifiers
+/// - Track historical changes over time for economic trend graphs
+/// - Integrate with AI decision systems or achievements
 using UnityEngine;
 using System.Collections.Generic;
 
-       // Class for recording and tracking trade history
+// Class for recording and tracking trade history
 public class TradeRecorder
 {
     private Dictionary<string, List<TradeInfo>> recentImports = new Dictionary<string, List<TradeInfo>>();

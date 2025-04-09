@@ -1,3 +1,29 @@
+/// CLASS PURPOSE:
+/// ResourceLayerToggle controls the UI button responsible for toggling the visibility
+/// of resource icons on the map. It provides visual feedback through icon color and text updates.
+///
+/// CORE RESPONSIBILITIES:
+/// - Toggle the visibility of resource overlays via ScreenSpaceResourceVisualization
+/// - Update icon color and label text based on current toggle state
+/// - Initialize toggle state on startup and bind button interactions
+///
+/// KEY COLLABORATORS:
+/// - ScreenSpaceResourceVisualization: Displays resource icons across the map
+/// - Unity UI (Button, Image, TextMeshPro): Provides feedback and interaction
+///
+/// CURRENT ARCHITECTURE NOTES:
+/// - Automatically finds the visualization system if not assigned in the Inspector
+/// - Uses default Unity UI components with public color and label presets
+///
+/// REFACTORING SUGGESTIONS:
+/// - Add toggle state persistence between sessions
+/// - Encapsulate color/text switching logic in a separate helper method or struct
+///
+/// EXTENSION OPPORTUNITIES:
+/// - Add tooltip or animation on toggle
+/// - Integrate keyboard shortcut or gamepad toggle support
+/// - Allow switching between multiple resource display modes
+
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;

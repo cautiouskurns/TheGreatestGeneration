@@ -1,3 +1,30 @@
+/// CLASS PURPOSE:
+/// ResourceDependency defines a non-consumable secondary requirement that must
+/// be present for certain production processes to function efficiently.
+///
+/// CORE RESPONSIBILITIES:
+/// - Specify the name and required amount of a dependency resource
+/// - Indicate whether it affects efficiency and to what extent
+/// - Provide a human-readable description for design or UI clarity
+///
+/// KEY COLLABORATORS:
+/// - ProductionComponent: Checks for presence of dependencies when calculating output efficiency
+/// - ResourceComponent: Tracks quantities of available resources in the region
+/// - ResourceProductionRecipe: May reference these to define full production conditions
+///
+/// CURRENT ARCHITECTURE NOTES:
+/// - Uses linear efficiency weighting with adjustable impact factor
+/// - Serialized for easy use in lists and editors inside ScriptableObjects or MonoBehaviours
+///
+/// REFACTORING SUGGESTIONS:
+/// - Replace string resourceName with a reference to ResourceDataSO for better type safety
+/// - Add validation logic to ensure requiredAmount and impactWeight are within valid ranges
+///
+/// EXTENSION OPPORTUNITIES:
+/// - Support dynamic conditions (e.g., seasonal or event-driven dependencies)
+/// - Add optional modifiers or benefits granted by the dependency
+/// - Enable partial efficiency bonuses from partially fulfilled dependencies
+
 using UnityEngine;
 
 /// <summary>

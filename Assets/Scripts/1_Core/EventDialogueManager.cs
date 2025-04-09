@@ -1,3 +1,39 @@
+/// CLASS PURPOSE:
+/// EventDialogueManager controls all dialogue-based interactions during events.
+/// It manages UI rendering, typewriter effects, choice presentation, and event outcomes,
+/// acting as a central system for narrative delivery and decision integration.
+///
+/// CORE RESPONSIBILITIES:
+/// - Display dialogue panels with optional typewriter effects
+/// - Show branching dialogue choices with conditional visibility
+/// - Trigger outcomes based on player decisions (e.g., economy, relations, satisfaction)
+/// - Integrate dialogue with GameStateManager for dynamic text and effects
+/// - Broadcast events such as DialogueEnded for downstream listeners
+///
+/// KEY COLLABORATORS:
+/// - GameStateManager: Provides contextual data and tracks decision outcomes
+/// - UI Elements (TextMeshPro, Buttons): Used to render and manage dialogue/choice interactions
+/// - EventBus: Emits global events tied to dialogue lifecycle
+/// - SimpleDialogueEvent, DialogueOutcome: Data structures that define event flows
+///
+/// CURRENT ARCHITECTURE NOTES:
+/// - Singleton pattern for centralized control
+/// - Integrates UI logic with game logic (SRP concerns)
+/// - Uses reflection-like variable replacement for dynamic narrative text
+/// - Event-driven, but heavily coupled to UI layout
+///
+/// REFACTORING SUGGESTIONS:
+/// - Consider separating core logic from UI (DialogueUIController)
+/// - Expand outcome types to support additional gameplay mechanics
+/// - Move narrative logic into a dialogue scripting asset format for scalability
+/// - Enable more dynamic and reusable dialogue blocks via templates or tokens
+///
+/// EXTENSION OPPORTUNITIES:
+/// - Skill check integration (RPG elements)
+/// - Procedural or reactive dialogue generation
+/// - Branch visualization or debugging tools for designers
+/// 
+
 using UnityEngine;
 using TMPro;
 using UnityEngine.UI;
@@ -399,7 +435,7 @@ public class EventDialogueManager : MonoBehaviour
         EndDialogue();
     }
     
-    // NEW: Process a single outcome
+ 
     private void ProcessOutcome(DialogueOutcome outcome)
     {
         if (stateManager == null)
@@ -458,6 +494,26 @@ public class EventDialogueManager : MonoBehaviour
                 stateManager.History.SignificantDecisions.Add(outcome.targetId);
                 Debug.Log($"Recorded decision: {outcome.targetId}");
                 break;
+
+            case DialogueOutcome.OutcomeType.ModifyProductionEfficiency:
+                ModifyRegionProduction(outcome.targetId, outcome.value, outcome.durationTurns);
+            break;
+            
+            // case DialogueOutcome.OutcomeType.ModifyInfrastructure:
+            //     ModifyRegionInfrastructure(outcome.targetId, outcome.value);
+            //     break;
+                
+            case DialogueOutcome.OutcomeType.ModifyResourcePrice:
+                ModifyResourcePrice(outcome.targetId, outcome.value);
+                break;
+                
+            case DialogueOutcome.OutcomeType.GrantProject:
+                GrantProjectToRegion(outcome.targetId, outcome.value);
+                break;
+                
+            // case DialogueOutcome.OutcomeType.ChangeLabor:
+            //     ChangeRegionLabor(outcome.targetId, (int)outcome.value);
+            //     break;
         }
     }
     
@@ -508,5 +564,78 @@ public class EventDialogueManager : MonoBehaviour
     {
         if (Instance != null)
             Instance.ShowDialogueEvent(dialogueEvent);
+    }
+
+    // Helper methods to implement economic outcomes
+    private void ModifyRegionProduction(string regionName, float modifier, int durationTurns)
+    {
+        var gameManager = FindFirstObjectByType<GameManager>();
+        if (gameManager == null) return;
+        
+        RegionEntity region = gameManager.GetRegion(regionName);
+        if (region != null)
+        {
+            // Apply temporary production boost/penalty
+            region.productionEfficiency += modifier;
+            
+            // Record this effect for duration tracking if temporary
+            if (durationTurns > 0)
+            {
+                TrackTemporaryEffect("production", regionName, modifier, durationTurns);
+            }
+            
+            Debug.Log($"Applied production modifier {modifier:+0.00;-0.00} to {regionName} for {durationTurns} turns");
+        }
+    }
+
+    private void ModifyResourcePrice(string resourceName, float priceAdjustment)
+    {
+        var resourceMarket = ResourceMarket.Instance;
+        if (resourceMarket != null)
+        {
+            // Apply a market price adjustment
+            float currentPrice = resourceMarket.GetCurrentPrice(resourceName);
+            float newPrice = currentPrice * (1 + priceAdjustment);
+            
+            resourceMarket.AdjustPrice(resourceName, newPrice);
+            Debug.Log($"Adjusted price of {resourceName} by {priceAdjustment:P0}");
+        }
+    }
+
+    private void GrantProjectToRegion(string regionName, float projectId)
+    {
+        var gameManager = FindFirstObjectByType<GameManager>();
+        if (gameManager == null) return;
+        
+        RegionEntity region = gameManager.GetRegion(regionName);
+        if (region != null)
+        {
+            // Find the project by ID and grant it
+            // This is a simplified implementation - you would need to adapt to your project system
+            string projectName = $"Project_{(int)projectId}";
+            
+            // Assuming your production component has an ActivateRecipe method
+            if (region.productionComponent != null)
+            {
+                region.productionComponent.ActivateRecipe(projectName);
+                Debug.Log($"Granted project {projectName} to {regionName}");
+            }
+        }
+    }
+
+    // Method to track temporary effects that need to expire after X turns
+    private void TrackTemporaryEffect(string effectType, string targetId, float value, int duration)
+    {
+        // Create a temporary effect record in GameStateManager
+        TemporaryEffect effect = new TemporaryEffect
+        {
+            Type = effectType,
+            TargetId = targetId,
+            Value = value,
+            RemainingTurns = duration
+        };
+        
+        // Add to state manager's list of temporary effects
+        stateManager.AddTemporaryEffect(effect);
     }
 }

@@ -1,3 +1,33 @@
+/// CLASS PURPOSE:
+/// AIController orchestrates AI-controlled nations during their turn phase, simulating
+/// decisions such as resource allocation and project development in a lightweight,
+/// turn-based fashion.
+///
+/// CORE RESPONSIBILITIES:
+/// - Subscribe to player turn end events and trigger AI processing
+/// - Simulate AI thinking time with delays and visual indicators
+/// - Generate and log AI decisions (e.g., resource use, projects)
+/// - Communicate progress to UI components like AIActionDisplay
+///
+/// KEY COLLABORATORS:
+/// - GameManager: Provides access to map and nation data
+/// - MapDataSO: Supplies nation and region structure for simulation
+/// - AIActionDisplay: Outputs AI action messages to the player
+/// - EventBus: Coordinates turn transitions between player and AI
+///
+/// CURRENT ARCHITECTURE NOTES:
+/// - Currently uses placeholder randomization for decisions
+/// - Designed for extensibility into more complex AI behavior
+///
+/// REFACTORING SUGGESTIONS:
+/// - Move decision logic into strategy classes or AI modules
+/// - Allow AI personality or behavior profiles via ScriptableObjects
+///
+/// EXTENSION OPPORTUNITIES:
+/// - Add diplomacy, trade, or long-term planning behaviors
+/// - Integrate region-level AI behaviors and dynamic evaluations
+/// - Support save/load of AI state between turns
+
 using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;

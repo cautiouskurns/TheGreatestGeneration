@@ -1,3 +1,34 @@
+/// CLASS PURPOSE:
+/// MapGenerator is responsible for procedurally generating the game map including terrain,
+/// nation distribution, and region attributes. It supports both randomized and template-driven
+/// nation placement and expansion with terrain-based influence.
+///
+/// CORE RESPONSIBILITIES:
+/// - Generate terrain using Perlin noise and terrain type definitions
+/// - Place and expand nations using templates or randomized algorithms
+/// - Assign wealth, production, and terrain metadata to regions
+/// - Construct a MapDataSO containing all map information for runtime use
+///
+/// KEY COLLABORATORS:
+/// - TerrainTypeDataSO: Provides terrain definitions used in generation
+/// - NationTemplate: Guides nation placement and expansion preferences
+/// - NoiseGenerator: Static class that generates elevation and moisture data
+/// - MapDataSO: Output container for terrain, region, and nation data
+///
+/// CURRENT ARCHITECTURE NOTES:
+/// - Supports both template-based and fallback random generation
+/// - Uses checkerboard pattern and influence weighting for region growth
+/// - Encapsulates terrain and nation generation in modular private methods
+///
+/// REFACTORING SUGGESTIONS:
+/// - Extract expansion logic into separate strategy classes for clarity
+/// - Add validation layers for template inputs and seed placement
+/// - Reduce duplication between ExpandNations and ExpandNationsWithTemplates
+///
+/// EXTENSION OPPORTUNITIES:
+/// - Support biomes or seasonal terrain overlays
+/// - Add river, elevation layer, or coast detection
+/// - Enable real-world data import or guided hand-drawn map input
 using UnityEngine;
 using System.Collections.Generic;
 

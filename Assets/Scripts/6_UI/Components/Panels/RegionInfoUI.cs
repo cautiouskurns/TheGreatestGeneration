@@ -1,3 +1,32 @@
+/// CLASS PURPOSE:
+/// RegionInfoUI is responsible for dynamically displaying detailed information
+/// about a selected region, including statistics, economy, resources, production,
+/// terrain effects, and trade data, using rich text formatting in a UI panel.
+///
+/// CORE RESPONSIBILITIES:
+/// - Subscribe to region selection events and update UI content accordingly
+/// - Format and display region data with colored and structured text layout
+/// - Reflect real-time economic and trade activity per region
+///
+/// KEY COLLABORATORS:
+/// - RegionEntity: Provides the data source for region stats and metadata
+/// - TradeSystem: Supplies import/export information for display
+/// - EventBus: Subscribes to and handles region selection events
+/// - Unity UI (TextMeshProUGUI, Image): Renders terrain icons and formatted info
+///
+/// CURRENT ARCHITECTURE NOTES:
+/// - UI is updated using inline markup for visual hierarchy and clarity
+/// - Terrain and production sections include dynamic logic for conditional display
+///
+/// REFACTORING SUGGESTIONS:
+/// - Extract formatting logic into a builder or formatter class for testability
+/// - Improve separation between data gathering and display string construction
+///
+/// EXTENSION OPPORTUNITIES:
+/// - Add visual icons for resources and production recipes
+/// - Integrate tooltips, filters, or interactivity for expandable sections
+/// - Support localization and adaptive layout for different screen sizes
+
 using UnityEngine;
 using TMPro;
 using UnityEngine.UI;
@@ -261,4 +290,3 @@ public class RegionInfoUI : MonoBehaviour
         return effectText;
     }
 }
-

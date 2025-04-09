@@ -1,3 +1,35 @@
+/// CLASS PURPOSE:
+/// ResourceBalanceDataSO defines the balance rules and modifiers that shape how
+/// resources are produced, consumed, and modified based on terrain, infrastructure,
+/// and population dynamics. It serves as a central configuration point for tuning
+/// the overall resource economy.
+/// 
+/// CORE RESPONSIBILITIES:
+/// - Store terrain-based production multipliers per resource type
+/// - Define consumption rates based on population class
+/// - Configure scaling effects of infrastructure on resource output
+/// - Provide global multipliers and efficiency parameters
+/// 
+/// KEY COLLABORATORS:
+/// - EconomicSystem: Uses this SO to compute production and consumption
+/// - RegionEntity: Applies modifiers based on terrain and infrastructure
+/// - ResourceSystem: Integrates balance rules into simulation step
+/// 
+/// CURRENT ARCHITECTURE NOTES:
+/// - Terrain, infrastructure, and population are linked by class name or string
+/// - Uses nested structs for modular, readable configuration
+/// - Infrastructure scaling uses AnimationCurve for flexible level scaling
+/// 
+/// REFACTORING SUGGESTIONS:
+/// - Replace string identifiers with ScriptableObject references for better validation
+/// - Break out separate SOs for terrain, population, and infrastructure rules
+/// - Provide lookup methods to encapsulate querying modifiers
+/// 
+/// EXTENSION OPPORTUNITIES:
+/// - Add dynamic modifiers based on economic cycle or policy
+/// - Support localization of population class names and resource descriptions
+/// - Include UI-facing descriptions for tuning visibility in tools
+
 using UnityEngine;
 using System.Collections.Generic;
 

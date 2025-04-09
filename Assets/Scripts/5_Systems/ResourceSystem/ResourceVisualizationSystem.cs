@@ -1,3 +1,34 @@
+/// CLASS PURPOSE:
+/// ScreenSpaceResourceVisualization manages the visual display of resource quantities
+/// over map regions using screen space UI elements. It dynamically updates icons
+/// and quantities based on simulation data.
+///
+/// CORE RESPONSIBILITIES:
+/// - Subscribe to region update events and display top resources per region
+/// - Create and position icons around region centers with quantity indicators
+/// - Handle user toggling of resource overlay visibility
+///
+/// KEY COLLABORATORS:
+/// - RegionEntity: Supplies resource data for visualization
+/// - EventBus: Sends "RegionUpdated" and "RegionEntitiesReady" events to trigger updates
+/// - ResourceComponent: Source of resource quantities per region
+/// - Unity Canvas & UI: Used to instantiate and manage icon and text display
+///
+/// CURRENT ARCHITECTURE NOTES:
+/// - Uses both prefab-based and dynamically constructed icons
+/// - Organizes all UI under a centralized parent in the screen space canvas
+/// - Positions icons in a circular pattern around region center
+///
+/// REFACTORING SUGGESTIONS:
+/// - Encapsulate visualizer creation logic into a builder or factory class
+/// - Cache region GameObjects or screen positions to reduce repetitive lookups
+/// - Consider using a pool for icon GameObjects to reduce GC and instantiation cost
+///
+/// EXTENSION OPPORTUNITIES:
+/// - Add filtering or customization options for visible resources
+/// - Integrate hover tooltips, animations, or interactivity
+/// - Allow scaling icons by relative quantity or importance
+
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;

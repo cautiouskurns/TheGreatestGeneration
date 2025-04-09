@@ -1,3 +1,34 @@
+/// CLASS PURPOSE:
+/// ResourceComponent manages the storage, production, and consumption of resources
+/// at the regional level, forming the core simulation of economic behavior for a RegionEntity.
+///
+/// CORE RESPONSIBILITIES:
+/// - Track quantities, production, and consumption rates for all registered resources
+/// - Register and initialize resource definitions at runtime
+/// - Calculate production based on labor, terrain, and efficiency
+/// - Calculate consumption based on wealth, size, and demand factors
+/// - Evaluate net changes and satisfaction metrics per turn
+///
+/// KEY COLLABORATORS:
+/// - RegionEntity: Owns and provides context for regional economic behavior
+/// - ResourceDataSO: Defines metadata for each resource, including base value and type
+/// - ResourceMarket: Provides global market price data for demand elasticity
+/// - TerrainTypeDataSO: Influences production based on terrain-sector affinity
+///
+/// CURRENT ARCHITECTURE NOTES:
+/// - Raw and non-raw resource handling is split within production logic
+/// - Uses string-based dictionaries for flexibility but lacks type safety
+/// - Base consumption and demand are adjusted dynamically using multiple regional factors
+///
+/// REFACTORING SUGGESTIONS:
+/// - Replace string sector keys with enums or typed identifiers
+/// - Split consumption models into separate strategies (e.g., basic, demand-based, luxury)
+/// - Introduce validation for resource data consistency during initialization
+///
+/// EXTENSION OPPORTUNITIES:
+/// - Add trade systems, supply chain interactions, or storage capacity limits
+/// - Support policies or events that impact resource dynamics
+/// - Incorporate visual feedback for production/consumption flows
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;

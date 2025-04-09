@@ -1,3 +1,37 @@
+/// CLASS PURPOSE:
+/// TradeSystem orchestrates the full trade cycle each turn, handling trade calculation,
+/// execution, recording, and visualization. It acts as the central interface for regional
+/// trade dynamics within the game.
+///
+/// CORE RESPONSIBILITIES:
+/// - Initialize and coordinate TradeCalculator, TradeRecorder, and TradeVisualizer
+/// - Respond to key game events (turn ended, region selected, regions ready)
+/// - Calculate and execute trade transactions each turn
+/// - Maintain trade history and region-to-region trade summaries
+/// - Manage visualization of imports/exports and region-level overlays
+///
+/// KEY COLLABORATORS:
+/// - TradeCalculator: Determines trade partners and volumes
+/// - TradeRecorder: Stores trade transactions and history
+/// - TradeVisualizer: Renders trade lines and overlays on the map
+/// - RegionEntity: Source of regional economic and resource data
+/// - GameManager: Supplies all registered regions
+/// - EventBus: Facilitates inter-system communication
+///
+/// CURRENT ARCHITECTURE NOTES:
+/// - Uses MonoBehaviour lifecycle for initialization and event subscriptions
+/// - Supports visualization toggles and selected region filters
+/// - Debug output included to trace trade state and imbalances
+///
+/// REFACTORING SUGGESTIONS:
+/// - Abstract initialization logic into separate bootstrapping service
+/// - Consider separating visualization from processing logic for single responsibility
+/// - Use dependency injection for easier testing and configuration
+///
+/// EXTENSION OPPORTUNITIES:
+/// - Integrate diplomacy or faction influence into trade partner selection
+/// - Add logistics simulation (transport costs, infrastructure)
+/// - Enable player-driven trade policies or embargoes
 using UnityEngine;
 using System.Collections.Generic;
 using System.Collections;

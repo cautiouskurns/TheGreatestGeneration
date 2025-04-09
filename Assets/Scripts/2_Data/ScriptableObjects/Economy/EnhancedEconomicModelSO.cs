@@ -1,3 +1,33 @@
+/// CLASS PURPOSE:
+/// EnhancedEconomicModelSO defines configurable economic rules for simulation systems,
+/// covering supply and demand mechanics, production transformation, infrastructure effects,
+/// population behavior, economic cycles, and price volatility.
+///
+/// CORE RESPONSIBILITIES:
+/// - Store all economic rule sets used by the economy simulation systems
+/// - Provide tunable parameters via ScriptableObject for designers
+/// - Offer validation logic to ensure economic consistency and catch errors
+///
+/// KEY COLLABORATORS:
+/// - EconomicSystem: Uses this data to calculate output, demand, prices, and volatility
+/// - RegionEntity / NationEntity: Apply modifiers from this data to simulate regional outcomes
+/// - GameManager / BalanceTools: Run validation to test and iterate tuning
+///
+/// CURRENT ARCHITECTURE NOTES:
+/// - Organized into modular rule classes (SupplyDemand, Production, etc.)
+/// - Uses nested Serializable classes to enable inspector exposure
+/// - Includes runtime validation to catch misconfigurations
+///
+/// REFACTORING SUGGESTIONS:
+/// - Add data versioning or compatibility validation across model updates
+/// - Split out rule classes into separate SOs for composability or overrides
+/// - Allow export of settings for balance testing or external tuning
+///
+/// EXTENSION OPPORTUNITIES:
+/// - Introduce AI heuristics that use this model for decision-making
+/// - Track economic indicators over time using these parameters
+/// - Enable dynamic runtime modification for advanced scenarios or policies
+
 using UnityEngine;
 using System;
 using System.Collections.Generic;
@@ -207,4 +237,3 @@ public class EnhancedEconomicModelSO : ScriptableObject
             Debug.LogWarning("Price volatility should be between 0 and 1!");
     }
 }
-

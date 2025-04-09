@@ -1,3 +1,33 @@
+/// CLASS PURPOSE:
+/// EnhancedEconomicSystemDebug is a helper component used to verify the correctness
+/// of the EnhancedEconomicSystem during runtime by comparing economic state changes
+/// between turns and outputting debug information to the UI and console.
+///
+/// CORE RESPONSIBILITIES:
+/// - Track and compare regional economic states across turns
+/// - Detect and log significant economic changes (e.g., wealth, production, satisfaction)
+/// - Display debug output using TextMeshPro and log results to console
+/// - Support manual verification and turn-based update triggers
+///
+/// KEY COLLABORATORS:
+/// - EnhancedEconomicSystem: The simulation component being debugged
+/// - GameManager: Provides access to the set of all regions
+/// - ResourceMarket: Supplies dynamic market pricing data
+/// - EventBus: Listens for "TurnEnded" events to trigger verification
+/// - TextMeshProUGUI: Renders the debug output to screen
+///
+/// CURRENT ARCHITECTURE NOTES:
+/// - Captures snapshots of region state and compares on turn transitions
+/// - Allows configurable verbosity and detail level via debug toggles
+///
+/// REFACTORING SUGGESTIONS:
+/// - Extract state comparison logic into a utility or testing service
+/// - Introduce options for filtering which changes are shown
+///
+/// EXTENSION OPPORTUNITIES:
+/// - Track per-resource or per-sector changes with configurable thresholds
+/// - Provide export/logging of historical debug data across multiple turns
+/// - Integrate with in-editor tools or visual overlays for easier inspection
 using UnityEngine;
 using System.Collections.Generic;
 using System.Text;

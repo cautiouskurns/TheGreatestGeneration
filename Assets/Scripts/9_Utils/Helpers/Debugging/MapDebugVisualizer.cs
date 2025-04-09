@@ -1,3 +1,34 @@
+/// CLASS PURPOSE:
+/// MapDebugVisualizer is a utility component used to debug map generation systems,
+/// allowing developers to visualize elevation, moisture, and terrain data directly
+/// within the Unity scene using color-coded tile prefabs.
+///
+/// CORE RESPONSIBILITIES:
+/// - Generate elevation, moisture, and terrain maps based on noise and parameters
+/// - Display these maps using colored tiles for visual inspection
+/// - Provide GUI controls in the Unity Editor for regeneration and saving
+/// - Save current terrain data to a ScriptableObject asset
+///
+/// KEY COLLABORATORS:
+/// - TerrainTypeDataSO: Defines the terrain types and associated colors
+/// - TerrainMapDataSO: Stores terrain data in asset form for reuse
+/// - NoiseGenerator: Static class used to produce elevation and moisture maps
+/// - UnityEditor.AssetDatabase: Used in editor to save generated maps
+///
+/// CURRENT ARCHITECTURE NOTES:
+/// - Uses procedural generation based on seed and scale inputs
+/// - Visual elements are prefab-based and instantiated per tile
+/// - Visualization toggles are exclusive (only one shown at a time)
+///
+/// REFACTORING SUGGESTIONS:
+/// - Move visualization mode switching logic into a helper method
+/// - Add better separation between generation logic and rendering
+///
+/// EXTENSION OPPORTUNITIES:
+/// - Support biome blending or edge smoothing
+/// - Display additional overlays (e.g., region IDs, faction control)
+/// - Export map preview as image or minimap texture
+
 using UnityEngine;
 using System.Collections.Generic;
 

@@ -1,3 +1,34 @@
+/// CLASS PURPOSE:
+/// EnhancedEconomicSystem coordinates the full economic simulation for each game turn
+/// using configurable rules for supply/demand, production, infrastructure, consumption,
+/// economic cycles, and price volatility.
+///
+/// CORE RESPONSIBILITIES:
+/// - Process each stage of the economy during turn transitions
+/// - Coordinate system-level interactions (e.g., price setting, production output)
+/// - Integrate with global game state, resource markets, and infrastructure logic
+///
+/// KEY COLLABORATORS:
+/// - MapModel: Provides access to all region entities and their economic properties
+/// - EnhancedEconomicModelSO: Supplies configuration for all economic behavior rules
+/// - ResourceMarket: Stores and updates resource prices based on simulation
+/// - TradeSystem: May interact with supply/demand indirectly through market behaviors
+/// - GameStateManager: Tracks broader economic cycle phases and game progression
+///
+/// CURRENT ARCHITECTURE NOTES:
+/// - Modular per-phase economic processing using model-driven curves and coefficients
+/// - Heavy reliance on MonoBehaviour lifecycle and Unity event system
+/// - Debug hooks and event dispatches included for integration with other systems
+///
+/// REFACTORING SUGGESTIONS:
+/// - Split out each economic phase (supply, production, cycle) into separate strategies or processors
+/// - Consider using ECS or job-based scheduling for scalability in large simulations
+/// - Separate debug logic into a utility class or editor-only system
+///
+/// EXTENSION OPPORTUNITIES:
+/// - Add trade network simulation or inter-regional logistics
+/// - Incorporate player and AI policy influence on economic behavior
+/// - Support additional economic layers (e.g., inflation, tech growth, financial markets)
 using UnityEngine;
 using System.Collections.Generic;
 using System.Linq;

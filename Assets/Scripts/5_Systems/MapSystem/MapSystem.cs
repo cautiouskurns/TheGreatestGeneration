@@ -1,4 +1,30 @@
-// MapSystem.cs - Fixed
+/// CLASS PURPOSE:
+/// MapSystem acts as a controller that listens for map-related game events and
+/// forwards updates to the visual MapView layer. It synchronizes region updates
+/// and selections between gameplay systems and UI.
+/// 
+/// CORE RESPONSIBILITIES:
+/// - Subscribe to and handle region update and selection events
+/// - Pass relevant data to the MapView for visual updates and highlighting
+/// 
+/// KEY COLLABORATORS:
+/// - MapView: Responsible for rendering and updating the map's appearance
+/// - EventBus: Dispatches and receives events such as "RegionUpdated" and "RegionSelected"
+/// - RegionEntity: Supplies data for the region being updated or selected
+/// 
+/// CURRENT ARCHITECTURE NOTES:
+/// - Handles both string and RegionEntity types in selection events
+/// - Visual update calls are commented out, suggesting ongoing development or refactor
+/// 
+/// REFACTORING SUGGESTIONS:
+/// - Centralize region visual logic into MapView and use commands instead of direct method calls
+/// - Validate region object type more robustly to avoid casting issues
+/// 
+/// EXTENSION OPPORTUNITIES:
+/// - Support additional event types (e.g., hover, deselect, focus)
+/// - Integrate with camera controls or overlays for visual feedback
+/// - Allow dynamic visual settings (e.g., color schemes, filters) from MapSystem
+
 using UnityEngine;
 
 public class MapSystem : MonoBehaviour

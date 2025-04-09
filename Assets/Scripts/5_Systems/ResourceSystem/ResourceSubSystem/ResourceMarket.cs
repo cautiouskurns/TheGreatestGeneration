@@ -1,3 +1,33 @@
+/// CLASS PURPOSE:
+/// ResourceMarket manages dynamic pricing of all resources in the game by evaluating
+/// supply and demand across regions. It serves as a central authority for economic
+/// price setting and tracks historical price trends.
+///
+/// CORE RESPONSIBILITIES:
+/// - Track base and current prices for all defined resources
+/// - Calculate new prices each turn based on global supply/demand ratios
+/// - Broadcast updated prices to relevant systems via events
+/// - Maintain a rolling history of price changes for trend analysis
+///
+/// KEY COLLABORATORS:
+/// - GameManager: Provides access to region-level data for production and consumption
+/// - ResourceRegistry: Supplies base values and definitions for all resources
+/// - RegionEntity/ResourceComponent: Source of per-region production and consumption rates
+/// - EventBus: Used to subscribe to and trigger game-wide simulation events
+///
+/// CURRENT ARCHITECTURE NOTES:
+/// - Uses smoothing and randomization to stabilize price shifts over time
+/// - Falls back to default prices if ResourceRegistry is not present
+/// - Debug information can be toggled and displayed via TextMeshPro
+///
+/// REFACTORING SUGGESTIONS:
+/// - Abstract price update logic into a separate strategy class for testing or extensibility
+/// - Replace string-based keys with resource ID references or ScriptableObjects
+///
+/// EXTENSION OPPORTUNITIES:
+/// - Add support for regional price variations or black markets
+/// - Integrate economic policies, player interactions, or global events into pricing logic
+/// - Expand debug UI to include historical graphs or price forecasts
 using UnityEngine;
 using System.Collections.Generic;
 

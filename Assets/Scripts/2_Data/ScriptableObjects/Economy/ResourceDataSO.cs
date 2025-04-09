@@ -1,3 +1,33 @@
+/// CLASS PURPOSE:
+/// ResourceDataSO defines a single resource type used throughout the game economy.
+/// It includes visual details, economic properties, production mechanics, and categorization,
+/// enabling both simulation systems and UI layers to interact with a standardized data format.
+///
+/// CORE RESPONSIBILITIES:
+/// - Define metadata, visual, and economic properties of a resource
+/// - Store production rules for converting inputs to this resource
+/// - Distinguish resources by type (material, food, wealth, etc.) and category (primary, secondary, etc.)
+///
+/// KEY COLLABORATORS:
+/// - EconomicSystem: Uses this data for calculating production and trade behavior
+/// - ResourceBalanceDataSO: Adjusts resource interactions based on balance configuration
+/// - UI Systems: Display resource icons, names, and descriptions
+///
+/// CURRENT ARCHITECTURE NOTES:
+/// - Production recipes support input dependencies, infrastructure requirements, and efficiency scaling
+/// - Transport and storage stats are included for logistical modeling
+/// - Quality factors are optional and only affect output if enabled
+///
+/// REFACTORING SUGGESTIONS:
+/// - Consider replacing infrastructure string references with SOs or enums
+/// - Allow recipes to support multiple output types or byproducts
+/// - Validate recipes on load for missing dependencies or invalid inputs
+///
+/// EXTENSION OPPORTUNITIES:
+/// - Introduce tiered quality levels per resource
+/// - Support seasonal or terrain-based modifiers
+/// - Link resources to narrative or event triggers for dynamic simulation
+
 using UnityEngine;
 using System.Collections.Generic;
 

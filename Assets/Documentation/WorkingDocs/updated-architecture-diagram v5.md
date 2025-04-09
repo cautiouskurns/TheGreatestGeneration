@@ -222,11 +222,12 @@ graph TD
     class TC,TV,TR,TT,TI trade
 ```
 
-## Data Flow - Turn Processing
-
+## Data Flow – Turn Processing (Updated)
+ 
 ```mermaid
 sequenceDiagram
     participant User
+    participant GM as GameManager
     participant TM as TurnManager
     participant EM as EventBus
     participant GSM as GameStateManager
@@ -241,33 +242,43 @@ sequenceDiagram
     participant ECS as EconomicSystem
     participant AIC as AIController
     participant UI as UI Components
-    
+ 
     User->>TM: Click "End Turn"
-    TM->>GSM: IncrementTurn()
-    TM->>GSM: SyncWithGameSystems()
-    TM->>EM: Trigger "TurnEnded"
+    TM->>GM: Notify GameManager of Turn End
+    GM->>GSM: IncrementTurn()
+    GM->>GSM: SyncWithGameSystems()
+    GM->>EM: Trigger "TurnEnded"
+    
     EM->>MM: Notify of "TurnEnded"
     MM->>RE: ProcessTurn() for each region
     RE->>RC: CalculateProduction()
     RC->>POPC: Get labor allocation
+    POPC-->>RC: Return labor allocation
+    RC->>RC: Calculate terrain/efficiency impact
     RE->>RC: CalculateDemand()
+    RC->>POPC: Get population size
     RC->>REC: Get wealth multiplier
     RE->>RC: ProcessTurn(wealth, regionSize)
     RC->>PC: ProcessProduction()
-    PC-->>RC: Update resources based on recipes
-    RC-->>RE: Update resource values
-    RE->>POPC: UpdateSatisfaction(needsSatisfaction)
+    PC-->>RC: Update resources via recipes
+    RC-->>RE: Update resource stockpiles
+    RE->>POPC: UpdateSatisfaction()
     POPC->>POPC: UpdatePopulation()
     POPC->>REC: Apply satisfaction effects
+    
     RE->>EM: Trigger "RegionUpdated"
+    
     EM->>ECS: Notify of "TurnEnded"
-    ECS->>RE: Process economic changes
+    ECS->>RE: Apply economic changes
+    
     EM->>RTS: Notify of "TurnEnded"
     RTS->>RTS: CalculateTrades()
-    RTS->>RE: Execute trades between regions
+    RTS->>RE: Execute trade transactions
+    
     MM->>NM: ProcessTurn()
-    NM->>NM: UpdateAllNations()
+    NM->>NM: Aggregate Nation Stats
     NM->>EM: Trigger "NationModelUpdated"
+ 
     EM->>TM: Trigger "PlayerTurnEnded"
     TM->>AIC: Notify of "PlayerTurnEnded"
     AIC->>EM: Trigger "AITurnsCompleted"

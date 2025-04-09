@@ -1,3 +1,32 @@
+/// CLASS PURPOSE:
+/// ProductionComponent handles the transformation of input resources into outputs using
+/// configurable recipes. It simulates industrial behavior at the region level in the economic system.
+///
+/// CORE RESPONSIBILITIES:
+/// - Track active production recipes and manage their progress over turns
+/// - Evaluate input availability, dependencies, and infrastructure readiness
+/// - Apply production logic, efficiency, and quality modifiers to determine output
+///
+/// KEY COLLABORATORS:
+/// - RegionEntity: Owns this component and provides regional context
+/// - ResourceComponent: Supplies and stores resources consumed or produced
+/// - ResourceDataSO & ResourceProductionRecipe: Define what and how resources are processed
+///
+/// CURRENT ARCHITECTURE NOTES:
+/// - Multi-turn recipe progress is tracked using a dictionary keyed by recipe name
+/// - Efficiency and quality impact are calculated dynamically per recipe
+/// - Output resource is inferred from recipe metadata, which could be simplified
+///
+/// REFACTORING SUGGESTIONS:
+/// - Move recipe lookup logic into ResourceComponent or a dedicated RecipeManager
+/// - Cache parsed recipes to reduce repeated iteration over definitions
+/// - Refactor DetermineOutputResource to store explicit output references in recipes
+///
+/// EXTENSION OPPORTUNITIES:
+/// - Add recipe categories, seasonal modifiers, or region traits affecting efficiency
+/// - Implement UI to visualize active recipes, progress, and output projections
+/// - Integrate with tech tree or policy system to unlock new recipes over time
+
 using System.Collections.Generic;
 using UnityEngine;
 

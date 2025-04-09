@@ -1,3 +1,35 @@
+/// CLASS PURPOSE:
+/// MapModel handles the construction and in-memory representation of all regional game data.
+/// It provides access to individual regions, facilitates economic updates per turn,
+/// and enables region selection and modification throughout gameplay.
+/// 
+/// CORE RESPONSIBILITIES:
+/// - Construct all RegionEntity instances from MapDataSO
+/// - Provide region access and selection methods
+/// - Trigger relevant events (e.g., RegionSelected, RegionUpdated, MapModelTurnProcessed)
+/// - Process turn-level economic updates for all regions
+/// 
+/// KEY COLLABORATORS:
+/// - GameManager: Coordinates game-wide flow and holds top-level systems
+/// - RegionEntity: Stores per-region economic data and modifiers
+/// - EventBus: Handles decoupled event communication across systems
+/// - MapDataSO / TerrainTypeDataSO: Supplies static region and terrain configuration
+/// 
+/// CURRENT ARCHITECTURE NOTES:
+/// - Loosely coupled via event triggers
+/// - Stores region data in a dictionary for quick access
+/// - Selected region is stored as state and shared through events
+/// 
+/// REFACTORING SUGGESTIONS:
+/// - Consider separating region creation logic into a RegionFactory
+/// - Move terrainType lookup logic into a helper for readability
+/// - Make UpdateRegion more robust to partial updates or additive changes
+/// 
+/// EXTENSION OPPORTUNITIES:
+/// - Add support for project queues or construction states in regions
+/// - Include historical data logging for wealth/production changes over turns
+/// - Expand ProcessTurn to incorporate economic cycle modifiers
+
 using System.Collections.Generic;
 using UnityEngine;
 

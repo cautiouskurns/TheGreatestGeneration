@@ -1,3 +1,31 @@
+/// CLASS PURPOSE:
+/// MapGenerationFactory is a utility class responsible for orchestrating map creation
+/// using either procedural generation or predefined data based on game configuration.
+///
+/// CORE RESPONSIBILITIES:
+/// - Determine whether to use procedural or predefined map data
+/// - Instantiate and configure a MapGenerator with appropriate settings
+/// - Generate map data using terrain and nation configuration
+/// - Provide terrain type dictionary for use in generation systems
+///
+/// KEY COLLABORATORS:
+/// - GameConfigurationSO: Supplies user-defined map parameters and flags
+/// - TerrainTypeDataSO: Describes terrain attributes used in generation
+/// - NationTemplate: Provides national characteristics for region assignment
+/// - MapGenerator: Core class responsible for procedural map construction
+///
+/// CURRENT ARCHITECTURE NOTES:
+/// - Fallback to procedural generation is automatic if predefined map is missing
+/// - Encapsulates both generator creation and configuration in private helpers
+///
+/// REFACTORING SUGGESTIONS:
+/// - Abstract generator configuration into a strategy or configuration profile
+/// - Move terrain dictionary logic into a shared terrain utility class
+///
+/// EXTENSION OPPORTUNITIES:
+/// - Add support for multiple generator types or custom terrain distributions
+/// - Allow editor-based validation or visualization of config parameters
+/// - Integrate biome rules or faction-aware generation modifiers
 using UnityEngine;
 using System.Collections.Generic;
 

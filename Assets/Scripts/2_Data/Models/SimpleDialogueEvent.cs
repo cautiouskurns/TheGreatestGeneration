@@ -1,3 +1,34 @@
+/// CLASS PURPOSE:
+/// This file defines the structure for simple narrative events and dialogue interactions in the game.
+/// It provides a lightweight system for displaying multi-line dialogues with player choices,
+/// each of which can lead to various gameplay outcomes or effects.
+/// 
+/// CORE RESPONSIBILITIES:
+/// - Store and structure narrative dialogue events (SimpleDialogueEvent)
+/// - Enable variable substitution in dialogue lines for dynamic context
+/// - Provide branching dialogue choices with conditional visibility
+/// - Define outcome types that influence game state (resources, policies, projects, etc.)
+/// 
+/// KEY COLLABORATORS:
+/// - GameStateManager: Supplies state values for variable substitution and conditions
+/// - DialogueSystem or UI layer: Displays dialogue lines and choices to the player
+/// - ResourceManager, EconomySystem: Receive and process dialogue outcome effects
+/// 
+/// CURRENT ARCHITECTURE NOTES:
+/// - DialogueLines can dynamically substitute text placeholders (e.g., {CurrentTurn})
+/// - DialogueChoices can have optional conditions tied to simple game state values
+/// - DialogueOutcomes support both temporary and permanent effects with broad flexibility
+/// 
+/// REFACTORING SUGGESTIONS:
+/// - Introduce ID-based triggers to avoid duplicate event firings
+/// - Move condition checking logic out of UI and into centralized validators
+/// - Expand placeholder substitution to support more state variables or modifiers
+/// 
+/// EXTENSION OPPORTUNITIES:
+/// - Link events to specific regions, sectors, or project completion
+/// - Add support for timed reactivation or one-time events
+/// - Create modifiable event chains or evolving dialogue trees over multiple turns
+
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -66,17 +97,28 @@ public class DialogueOutcome
 {
     public enum OutcomeType
     {
+        // Existing types
         AddResource,
         RemoveResource,
         ChangeRelation,
         ChangeSatisfaction,
         SetEconomicPhase,
-        RecordDecision
+        RecordDecision,
+        
+        // New economic-focused types
+        ModifyProductionEfficiency,
+        ModifyInfrastructure,
+        AdjustTaxRate,
+        ModifyResourcePrice,
+        ApplyPolicyModifier,
+        TriggerEconomicEvent,
+        GrantProject,
+        ChangeLabor
     }
     
     public OutcomeType type;
-    public string targetId; // Resource, nation, or region id
+    public string targetId; // Resource, nation, region, policy id
     public float value;
-    [TextArea(1, 2)]
     public string description;
+    public int durationTurns = 0; // For temporary effects
 }

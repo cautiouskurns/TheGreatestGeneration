@@ -1,3 +1,30 @@
+/// CLASS PURPOSE:
+/// SimpleLineGraph provides a lightweight UI-based visualization of numerical data as a line graph.
+/// It uses UI Images to render points and connecting lines inside a Unity Canvas container.
+///
+/// CORE RESPONSIBILITIES:
+/// - Convert a list of numerical values into scaled 2D positions
+/// - Display points and connecting lines using UI Image elements
+/// - Update min and max value labels, and optionally debug raw data
+///
+/// KEY COLLABORATORS:
+/// - Unity UI (RectTransform, TextMeshProUGUI, Image): Renders graph and labels
+/// - PointPrefab (optional): Custom visual prefab for each data point
+///
+/// CURRENT ARCHITECTURE NOTES:
+/// - Generic UpdateData method supports any IConvertible numeric type
+/// - Clears and re-generates all visuals each time new data is applied
+/// - Uses direct anchoredPosition and size manipulation for layout
+///
+/// REFACTORING SUGGESTIONS:
+/// - Cache and reuse points/lines instead of destroying and recreating
+/// - Separate data normalization and UI rendering logic into helper classes
+///
+/// EXTENSION OPPORTUNITIES:
+/// - Add axis lines, grid markers, or tooltip interactivity
+/// - Support animations or transitions between datasets
+/// - Enable color gradients or styles based on data characteristics
+
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;

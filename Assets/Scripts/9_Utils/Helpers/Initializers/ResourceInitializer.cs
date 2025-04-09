@@ -1,3 +1,32 @@
+/// CLASS PURPOSE:
+/// ResourceInitializer is responsible for initializing the resource systems of all
+/// regions at game startup. It loads resource definitions, activates default production
+/// recipes, and optionally sets up artificial resource imbalances for testing.
+/// 
+/// CORE RESPONSIBILITIES:
+/// - Validate region and resource input data
+/// - Load resource definitions into each region's ResourceComponent
+/// - Activate initial production recipes to bootstrap economic simulation
+/// - Create initial resource surpluses/deficits to enable trade testing
+/// 
+/// KEY COLLABORATORS:
+/// - RegionEntity: Owns the resource and production components for each region
+/// - ResourceDataSO: Defines available resources and metadata
+/// - ResourceComponent: Initialized with definitions and assigned quantities
+/// - ProductionComponent: Used to activate sample recipes
+/// 
+/// CURRENT ARCHITECTURE NOTES:
+/// - Imbalance creation is hardcoded and currently only affects the first two regions
+/// - Method structure is simple and designed for bootstrapping test environments
+/// 
+/// REFACTORING SUGGESTIONS:
+/// - Move test logic (e.g., ActivateDefaultRecipes, CreateImbalances) into a dev-only initializer
+/// - Parameterize resource names and amounts to support different test setups
+/// 
+/// EXTENSION OPPORTUNITIES:
+/// - Add support for loading region-specific starting resources from data files
+/// - Integrate with tech trees or scenario scripts for dynamic initialization
+/// - Track which resources were added programmatically for validation or rollback
 using UnityEngine;
 using System.Collections.Generic;
 
@@ -46,7 +75,7 @@ public class ResourceInitializer
             }
         }
 
-        // Optionally create some initial resource imbalances for testing trade
+        // Optionally create some initial resource imbalances for testing
         CreateInitialResourceImbalances(regions);
     }
 
