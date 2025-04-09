@@ -1,6 +1,7 @@
 #if UNITY_EDITOR
 using UnityEngine;
 using UnityEditor;
+using V1.Data;
 
 /// <summary>
 /// Custom editor for TerrainTypeDataSO to provide a better editing experience

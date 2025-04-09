@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEditor;
 using System.Collections.Generic;
+using V1.Data;
 
 #if UNITY_EDITOR
 public class ResourceDependencyViewer : EditorWindow
