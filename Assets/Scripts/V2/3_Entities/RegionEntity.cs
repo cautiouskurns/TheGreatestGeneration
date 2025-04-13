@@ -46,6 +46,8 @@ namespace V2.Entities
         public int laborAvailable { get;  set; }
         public int infrastructureLevel { get;  set; }
 
+        public float satisfaction = 1.0f;
+
         private ResourceComponent resources;
         private ProductionComponent productionComponent;
 
