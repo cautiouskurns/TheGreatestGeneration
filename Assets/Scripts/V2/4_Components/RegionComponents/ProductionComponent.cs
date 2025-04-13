@@ -34,32 +34,31 @@ namespace V2.Components
     /// </summary>
     public class ProductionComponent
     {
-        private ResourceComponent resourceComponent;
-
-        /// <summary>
-        /// Constructs the ProductionComponent with a dependency on the owning region's resources.
-        /// </summary>
-        public ProductionComponent(ResourceComponent resourceComponent)
+        private ResourceComponent resources;
+        private int output = 10; // Default output
+        
+        public ProductionComponent(ResourceComponent resources)
         {
-            this.resourceComponent = resourceComponent;
+            this.resources = resources;
         }
 
-        /// <summary>
-        /// Simulates a single turn of production. Currently a placeholder for future logic.
-        /// </summary>
         public void ProcessProduction()
         {
-            Debug.Log("ProductionComponent: processing production...");
-            // Future: consume resources, create goods, apply modifiers
+            Debug.Log("Processing production...");
+            
+            // Basic resource consumption
+            resources.UseResource("Food", 2);
+            resources.UseResource("Wood", 1);
+            
+            // Calculate output
+            output = 10; // Simplified for now
+            
+            Debug.Log($"Production completed: output = {output}");
         }
 
-        /// <summary>
-        /// Returns a formatted string showing available resource inputs for production.
-        /// </summary>
-        public string GetResourceOverview()
+        public int GetOutput()
         {
-            var resources = resourceComponent.GetAllResources();
-            return string.Join(", ", resources.Select(kv => $"{kv.Key}: {kv.Value:F1}"));
+            return output;
         }
     }
 }

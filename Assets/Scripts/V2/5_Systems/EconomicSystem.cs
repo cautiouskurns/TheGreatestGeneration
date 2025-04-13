@@ -1,6 +1,7 @@
 using UnityEngine;
 using V2.Entities;
 using V2.Managers;
+using V2.Components;
 using System.Collections.Generic;
 
 namespace V2.Systems
@@ -12,16 +13,19 @@ namespace V2.Systems
         public RegionEntity testRegion;
         private Dictionary<string, RegionEntity> regions = new Dictionary<string, RegionEntity>();
 
-        [Header("Simple Economic Settings")]
+        [Header("Production Settings")]
         public float productivityFactor = 1.0f;
         public float laborElasticity = 0.5f;
         public float capitalElasticity = 0.5f;
+
+        [Header("Economic Cycle")]
+        public float cycleMultiplier = 1.05f;
 
         private void Awake()
         {
             if (Instance != null && Instance != this)
             {
-                Destroy(gameObject); // optional safety
+                Destroy(gameObject);
                 return;
             }
             Instance = this;
@@ -30,16 +34,26 @@ namespace V2.Systems
         private void OnEnable()
         {
             EventBus.Subscribe("TurnEnded", OnTurnEnded);
+            EventBus.Subscribe("RegionUpdated", OnRegionUpdated);
         }
 
         private void OnDisable()
         {
             EventBus.Unsubscribe("TurnEnded", OnTurnEnded);
+            EventBus.Unsubscribe("RegionUpdated", OnRegionUpdated);
         }
 
         private void OnTurnEnded(object _)
         {
             ProcessEconomicTick();
+        }
+
+        private void OnRegionUpdated(object data)
+        {
+            if (data is RegionEntity region)
+            {
+                RegisterRegion(region);
+            }
         }
 
         [ContextMenu("Run Economic Tick")]
@@ -53,6 +67,7 @@ namespace V2.Systems
             if (!regions.ContainsKey(region.Name))
             {
                 regions.Add(region.Name, region);
+                Debug.Log($"Region registered: {region.Name}");
             }
         }
 
@@ -64,70 +79,94 @@ namespace V2.Systems
                 return;
             }
 
-            ProcessSupplyAndDemand();
-            ProcessProduction();
-            ProcessInfrastructure();
-            ProcessPopulationConsumption();
-            ProcessEconomicCycle();
+            // Process each economic aspect using the new component architecture
+            ProcessSupplyAndDemand(testRegion);
+            ProcessProduction(testRegion);
+            ProcessInfrastructure(testRegion);
+            ProcessPopulationConsumption(testRegion);
+            ProcessEconomicCycle(testRegion);
             ProcessPriceVolatility();
         }
 
-        private void ProcessSupplyAndDemand()
+        private void ProcessSupplyAndDemand(RegionEntity region)
         {
             Debug.Log("Processing Supply and Demand...");
-            float supply = testRegion.Production * 0.8f;
-            float demand = testRegion.laborAvailable * 1.2f;
+            float supply = region.Economy.Production * 0.8f;
+            float demand = region.Population.LaborAvailable * 1.2f;
             float imbalance = demand - supply;
             Debug.Log($"[Supply/Demand] Supply: {supply}, Demand: {demand}, Imbalance: {imbalance}");
         }
 
-        private void ProcessProduction()
+        private void ProcessProduction(RegionEntity region)
         {
             Debug.Log("Processing Production...");
-            float labor = testRegion.laborAvailable;
-            float capital = testRegion.infrastructureLevel;
+            float labor = region.Population.LaborAvailable;
+            float capital = region.Infrastructure.Level;
 
-            // Simple Cobb-Douglas production
+            // Cobb-Douglas production
             float production = productivityFactor 
                 * Mathf.Pow(labor, laborElasticity) 
                 * Mathf.Pow(capital, capitalElasticity);
 
-            testRegion.Production = Mathf.RoundToInt(production);
-            testRegion.Wealth += testRegion.Production;
-
-            Debug.Log($"[Tick] {testRegion.Name} | Labor: {labor}, Capital: {capital}, Production: {testRegion.Production}, Wealth: {testRegion.Wealth}");
+            // Update output in ProductionComponent
+            int productionOutput = Mathf.RoundToInt(production);
+            
+            // Set output through method (simulating the component doing the calculation)
+            // In the real implementation, this would come from the component itself
+            SetProductionOutput(region.Production, productionOutput);
+            
+            Debug.Log($"[Production] Labor: {labor}, Capital: {capital}, Production: {productionOutput}");
+        }
+        
+        // Helper method to set production output without breaking encapsulation
+        private void SetProductionOutput(ProductionComponent productionComponent, int output)
+        {
+            // This would ideally be replaced by ProductionComponent's own calculation
+            // For now, we're simulating it externally
+            typeof(ProductionComponent).GetField("output", 
+                System.Reflection.BindingFlags.NonPublic | 
+                System.Reflection.BindingFlags.Instance)?.SetValue(productionComponent, output);
         }
 
-        private void ProcessInfrastructure()
+        private void ProcessInfrastructure(RegionEntity region)
         {
             Debug.Log("Processing Infrastructure...");
-            float decayRate = 0.01f;
-            float maintenanceCost = testRegion.infrastructureLevel * 0.5f;
+            float maintenanceCost = region.Infrastructure.GetMaintenanceCost();
+            
+            // Apply maintenance cost to economy
+            region.Economy.Wealth -= Mathf.RoundToInt(maintenanceCost);
 
-            testRegion.infrastructureLevel -= (int)(testRegion.infrastructureLevel * decayRate);
-            testRegion.Wealth -= Mathf.RoundToInt(maintenanceCost);
-
-            Debug.Log($"[Infrastructure] Level: {testRegion.infrastructureLevel}, Maintenance Cost: {maintenanceCost}");
+            Debug.Log($"[Infrastructure] Level: {region.Infrastructure.Level}, Maintenance Cost: {maintenanceCost}");
         }
 
-        private void ProcessPopulationConsumption()
+        private void ProcessPopulationConsumption(RegionEntity region)
         {
             Debug.Log("Processing Population Consumption...");
-            float consumption = testRegion.laborAvailable * 1.5f;
-            float unmetDemand = Mathf.Max(0, consumption - testRegion.Production);
-            float unrest = unmetDemand / consumption;
+            float consumption = region.Population.LaborAvailable * 1.5f;
+            float unmetDemand = Mathf.Max(0, consumption - region.Economy.Production);
+            float satisfaction = 1.0f;
+            
+            if (consumption > 0)
+            {
+                float unrestFactor = unmetDemand / consumption;
+                satisfaction = Mathf.Clamp01(1.0f - unrestFactor);
+            }
 
-            testRegion.satisfaction = Mathf.Clamp01(testRegion.satisfaction - unrest);
-            Debug.Log($"[Consumption] Total: {consumption}, Unmet: {unmetDemand}, Satisfaction: {testRegion.satisfaction}");
+            // Update population satisfaction
+            region.Population.UpdateSatisfaction(satisfaction);
+            
+            Debug.Log($"[Consumption] Total: {consumption}, Unmet: {unmetDemand}, Satisfaction: {satisfaction:F2}");
         }
 
-        private void ProcessEconomicCycle()
+        private void ProcessEconomicCycle(RegionEntity region)
         {
             Debug.Log("Processing Economic Cycle...");
-            float cycleMultiplier = 1.05f;
-            testRegion.Production = Mathf.RoundToInt(testRegion.Production * cycleMultiplier);
-            testRegion.Wealth = Mathf.RoundToInt(testRegion.Wealth * cycleMultiplier);
-            Debug.Log($"[Cycle] Production: {testRegion.Production}, Wealth: {testRegion.Wealth}");
+            
+            // Apply cycle effects to economy
+            region.Economy.Production = Mathf.RoundToInt(region.Economy.Production * cycleMultiplier);
+            region.Economy.Wealth = Mathf.RoundToInt(region.Economy.Wealth * cycleMultiplier);
+            
+            Debug.Log($"[Cycle] Production: {region.Economy.Production}, Wealth: {region.Economy.Wealth}");
         }
 
         private void ProcessPriceVolatility()

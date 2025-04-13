@@ -40,155 +40,45 @@ namespace V2.Entities
     /// </summary>
     public class RegionEntity
     {
-        public string Name { get;  set; }
-        public int Wealth { get;  set; }
-        public int Production { get;  set; }
-        public int laborAvailable { get;  set; }
-        public int infrastructureLevel { get;  set; }
-
-        public float satisfaction = 1.0f;
-
-        private ResourceComponent resources;
-        private ProductionComponent productionComponent;
-
-        private List<int> wealthHistory = new();
-        private List<int> productionHistory = new();
-        private const int maxHistoryLength = 50;
+        // Identity
+        public string Name { get; set; }
+        
+        // Components
+        public ResourceComponent Resources { get; private set; }
+        public ProductionComponent Production { get; private set; }
+        public RegionEconomyComponent Economy { get; private set; }
+        public InfrastructureComponent Infrastructure { get; private set; }
+        public PopulationComponent Population { get; private set; }
 
         public RegionEntity(string name, int initialWealth, int initialProduction)
         {
             Name = name;
-            Wealth = initialWealth;
-            Production = initialProduction;
-            laborAvailable = 100;
-            infrastructureLevel = 1;
-            resources = new ResourceComponent();
-            productionComponent = new ProductionComponent(resources);
+            
+            // Initialize components
+            Resources = new ResourceComponent();
+            Production = new ProductionComponent(Resources);
+            Economy = new RegionEconomyComponent(initialWealth, initialProduction);
+            Infrastructure = new InfrastructureComponent();
+            Population = new PopulationComponent();
         }
 
-        /// <summary>
-        /// Called on each simulation turn. Triggers core economic logic.
-        /// </summary>
         public void ProcessTurn()
         {
             Debug.Log($"[Region: {Name}] Processing Turn...");
-            resources.GenerateResources();
-            productionComponent.ProcessProduction();
-            Wealth += 5;
-            Production += 10;
-            Debug.Log($"[Region: {Name}] Wealth: {Wealth}, Production: {Production}");
-
-            wealthHistory.Add(Wealth);
-            productionHistory.Add(Production);
-
-            if (wealthHistory.Count > maxHistoryLength)
-            {
-                wealthHistory.RemoveAt(0);
-                productionHistory.RemoveAt(0);
-            }
-
-            //PrintAsciiGraph();
+            
+            // Process components
+            Resources.GenerateResources();
+            Production.ProcessProduction();
+            Economy.UpdateEconomy(Production.GetOutput());
+            
+            // Notify systems
             EventBus.Trigger("RegionUpdated", this);
         }
 
-        /// <summary>
-        /// Provides a string summary of the region's current state.
-        /// </summary>
         public string GetSummary()
         {
-            return $"[{Name}] Wealth: {Wealth}, Production: {Production}, Resources: {resources.GetResourceOverview()}";
+            return $"[{Name}] Wealth: {Economy.Wealth}, Production: {Economy.Production}, Resources: {Resources.GetResourceOverview()}";
         }
 
-    private void PrintAsciiGraph()
-    {
-        int graphHeight = 10;
-        int width = Mathf.Min(wealthHistory.Count, maxHistoryLength);
-        int maxWealth = wealthHistory.DefaultIfEmpty(1).Max();
-        int maxProduction = productionHistory.DefaultIfEmpty(1).Max();
-
-        Debug.Log($"\nRegion: {Name} — ASCII Graphs");
-
-        // Generate Wealth Graph
-        Debug.Log("\nWealth:");
-        for (int y = 0; y < graphHeight; y++)
-        {
-            float threshold = 1f - (float)y / (graphHeight - 1);
-            int yLabelValue = Mathf.RoundToInt(threshold * maxWealth);
-            string line = $"{yLabelValue.ToString().PadLeft(4)} |";
-
-            // Create a full-width empty space first
-            char[] graphLine = new char[maxHistoryLength];
-            for (int i = 0; i < maxHistoryLength; i++) {
-                graphLine[i] = ' ';
-            }
-            
-            // Fill from the right side (most recent data on the right)
-            for (int i = 0; i < width; i++)
-            {
-                int dataIndex = wealthHistory.Count - width + i;
-                int graphIndex = maxHistoryLength - width + i;
-                char symbol = (float)wealthHistory[dataIndex] / maxWealth >= threshold ? '█' : ' ';
-                graphLine[graphIndex] = symbol;
-            }
-            
-            line += new string(graphLine);
-            Debug.Log(line);
-        }
-
-        // Create right-aligned x-axis
-        string wealthAxis = "     +" + new string('-', maxHistoryLength);
-        
-        // X-axis labels, right-aligned
-        char[] xLabels = new char[maxHistoryLength];
-        for (int i = 0; i < maxHistoryLength; i++) {
-            xLabels[i] = '.';
-        }
-        // Add markers every 10 ticks
-        for (int i = 0; i < maxHistoryLength; i += 10) {
-            if (i < xLabels.Length) xLabels[i] = '|';
-        }
-        string wealthXLabels = "      " + new string(xLabels);
-        
-        Debug.Log(wealthAxis);
-        Debug.Log(wealthXLabels);
-
-        // Generate Production Graph
-        Debug.Log("\nProduction:");
-        for (int y = 0; y < graphHeight; y++)
-        {
-            float threshold = 1f - (float)y / (graphHeight - 1);
-            int yLabelValue = Mathf.RoundToInt(threshold * maxProduction);
-            string line = $"{yLabelValue.ToString().PadLeft(4)} |";
-
-            // Create a full-width empty space first
-            char[] graphLine = new char[maxHistoryLength];
-            for (int i = 0; i < maxHistoryLength; i++) {
-                graphLine[i] = ' ';
-            }
-            
-            // Fill from the right side (most recent data on the right)
-            for (int i = 0; i < width; i++)
-            {
-                int dataIndex = productionHistory.Count - width + i;
-                int graphIndex = maxHistoryLength - width + i;
-                char symbol = (float)productionHistory[dataIndex] / maxProduction >= threshold ? '█' : ' ';
-                graphLine[graphIndex] = symbol;
-            }
-            
-            line += new string(graphLine);
-            Debug.Log(line);
-        }
-
-        // Create right-aligned x-axis for production
-        string prodAxis = "     +" + new string('-', maxHistoryLength);
-        
-        // X-axis labels, consistent with the wealth graph
-        string prodXLabels = "      " + new string(xLabels);
-        
-        Debug.Log(prodAxis);
-        Debug.Log(prodXLabels);
-
-        Debug.Log($"[Tick {wealthHistory.Count}] Wealth: {Wealth}, Production: {Production}");
-    }
     }
 }

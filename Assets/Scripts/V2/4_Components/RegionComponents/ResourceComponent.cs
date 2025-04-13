@@ -40,27 +40,34 @@ namespace V2.Components
             { "Wood", 0f }
         };
 
-        /// <summary>
-        /// Increments all resource values based on fixed per-turn generation rules.
-        /// </summary>
         public void GenerateResources()
         {
             resources["Food"] += 10f;
             resources["Wood"] += 5f;
-            Debug.Log($"Resources updated - Food: {resources["Food"]}, Wood: {resources["Wood"]}");
+            
+            Debug.Log($"Resources updated: {GetResourceOverview()}");
         }
 
-        /// <summary>
-        /// Returns a shallow copy of the current resource dictionary for safe external access.
-        /// </summary>
         public Dictionary<string, float> GetAllResources()
         {
             return new Dictionary<string, float>(resources);
         }
 
-        /// <summary>
-        /// Returns a formatted string showing current resource amounts for UI or debugging.
-        /// </summary>
+        public float GetResource(string name)
+        {
+            return resources.ContainsKey(name) ? resources[name] : 0;
+        }
+
+        public bool UseResource(string name, float amount)
+        {
+            if (resources.ContainsKey(name) && resources[name] >= amount)
+            {
+                resources[name] -= amount;
+                return true;
+            }
+            return false;
+        }
+
         public string GetResourceOverview()
         {
             return string.Join(", ", resources.Select(kv => $"{kv.Key}: {kv.Value:F1}"));
