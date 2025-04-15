@@ -406,31 +406,6 @@ namespace V2.Editor
             {
                 parameter = newValue;
                 
-                // Update the specific parameter history
-                switch (label)
-                {
-                    case "Productivity Factor":
-                        productivityHistory.Add(parameter);
-                        if (productivityHistory.Count > maxHistoryPoints)
-                            productivityHistory.RemoveAt(0);
-                        break;
-                    case "Labor Elasticity":
-                        laborElasticityHistory.Add(parameter);
-                        if (laborElasticityHistory.Count > maxHistoryPoints)
-                            laborElasticityHistory.RemoveAt(0);
-                        break;
-                    case "Capital Elasticity":
-                        capitalElasticityHistory.Add(parameter);
-                        if (capitalElasticityHistory.Count > maxHistoryPoints)
-                            capitalElasticityHistory.RemoveAt(0);
-                        break;
-                    case "Cycle Multiplier":
-                        cycleMultiplierHistory.Add(parameter);
-                        if (cycleMultiplierHistory.Count > maxHistoryPoints)
-                            cycleMultiplierHistory.RemoveAt(0);
-                        break;
-                }
-                
                 // Apply to system immediately to update the visualization
                 ApplyToSystem();
                 
@@ -443,7 +418,6 @@ namespace V2.Editor
             
             EditorGUILayout.EndHorizontal();
         }
-
 
         private void DrawRegionControlsSection()
         {
@@ -581,35 +555,30 @@ namespace V2.Editor
             // Draw graph background
             GUI.Box(graphRect, "");
 
-            // Define max values for scaling
-            int maxWealth = 100;
-            int maxProduction = 50;
+            // Define default minimum values for scaling
+            int maxWealth = 100;  // Default minimum if no data
+            int maxProduction = 50;  // Default minimum if no data
 
-            DrawAxes(graphRect, "Time", "Value", Mathf.Max(maxWealth, maxProduction)); 
-            
-            // Draw graph data
-            if (wealthHistory.Count > 1)
+            // Calculate actual maximum values from history
+            if (wealthHistory.Count > 0)
             {
-                //float maxSatisfaction = 1.0f;
-                
                 foreach (int value in wealthHistory)
                     maxWealth = Mathf.Max(maxWealth, value);
                 
                 foreach (int value in productionHistory)
                     maxProduction = Mathf.Max(maxProduction, value);
-                
-                // Draw graph axes
-                Handles.color = Color.gray;
-                Handles.DrawLine(
-                    new Vector3(graphRect.x, graphRect.y + graphRect.height, 0),
-                    new Vector3(graphRect.x + graphRect.width, graphRect.y + graphRect.height, 0)
-                );
-                
-                Handles.DrawLine(
-                    new Vector3(graphRect.x, graphRect.y, 0),
-                    new Vector3(graphRect.x, graphRect.y + graphRect.height, 0)
-                );
-                
+                    
+                // Add some headroom (10%) so the max value isn't right at the top
+                maxWealth = (int)(maxWealth * 1.1f);
+                maxProduction = (int)(maxProduction * 1.1f);
+            }
+
+            // Draw axes with dynamically calculated max value
+            DrawAxes(graphRect, "Time", "Value", Mathf.Max(maxWealth, maxProduction)); 
+            
+            // Draw graph data
+            if (wealthHistory.Count > 1)
+            {
                 // Draw wealth graph
                 if (showWealthGraph)
                     DrawLineGraph(wealthHistory, maxWealth, wealthColor);
@@ -768,7 +737,8 @@ namespace V2.Editor
             
             Handles.color = color;
             
-            float xStep = rect.width / (data.Count - 1);
+            // Calculate step size - ensure entire history fits in the graph width
+            float xStep = rect.width / (data.Count - 1 > 0 ? data.Count - 1 : 1);
             
             for (int i = 0; i < data.Count - 1; i++)
             {
@@ -864,30 +834,22 @@ namespace V2.Editor
             // Only draw x-axis labels if we have data
             if (dataLength > 0)
             {
-                // Calculate day range
-                int firstDay = currentDay - dataLength + 1;
-                int lastDay = currentDay;
-                
                 // Determine optimal tick spacing based on data length
                 int majorTickInterval;
                 if (dataLength <= 10) 
                     majorTickInterval = 1;
                 else if (dataLength <= 20) 
-                    majorTickInterval = 5;
+                    majorTickInterval = 2;
                 else if (dataLength <= 50) 
-                    majorTickInterval = 10;
+                    majorTickInterval = 5;
                 else 
-                    majorTickInterval = 20;
+                    majorTickInterval = 10;
                 
                 // Draw minor ticks for each data point
                 for (int i = 0; i < dataLength; i++)
                 {
-                    // Calculate position (right-aligned, newest data on right)
-                    float xPos = graphRect.x + ((float)i / (dataLength - 1)) * graphRect.width;
-                    
-                    // Skip if we only have one data point to avoid division by zero
-                    if (dataLength == 1)
-                        xPos = graphRect.x + graphRect.width / 2;
+                    // Calculate position (the full history is shown, index 0 at the left)
+                    float xPos = graphRect.x + ((float)i / (dataLength - 1 > 0 ? dataLength - 1 : 1)) * graphRect.width;
                         
                     // Draw minor tick
                     Handles.DrawLine(
@@ -897,24 +859,21 @@ namespace V2.Editor
                 }
                 
                 // Draw major ticks and labels
-                for (int day = firstDay; day <= lastDay; day++)
+                for (int i = 0; i < dataLength; i += majorTickInterval)
                 {
-                    // Only draw major ticks at intervals or first/last day
-                    if (day % majorTickInterval == 0 || day == firstDay || day == lastDay)
+                    // Calculate position
+                    float xPos = graphRect.x + ((float)i / (dataLength - 1 > 0 ? dataLength - 1 : 1)) * graphRect.width;
+                    
+                    // Also show the last tick explicitly if it's not already included
+                    if (i > 0 && i + majorTickInterval >= dataLength && i != dataLength - 1)
                     {
-                        // Calculate position (map the day to graph position)
-                        int dayIndex = day - firstDay;  // Index in our data array
-                        float xPos;
-                        
-                        if (dataLength == 1)
-                            xPos = graphRect.x + graphRect.width / 2;
-                        else
-                            xPos = graphRect.x + ((float)dayIndex / (dataLength - 1)) * graphRect.width;
+                        int lastIndex = dataLength - 1;
+                        float lastPos = graphRect.x + ((float)lastIndex / (dataLength - 1)) * graphRect.width;
                         
                         // Draw major tick
                         Handles.DrawLine(
-                            new Vector3(xPos, graphRect.y + graphRect.height, 0),
-                            new Vector3(xPos, graphRect.y + graphRect.height + 5, 0)
+                            new Vector3(lastPos, graphRect.y + graphRect.height, 0),
+                            new Vector3(lastPos, graphRect.y + graphRect.height + 5, 0)
                         );
                         
                         // Draw day label - centered below tick
@@ -922,8 +881,26 @@ namespace V2.Editor
                             alignment = TextAnchor.UpperCenter,
                             fontSize = 10
                         };
-                        GUI.Label(new Rect(xPos - 20, graphRect.y + graphRect.height + 6, 40, 20), $"Day {day}", valueStyle);
+                        // Show as a tick number rather than a "day" to avoid confusion
+                        GUI.Label(new Rect(lastPos - 15, graphRect.y + graphRect.height + 6, 30, 20), 
+                            $"{lastIndex+1}", valueStyle);
                     }
+                    
+                    // Draw major tick
+                    Handles.DrawLine(
+                        new Vector3(xPos, graphRect.y + graphRect.height, 0),
+                        new Vector3(xPos, graphRect.y + graphRect.height + 5, 0)
+                    );
+                    
+                    // Draw tick label - centered below tick
+                    var style = new GUIStyle(GUI.skin.label) { 
+                        alignment = TextAnchor.UpperCenter,
+                        fontSize = 10
+                    };
+                    
+                    // Show as a tick number rather than a "day" to avoid confusion
+                    GUI.Label(new Rect(xPos - 15, graphRect.y + graphRect.height + 6, 30, 20), 
+                        $"{i+1}", style);
                 }
             }
         }
@@ -933,26 +910,26 @@ namespace V2.Editor
         {
             if (region == null) return;
             
-            // Check if values have changed to avoid duplicate records
-            if (wealthHistory.Count > 0 && 
-                productionHistory[productionHistory.Count - 1] == region.Economy.Production &&
-                wealthHistory[wealthHistory.Count - 1] == region.Economy.Wealth &&
-                Mathf.Approximately(satisfactionHistory[satisfactionHistory.Count - 1], region.Population.Satisfaction))
-            {
-                return;
-            }
+            // Always record history on each display update for consistent tracking
+            // Check if values have changed before adding to avoid duplicate entries
+            bool shouldRecord = wealthHistory.Count == 0 || 
+                               (region.Economy.Wealth != wealthHistory[wealthHistory.Count - 1] || 
+                                region.Economy.Production != productionHistory[productionHistory.Count - 1] || 
+                                !Mathf.Approximately(region.Population.Satisfaction, satisfactionHistory[satisfactionHistory.Count - 1]));
             
-            // Add current values
-            wealthHistory.Add(region.Economy.Wealth);
-            productionHistory.Add(region.Economy.Production);
-            satisfactionHistory.Add(region.Population.Satisfaction);
-            
-            // Keep lists at a reasonable size
-            if (wealthHistory.Count > maxHistoryPoints)
+            if (shouldRecord)
             {
-                wealthHistory.RemoveAt(0);
-                productionHistory.RemoveAt(0);
-                satisfactionHistory.RemoveAt(0);
+                wealthHistory.Add(region.Economy.Wealth);
+                productionHistory.Add(region.Economy.Production);
+                satisfactionHistory.Add(region.Population.Satisfaction);
+                
+                // Keep lists at a reasonable size
+                if (wealthHistory.Count > maxHistoryPoints)
+                {
+                    wealthHistory.RemoveAt(0);
+                    productionHistory.RemoveAt(0);
+                    satisfactionHistory.RemoveAt(0);
+                }
             }
         }
 
@@ -986,8 +963,16 @@ namespace V2.Editor
                 
                 // Resync values
                 SyncFromSystem();
-
-                RecordParameterHistory();
+                
+                // Record history after the tick
+                if (economicSystem.testRegion != null)
+                {
+                    RecordHistory(economicSystem.testRegion);
+                    RecordParameterHistory();
+                }
+                
+                // Force repaint to update graphs immediately
+                Repaint();
             }
         }
 
@@ -1058,8 +1043,9 @@ namespace V2.Editor
             economicSystem.laborElasticity = parameters.laborElasticity;
             economicSystem.capitalElasticity = parameters.capitalElasticity;
             economicSystem.cycleMultiplier = parameters.cycleMultiplier;
-
-            RecordParameterHistory(); // Add this line
+            
+            // Record parameter history when applying changes
+            RecordParameterHistory();
             
             // Apply region values if in play mode
             if (simulationActive && economicSystem.testRegion != null)
@@ -1077,6 +1063,9 @@ namespace V2.Editor
                 {
                     SetInfrastructureLevel(region.Infrastructure, infrastructureLevel);
                 }
+                
+                // Record region history when applying changes in play mode
+                RecordHistory(region);
             }
             
             // Mark the object as dirty to ensure values persist
