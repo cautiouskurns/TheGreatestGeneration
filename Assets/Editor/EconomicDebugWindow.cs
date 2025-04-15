@@ -7,34 +7,20 @@ using System.Collections.Generic;
 
 namespace V2.Editor
 {
+    /// <summary>
+    /// Editor window for debugging and visualizing economic simulation parameters
+    /// </summary>
     public class EconomicDebugWindow : EditorWindow
     {
-        // SerializedObject for tracking editor changes
+        // Helper classes for different window functionality
+        private EconomicParameters parameters;
+        private EconomicDataHistory dataHistory;
+        private EconomicDebugGraph graphHelper;
+        private EconomicRegionController regionController;
+        
+        // References to components
         private SerializedObject serializedEconomicSystem;
-        
-        // Reference to the economic system
         private EconomicSystem economicSystem;
-        
-        // Economic parameter values with default values
-        [System.Serializable]
-        private class EconomicParameters
-        {
-            public float productivityFactor = 1.0f;
-            public float laborElasticity = 0.5f;
-            public float capitalElasticity = 0.5f;
-            public float cycleMultiplier = 1.05f;
-            public float decayRate = 0.01f;
-            public float maintenanceCostMultiplier = 0.5f;
-            public float laborConsumptionRate = 1.5f;
-            public float wealthGrowthRate = 5.0f;
-            public float priceVolatility = 0.1f;
-        }
-        
-        private EconomicParameters parameters = new EconomicParameters();
-        
-        // Region control values
-        private int laborAvailable = 100;
-        private int infrastructureLevel = 1;
         
         // Simulation settings
         private bool autoRunEnabled = false;
@@ -42,33 +28,9 @@ namespace V2.Editor
         private double lastAutoRunTime;
         private bool simulationActive = false;
         
-        // History tracking
-        private List<int> wealthHistory = new List<int>();
-        private List<int> productionHistory = new List<int>();
-        private List<float> satisfactionHistory = new List<float>();
-        private const int maxHistoryPoints = 50;
-
-        // Parameter history tracking
-        private List<float> productivityHistory = new List<float>();
-        private List<float> laborElasticityHistory = new List<float>();
-        private List<float> capitalElasticityHistory = new List<float>();
-        private List<float> cycleMultiplierHistory = new List<float>();
-        private int selectedParameterIndex = 0;
-        private string[] parameterNames = new string[] { 
-            "Productivity", "Labor Elasticity", "Capital Elasticity", "Cycle Multiplier" 
-        };
-        private Color parameterColor = new Color(1f, 0.5f, 0.8f);
-        private Rect parameterGraphRect = new Rect(10, 550, 580, 150);
-        private bool showParameterGraph = true;
-        
         // Graph settings
         private Rect graphRect = new Rect(10, 300, 580, 200);
-        private bool showWealthGraph = true;
-        private bool showProductionGraph = true;
-        private bool showSatisfactionGraph = true;
-        private Color wealthColor = new Color(0.2f, 0.8f, 0.2f);
-        private Color productionColor = new Color(0.8f, 0.4f, 0.1f);
-        private Color satisfactionColor = new Color(0.2f, 0.4f, 0.8f);
+        private Rect parameterGraphRect = new Rect(10, 550, 580, 150);
         
         // Parameter group colors
         private Color productionParamsColor = new Color(0.9f, 0.7f, 0.3f, 0.2f);
@@ -82,25 +44,15 @@ namespace V2.Editor
         private bool showResults = true;
         private bool showGraphControls = true;
         private bool showAdvancedParameters = false;
+        
+        // Parameter selector
+        private int selectedParameterIndex = 0;
 
         // Time tracking
         private int currentDay = 1;
         private int currentYear = 1;
         private double lastUIUpdateTime;
         private float uiUpdateInterval = 0.1f; // Update UI 10 times per second
-
-        // New history lists
-        private List<float> supplyHistory = new List<float>();
-        private List<float> demandHistory = new List<float>();
-        private List<float> imbalanceHistory = new List<float>();
-
-        // New graph toggle fields
-        private bool showSupplyGraph = true;
-        private bool showDemandGraph = true;
-        private bool showImbalanceGraph = true;
-        private Color supplyColor = new Color(0.2f, 0.8f, 0.8f); // Cyan
-        private Color demandColor = new Color(0.9f, 0.3f, 0.7f); // Magenta
-        private Color imbalanceColor = new Color(0.9f, 0.9f, 0.2f); // Yellow
 
         [MenuItem("Window/Economic Cycles/Debug Window")]
         public static void ShowWindow()
@@ -110,6 +62,12 @@ namespace V2.Editor
 
         private void OnEnable()
         {
+            // Initialize helper classes
+            if (parameters == null) parameters = new EconomicParameters();
+            if (dataHistory == null) dataHistory = new EconomicDataHistory();
+            if (graphHelper == null) graphHelper = new EconomicDebugGraph();
+            if (regionController == null) regionController = new EconomicRegionController();
+            
             // Start editor update for auto-run
             EditorApplication.update += OnEditorUpdate;
             
@@ -134,7 +92,7 @@ namespace V2.Editor
                 SyncFromSystem();
                 
                 // Always record parameter history at startup
-                RecordParameterHistory();
+                dataHistory.RecordParameterHistory(parameters);
             }
         }
 
@@ -336,8 +294,8 @@ namespace V2.Editor
             {
                 EditorGUI.indentLevel++;
                 
-                // Production Parameters (yellow background)
-                EditorGUILayout.BeginVertical(new GUIStyle { normal = { background = MakeTexture(1, 1, productionParamsColor) } });
+                // Production Parameters
+                EditorGUILayout.BeginVertical(new GUIStyle { normal = { background = graphHelper.MakeTexture(1, 1, productionParamsColor) } });
                 EditorGUILayout.LabelField("Production Parameters", EditorStyles.boldLabel);
                 
                 DrawParameterSlider("Productivity Factor", ref parameters.productivityFactor, 0.1f, 5.0f, 
@@ -353,8 +311,8 @@ namespace V2.Editor
                 
                 EditorGUILayout.Space(5);
                 
-                // Cycle Parameters (blue background)
-                EditorGUILayout.BeginVertical(new GUIStyle { normal = { background = MakeTexture(1, 1, cycleParamsColor) } });
+                // Cycle Parameters
+                EditorGUILayout.BeginVertical(new GUIStyle { normal = { background = graphHelper.MakeTexture(1, 1, cycleParamsColor) } });
                 EditorGUILayout.LabelField("Economic Cycle Parameters", EditorStyles.boldLabel);
                 
                 DrawParameterSlider("Cycle Multiplier", ref parameters.cycleMultiplier, 0.8f, 1.2f,
@@ -375,8 +333,8 @@ namespace V2.Editor
                 
                 if (showAdvancedParameters)
                 {
-                    // Infrastructure Parameters (purple background)
-                    EditorGUILayout.BeginVertical(new GUIStyle { normal = { background = MakeTexture(1, 1, infrastructureParamsColor) } });
+                    // Infrastructure Parameters
+                    EditorGUILayout.BeginVertical(new GUIStyle { normal = { background = graphHelper.MakeTexture(1, 1, infrastructureParamsColor) } });
                     EditorGUILayout.LabelField("Infrastructure Parameters", EditorStyles.boldLabel);
                     
                     DrawParameterSlider("Decay Rate", ref parameters.decayRate, 0f, 0.05f,
@@ -389,8 +347,8 @@ namespace V2.Editor
                     
                     EditorGUILayout.Space(5);
                     
-                    // Population Parameters (green background)
-                    EditorGUILayout.BeginVertical(new GUIStyle { normal = { background = MakeTexture(1, 1, populationParamsColor) } });
+                    // Population Parameters
+                    EditorGUILayout.BeginVertical(new GUIStyle { normal = { background = graphHelper.MakeTexture(1, 1, populationParamsColor) } });
                     EditorGUILayout.LabelField("Population Parameters", EditorStyles.boldLabel);
                     
                     DrawParameterSlider("Labor Consumption Rate", ref parameters.laborConsumptionRate, 0.5f, 3f,
@@ -440,24 +398,24 @@ namespace V2.Editor
             {
                 EditorGUI.indentLevel++;
                 
-                EditorGUILayout.BeginVertical(new GUIStyle { normal = { background = MakeTexture(1, 1, populationParamsColor) } });
+                EditorGUILayout.BeginVertical(new GUIStyle { normal = { background = graphHelper.MakeTexture(1, 1, populationParamsColor) } });
                 EditorGUILayout.LabelField("Population", EditorStyles.boldLabel);
                 
                 EditorGUILayout.BeginHorizontal();
                 EditorGUILayout.LabelField(new GUIContent("Labor Available:", "Amount of labor force available in the region"), GUILayout.Width(150));
-                laborAvailable = EditorGUILayout.IntSlider(laborAvailable, 10, 500);
+                regionController.laborAvailable = EditorGUILayout.IntSlider(regionController.laborAvailable, 10, 500);
                 EditorGUILayout.EndHorizontal();
                 
                 EditorGUILayout.EndVertical();
                 
                 EditorGUILayout.Space(5);
                 
-                EditorGUILayout.BeginVertical(new GUIStyle { normal = { background = MakeTexture(1, 1, infrastructureParamsColor) } });
+                EditorGUILayout.BeginVertical(new GUIStyle { normal = { background = graphHelper.MakeTexture(1, 1, infrastructureParamsColor) } });
                 EditorGUILayout.LabelField("Infrastructure", EditorStyles.boldLabel);
                 
                 EditorGUILayout.BeginHorizontal();
                 EditorGUILayout.LabelField(new GUIContent("Infrastructure Level:", "Current level of infrastructure development"), GUILayout.Width(150));
-                infrastructureLevel = EditorGUILayout.IntSlider(infrastructureLevel, 1, 10);
+                regionController.infrastructureLevel = EditorGUILayout.IntSlider(regionController.infrastructureLevel, 1, 10);
                 EditorGUILayout.EndHorizontal();
                 
                 EditorGUILayout.EndVertical();
@@ -490,21 +448,21 @@ namespace V2.Editor
                 // Economic outputs
                 EditorGUILayout.BeginHorizontal();
                 GUILayout.Label("Wealth:", GUILayout.Width(100));
-                GUI.color = wealthColor;
+                GUI.color = graphHelper.wealthColor;
                 GUILayout.Label(region.Economy.Wealth.ToString(), EditorStyles.boldLabel);
                 GUI.color = Color.white;
                 EditorGUILayout.EndHorizontal();
                 
                 EditorGUILayout.BeginHorizontal();
                 GUILayout.Label("Production:", GUILayout.Width(100));
-                GUI.color = productionColor;
+                GUI.color = graphHelper.productionColor;
                 GUILayout.Label(region.Economy.Production.ToString(), EditorStyles.boldLabel);
                 GUI.color = Color.white;
                 EditorGUILayout.EndHorizontal();
                 
                 EditorGUILayout.BeginHorizontal();
                 GUILayout.Label("Satisfaction:", GUILayout.Width(100));
-                GUI.color = satisfactionColor;
+                GUI.color = graphHelper.satisfactionColor;
                 GUILayout.Label(region.Population.Satisfaction.ToString("F2"), EditorStyles.boldLabel);
                 GUI.color = Color.white;
                 EditorGUILayout.EndHorizontal();
@@ -533,7 +491,7 @@ namespace V2.Editor
         private void DrawGraphSection(RegionEntity region)
         {
             // Record history data
-            RecordHistory(region);
+            dataHistory.RecordHistory(region);
             
             // Graph controls
             showGraphControls = EditorGUILayout.Foldout(showGraphControls, "Graph Controls", true, EditorStyles.foldoutHeader);
@@ -543,37 +501,37 @@ namespace V2.Editor
                 EditorGUI.indentLevel++;
                 
                 EditorGUILayout.BeginHorizontal();
-                showWealthGraph = EditorGUILayout.Toggle("Show Wealth", showWealthGraph);
-                wealthColor = EditorGUILayout.ColorField(wealthColor, GUILayout.Width(50));
+                graphHelper.showWealthGraph = EditorGUILayout.Toggle("Show Wealth", graphHelper.showWealthGraph);
+                graphHelper.wealthColor = EditorGUILayout.ColorField(graphHelper.wealthColor, GUILayout.Width(50));
                 EditorGUILayout.EndHorizontal();
                 
                 EditorGUILayout.BeginHorizontal();
-                showProductionGraph = EditorGUILayout.Toggle("Show Production", showProductionGraph);
-                productionColor = EditorGUILayout.ColorField(productionColor, GUILayout.Width(50));
+                graphHelper.showProductionGraph = EditorGUILayout.Toggle("Show Production", graphHelper.showProductionGraph);
+                graphHelper.productionColor = EditorGUILayout.ColorField(graphHelper.productionColor, GUILayout.Width(50));
                 EditorGUILayout.EndHorizontal();
                 
                 EditorGUILayout.BeginHorizontal();
-                showSatisfactionGraph = EditorGUILayout.Toggle("Show Satisfaction", showSatisfactionGraph);
-                satisfactionColor = EditorGUILayout.ColorField(satisfactionColor, GUILayout.Width(50));
+                graphHelper.showSatisfactionGraph = EditorGUILayout.Toggle("Show Satisfaction", graphHelper.showSatisfactionGraph);
+                graphHelper.satisfactionColor = EditorGUILayout.ColorField(graphHelper.satisfactionColor, GUILayout.Width(50));
                 EditorGUILayout.EndHorizontal();
                 
-                // New graph toggles for supply/demand
+                // Graph toggles for supply/demand
                 EditorGUILayout.Space(5);
                 EditorGUILayout.LabelField("Market Dynamics", EditorStyles.boldLabel);
                 
                 EditorGUILayout.BeginHorizontal();
-                showSupplyGraph = EditorGUILayout.Toggle("Show Supply", showSupplyGraph);
-                supplyColor = EditorGUILayout.ColorField(supplyColor, GUILayout.Width(50));
+                graphHelper.showSupplyGraph = EditorGUILayout.Toggle("Show Supply", graphHelper.showSupplyGraph);
+                graphHelper.supplyColor = EditorGUILayout.ColorField(graphHelper.supplyColor, GUILayout.Width(50));
                 EditorGUILayout.EndHorizontal();
                 
                 EditorGUILayout.BeginHorizontal();
-                showDemandGraph = EditorGUILayout.Toggle("Show Demand", showDemandGraph);
-                demandColor = EditorGUILayout.ColorField(demandColor, GUILayout.Width(50));
+                graphHelper.showDemandGraph = EditorGUILayout.Toggle("Show Demand", graphHelper.showDemandGraph);
+                graphHelper.demandColor = EditorGUILayout.ColorField(graphHelper.demandColor, GUILayout.Width(50));
                 EditorGUILayout.EndHorizontal();
                 
                 EditorGUILayout.BeginHorizontal();
-                showImbalanceGraph = EditorGUILayout.Toggle("Show Imbalance", showImbalanceGraph);
-                imbalanceColor = EditorGUILayout.ColorField(imbalanceColor, GUILayout.Width(50));
+                graphHelper.showImbalanceGraph = EditorGUILayout.Toggle("Show Imbalance", graphHelper.showImbalanceGraph);
+                graphHelper.imbalanceColor = EditorGUILayout.ColorField(graphHelper.imbalanceColor, GUILayout.Width(50));
                 EditorGUILayout.EndHorizontal();
                 
                 EditorGUI.indentLevel--;
@@ -586,171 +544,147 @@ namespace V2.Editor
             
             // Draw graph background
             GUI.Box(graphRect, "");
-
-            // Define default minimum values for scaling
-            int maxWealth = 100;  // Default minimum if no data
-            int maxProduction = 50;  // Default minimum if no data
-            float maxSupply = 50f; // Default minimum
-            float maxDemand = 50f; // Default minimum
-            float maxImbalance = 50f; // Default minimum for absolute value
-
-            // Calculate actual maximum values from history
-            if (wealthHistory.Count > 0)
-            {
-                foreach (int value in wealthHistory)
-                    maxWealth = Mathf.Max(maxWealth, value);
-                
-                foreach (int value in productionHistory)
-                    maxProduction = Mathf.Max(maxProduction, value);
-                
-                maxSupply = MaxList(supplyHistory);
-                maxDemand = MaxList(demandHistory);
-                
-                // For imbalance, find the maximum absolute value
-                foreach (float value in imbalanceHistory)
-                {
-                    maxImbalance = Mathf.Max(maxImbalance, Mathf.Abs(value));
-                }
-                    
-                // Add some headroom (10%) so the max value isn't right at the top
-                maxWealth = (int)(maxWealth * 1.1f);
-                maxProduction = (int)(maxProduction * 1.1f);
-                maxSupply *= 1.1f;
-                maxDemand *= 1.1f;
-                maxImbalance *= 1.1f;
-            }
-
-            // Calculate overall max value for scaling
-            float maxYValue = Mathf.Max(
-                maxWealth, 
-                maxProduction, 
-                maxSupply,
-                maxDemand,
-                maxImbalance
-            );
-
-            // Draw axes with dynamically calculated max value
-            DrawAxes(graphRect, "Time", "Value", maxYValue); 
             
-            // Draw graph data
-            if (wealthHistory.Count > 1)
+            // Get maximum values for graph scaling
+            dataHistory.GetMaxValues(out int maxWealth, out int maxProduction, 
+                out float maxSupply, out float maxDemand, out float maxImbalance);
+            
+            // Calculate overall max value for scaling
+            float maxYValue = Mathf.Max(maxWealth, maxProduction, maxSupply, maxDemand, maxImbalance);
+            
+            // Draw axes
+            graphHelper.DrawAxes(graphRect, "Time", "Value", maxYValue, dataHistory.wealthHistory.Count);
+            
+            // Draw graph data if we have at least two points
+            if (dataHistory.wealthHistory.Count > 1)
             {
                 // Draw wealth graph
-                if (showWealthGraph)
-                    DrawLineGraph(wealthHistory, maxYValue, wealthColor);
+                if (graphHelper.showWealthGraph)
+                    graphHelper.DrawLineGraph(dataHistory.wealthHistory, maxYValue, graphHelper.wealthColor, graphRect);
                 
                 // Draw production graph
-                if (showProductionGraph)
-                    DrawLineGraph(productionHistory, maxYValue, productionColor);
+                if (graphHelper.showProductionGraph)
+                    graphHelper.DrawLineGraph(dataHistory.productionHistory, maxYValue, graphHelper.productionColor, graphRect);
                 
                 // Draw satisfaction graph
-                if (showSatisfactionGraph)
-                    DrawLineGraph(satisfactionHistory, 1.0f, satisfactionColor);
+                if (graphHelper.showSatisfactionGraph)
+                    graphHelper.DrawLineGraph(dataHistory.satisfactionHistory, 1.0f, graphHelper.satisfactionColor, graphRect);
                     
-                // Draw new market dynamics graphs
-                if (showSupplyGraph)
-                    DrawLineGraph(supplyHistory, maxYValue, supplyColor);
+                // Draw market dynamics graphs
+                if (graphHelper.showSupplyGraph)
+                    graphHelper.DrawLineGraph(dataHistory.supplyHistory, maxYValue, graphHelper.supplyColor, graphRect);
                     
-                if (showDemandGraph)
-                    DrawLineGraph(demandHistory, maxYValue, demandColor);
+                if (graphHelper.showDemandGraph)
+                    graphHelper.DrawLineGraph(dataHistory.demandHistory, maxYValue, graphHelper.demandColor, graphRect);
                     
-                if (showImbalanceGraph)
-                    DrawLineGraph(imbalanceHistory, maxYValue, imbalanceColor);
+                if (graphHelper.showImbalanceGraph)
+                    graphHelper.DrawLineGraph(dataHistory.imbalanceHistory, maxYValue, graphHelper.imbalanceColor, graphRect);
                 
-                // Draw legend in the top right corner
-                float legendY = graphRect.y + 10;
-                float legendX = graphRect.x + graphRect.width - 130;  // Right-aligned
-                float legendWidth = 120;
-                float legendHeight = 70 + (showSupplyGraph ? 20 : 0) + (showDemandGraph ? 20 : 0) + (showImbalanceGraph ? 20 : 0);
-                
-                // Semi-transparent background
-                EditorGUI.DrawRect(new Rect(legendX, legendY, legendWidth, legendHeight), new Color(0.1f, 0.1f, 0.1f, 0.7f));
-                
-                int legendOffset = 0;
-                
-                if (showWealthGraph)
-                {
-                    EditorGUI.DrawRect(new Rect(legendX + 5, legendY + 10 + legendOffset, 15, 5), wealthColor);
-                    GUI.contentColor = wealthColor;
-                    GUI.Label(new Rect(legendX + 25, legendY + 5 + legendOffset, 90, 20), "Wealth: " + region.Economy.Wealth);
-                    GUI.contentColor = Color.white;
-                    legendOffset += 20;
-                }
-                
-                if (showProductionGraph)
-                {
-                    EditorGUI.DrawRect(new Rect(legendX + 5, legendY + 10 + legendOffset, 15, 5), productionColor);
-                    GUI.contentColor = productionColor;
-                    GUI.Label(new Rect(legendX + 25, legendY + 5 + legendOffset, 90, 20), "Prod: " + region.Economy.Production);
-                    GUI.contentColor = Color.white;
-                    legendOffset += 20;
-                }
-                
-                if (showSatisfactionGraph)
-                {
-                    EditorGUI.DrawRect(new Rect(legendX + 5, legendY + 10 + legendOffset, 15, 5), satisfactionColor);
-                    GUI.contentColor = satisfactionColor;
-                    GUI.Label(new Rect(legendX + 25, legendY + 5 + legendOffset, 90, 20), "Sat: " + region.Population.Satisfaction.ToString("F2"));
-                    GUI.contentColor = Color.white;
-                    legendOffset += 20;
-                }
-                
-                if (showSupplyGraph)
-                {
-                    EditorGUI.DrawRect(new Rect(legendX + 5, legendY + 10 + legendOffset, 15, 5), supplyColor);
-                    GUI.contentColor = supplyColor;
-                    GUI.Label(new Rect(legendX + 25, legendY + 5 + legendOffset, 90, 20), 
-                        "Supply: " + (supplyHistory.Count > 0 ? supplyHistory[supplyHistory.Count-1].ToString("F1") : "0"));
-                    GUI.contentColor = Color.white;
-                    legendOffset += 20;
-                }
-                
-                if (showDemandGraph)
-                {
-                    EditorGUI.DrawRect(new Rect(legendX + 5, legendY + 10 + legendOffset, 15, 5), demandColor);
-                    GUI.contentColor = demandColor;
-                    GUI.Label(new Rect(legendX + 25, legendY + 5 + legendOffset, 90, 20), 
-                        "Demand: " + (demandHistory.Count > 0 ? demandHistory[demandHistory.Count-1].ToString("F1") : "0"));
-                    GUI.contentColor = Color.white;
-                    legendOffset += 20;
-                }
-                
-                if (showImbalanceGraph)
-                {
-                    EditorGUI.DrawRect(new Rect(legendX + 5, legendY + 10 + legendOffset, 15, 5), imbalanceColor);
-                    GUI.contentColor = imbalanceColor;
-                    float currentImbalance = imbalanceHistory.Count > 0 ? imbalanceHistory[imbalanceHistory.Count-1] : 0;
-                    string imbalancePrefix = currentImbalance >= 0 ? "+" : "";
-                    GUI.Label(new Rect(legendX + 25, legendY + 5 + legendOffset, 90, 20), 
-                        "Imb: " + imbalancePrefix + currentImbalance.ToString("F1"));
-                    GUI.contentColor = Color.white;
-                }
+                // Draw legend
+                DrawGraphLegend(region, graphRect);
             }
             
             // Reserve space for the graph in layout
             GUILayoutUtility.GetRect(position.width, 210);
         }
+        
+        private void DrawGraphLegend(RegionEntity region, Rect graphRect)
+        {
+            // Legend positioning and background
+            float legendY = graphRect.y + 10;
+            float legendX = graphRect.x + graphRect.width - 130;
+            float legendWidth = 120;
+            float legendHeight = 70;
+            
+            // Adjust height based on which graphs are shown
+            if (graphHelper.showSupplyGraph) legendHeight += 20;
+            if (graphHelper.showDemandGraph) legendHeight += 20;
+            if (graphHelper.showImbalanceGraph) legendHeight += 20;
+            
+            // Semi-transparent background
+            EditorGUI.DrawRect(new Rect(legendX, legendY, legendWidth, legendHeight), new Color(0.1f, 0.1f, 0.1f, 0.7f));
+            
+            int legendOffset = 0;
+            
+            if (graphHelper.showWealthGraph)
+            {
+                EditorGUI.DrawRect(new Rect(legendX + 5, legendY + 10 + legendOffset, 15, 5), graphHelper.wealthColor);
+                GUI.contentColor = graphHelper.wealthColor;
+                GUI.Label(new Rect(legendX + 25, legendY + 5 + legendOffset, 90, 20), "Wealth: " + region.Economy.Wealth);
+                GUI.contentColor = Color.white;
+                legendOffset += 20;
+            }
+            
+            if (graphHelper.showProductionGraph)
+            {
+                EditorGUI.DrawRect(new Rect(legendX + 5, legendY + 10 + legendOffset, 15, 5), graphHelper.productionColor);
+                GUI.contentColor = graphHelper.productionColor;
+                GUI.Label(new Rect(legendX + 25, legendY + 5 + legendOffset, 90, 20), "Prod: " + region.Economy.Production);
+                GUI.contentColor = Color.white;
+                legendOffset += 20;
+            }
+            
+            if (graphHelper.showSatisfactionGraph)
+            {
+                EditorGUI.DrawRect(new Rect(legendX + 5, legendY + 10 + legendOffset, 15, 5), graphHelper.satisfactionColor);
+                GUI.contentColor = graphHelper.satisfactionColor;
+                GUI.Label(new Rect(legendX + 25, legendY + 5 + legendOffset, 90, 20), "Sat: " + region.Population.Satisfaction.ToString("F2"));
+                GUI.contentColor = Color.white;
+                legendOffset += 20;
+            }
+            
+            if (graphHelper.showSupplyGraph)
+            {
+                EditorGUI.DrawRect(new Rect(legendX + 5, legendY + 10 + legendOffset, 15, 5), graphHelper.supplyColor);
+                GUI.contentColor = graphHelper.supplyColor;
+                GUI.Label(new Rect(legendX + 25, legendY + 5 + legendOffset, 90, 20), 
+                    "Supply: " + (dataHistory.supplyHistory.Count > 0 ? dataHistory.supplyHistory[dataHistory.supplyHistory.Count-1].ToString("F1") : "0"));
+                GUI.contentColor = Color.white;
+                legendOffset += 20;
+            }
+            
+            if (graphHelper.showDemandGraph)
+            {
+                EditorGUI.DrawRect(new Rect(legendX + 5, legendY + 10 + legendOffset, 15, 5), graphHelper.demandColor);
+                GUI.contentColor = graphHelper.demandColor;
+                GUI.Label(new Rect(legendX + 25, legendY + 5 + legendOffset, 90, 20), 
+                    "Demand: " + (dataHistory.demandHistory.Count > 0 ? dataHistory.demandHistory[dataHistory.demandHistory.Count-1].ToString("F1") : "0"));
+                GUI.contentColor = Color.white;
+                legendOffset += 20;
+            }
+            
+            if (graphHelper.showImbalanceGraph)
+            {
+                EditorGUI.DrawRect(new Rect(legendX + 5, legendY + 10 + legendOffset, 15, 5), graphHelper.imbalanceColor);
+                GUI.contentColor = graphHelper.imbalanceColor;
+                float currentImbalance = dataHistory.imbalanceHistory.Count > 0 ? dataHistory.imbalanceHistory[dataHistory.imbalanceHistory.Count-1] : 0;
+                string imbalancePrefix = currentImbalance >= 0 ? "+" : "";
+                GUI.Label(new Rect(legendX + 25, legendY + 5 + legendOffset, 90, 20), 
+                    "Imb: " + imbalancePrefix + currentImbalance.ToString("F1"));
+                GUI.contentColor = Color.white;
+            }
+        }
 
         private void DrawParameterGraphSection()
         {
             // Parameter graph controls
-            showParameterGraph = EditorGUILayout.Foldout(showParameterGraph, "Parameter History Graph", true, EditorStyles.foldoutHeader);
+            graphHelper.showParameterGraph = EditorGUILayout.Foldout(graphHelper.showParameterGraph, "Parameter History Graph", true, EditorStyles.foldoutHeader);
             
-            if (showParameterGraph)
+            if (graphHelper.showParameterGraph)
             {
                 EditorGUI.indentLevel++;
                 
                 // Parameter selector
                 EditorGUILayout.BeginHorizontal();
                 EditorGUILayout.LabelField("Parameter:", GUILayout.Width(80));
-                selectedParameterIndex = EditorGUILayout.Popup(selectedParameterIndex, parameterNames);
-                parameterColor = EditorGUILayout.ColorField(parameterColor, GUILayout.Width(50));
+                selectedParameterIndex = EditorGUILayout.Popup(selectedParameterIndex, EconomicParameters.ParameterNames);
+                graphHelper.parameterColor = EditorGUILayout.ColorField(graphHelper.parameterColor, GUILayout.Width(50));
                 EditorGUILayout.EndHorizontal();
                 
                 // Add a button to manually record current parameters
                 if (GUILayout.Button("Record Current Parameters"))
                 {
-                    RecordParameterHistory();
+                    dataHistory.RecordParameterHistory(parameters);
                 }
                 
                 EditorGUI.indentLevel--;
@@ -761,47 +695,37 @@ namespace V2.Editor
             // Calculate graph rect based on window size
             parameterGraphRect = new Rect(90, GUILayoutUtility.GetLastRect().yMax, position.width - 100, 150);
             
-            // Draw graph background regardless of data availability
+            // Draw graph background
             GUI.Box(parameterGraphRect, "");
             
             // Get the correct history list based on selection
-            List<float> parameterHistory;
-            float maxValue;
+            List<float> parameterHistory = dataHistory.GetParameterHistoryByIndex(selectedParameterIndex);
+            float maxValue = 0;
             float currentValue = 0;
             
+            // Get appropriate max value based on parameter type
             switch (selectedParameterIndex)
             {
-                case 0:
-                    parameterHistory = productivityHistory;
+                case 0: // Productivity
                     maxValue = 5.0f;
                     currentValue = parameters.productivityFactor;
                     break;
-                case 1:
-                    parameterHistory = laborElasticityHistory;
+                case 1: // Labor Elasticity
+                case 2: // Capital Elasticity
                     maxValue = 1.0f;
-                    currentValue = parameters.laborElasticity;
+                    currentValue = selectedParameterIndex == 1 ? parameters.laborElasticity : parameters.capitalElasticity;
                     break;
-                case 2:
-                    parameterHistory = capitalElasticityHistory;
-                    maxValue = 1.0f;
-                    currentValue = parameters.capitalElasticity;
-                    break;
-                case 3:
-                    parameterHistory = cycleMultiplierHistory;
+                case 3: // Cycle Multiplier
                     maxValue = 1.2f;
                     currentValue = parameters.cycleMultiplier;
                     break;
-                default:
-                    parameterHistory = productivityHistory;
-                    maxValue = 5.0f;
-                    currentValue = parameters.productivityFactor;
-                    break;
             }
             
-            // Draw axes with labels regardless of data
-            DrawAxes(parameterGraphRect, "Time", parameterNames[selectedParameterIndex], maxValue);
+            // Draw axes
+            graphHelper.DrawAxes(parameterGraphRect, "Time", EconomicParameters.ParameterNames[selectedParameterIndex], 
+                maxValue, parameterHistory.Count);
             
-            // Always show the current value
+            // Draw parameter graph legend with current value
             float legendY = parameterGraphRect.y + 10;
             float legendX = parameterGraphRect.x + parameterGraphRect.width - 130;
             float legendWidth = 120;
@@ -809,17 +733,17 @@ namespace V2.Editor
             
             EditorGUI.DrawRect(new Rect(legendX, legendY, legendWidth, legendHeight), new Color(0.1f, 0.1f, 0.1f, 0.7f));
             
-            GUI.contentColor = parameterColor;
+            GUI.contentColor = graphHelper.parameterColor;
             GUI.Label(new Rect(legendX + 10, legendY + 5, 110, 20), 
-                $"{parameterNames[selectedParameterIndex]}: {currentValue:F2}");
+                $"{EconomicParameters.ParameterNames[selectedParameterIndex]}: {currentValue:F2}");
             GUI.contentColor = Color.white;
             
             // Draw parameter graph if we have data
             if (parameterHistory != null && parameterHistory.Count > 1)
             {
-                DrawLineGraph(parameterHistory, maxValue, parameterColor, parameterGraphRect);
+                graphHelper.DrawLineGraph(parameterHistory, maxValue, graphHelper.parameterColor, parameterGraphRect);
             }
-            else if (showParameterGraph)
+            else if (graphHelper.showParameterGraph)
             {
                 // Show message if there's no data
                 string message = "No parameter history available.\nRun simulation or change parameters to record data.";
@@ -828,241 +752,6 @@ namespace V2.Editor
             
             // Reserve space for the graph in layout
             GUILayoutUtility.GetRect(position.width, 160);
-        }
-        
-
-        private void DrawLineGraph<T>(List<T> data, float maxValue, Color color, Rect customGraphRect = default)
-        {
-            if (data.Count < 2) return;
-            
-            Rect rect = customGraphRect.width > 0 ? customGraphRect : graphRect;
-            
-            Handles.color = color;
-            
-            // Calculate step size - ensure entire history fits in the graph width
-            float xStep = rect.width / (data.Count - 1 > 0 ? data.Count - 1 : 1);
-            
-            for (int i = 0; i < data.Count - 1; i++)
-            {
-                float value1 = System.Convert.ToSingle(data[i]) / maxValue;
-                float value2 = System.Convert.ToSingle(data[i + 1]) / maxValue;
-                
-                // Clamp values to [0,1] range
-                value1 = Mathf.Clamp01(value1);
-                value2 = Mathf.Clamp01(value2);
-                
-                // Calculate points
-                Vector3 p1 = new Vector3(
-                    rect.x + i * xStep,
-                    rect.y + rect.height - (value1 * rect.height),
-                    0
-                );
-                
-                Vector3 p2 = new Vector3(
-                    rect.x + (i + 1) * xStep,
-                    rect.y + rect.height - (value2 * rect.height),
-                    0
-                );
-                
-                Handles.DrawLine(p1, p2);
-            }
-        }
-
-        private void DrawAxes(Rect graphRect, string xLabel, string yLabel, float maxYValue)
-        {
-            // Draw axes
-            Handles.color = Color.gray;
-            
-            // X-axis
-            Handles.DrawLine(
-                new Vector3(graphRect.x, graphRect.y + graphRect.height, 0),
-                new Vector3(graphRect.x + graphRect.width, graphRect.y + graphRect.height, 0)
-            );
-            
-            // Y-axis
-            Handles.DrawLine(
-                new Vector3(graphRect.x, graphRect.y, 0),
-                new Vector3(graphRect.x, graphRect.y + graphRect.height, 0)
-            );
-            
-            // X-axis label - position it centered below x-axis
-            GUI.contentColor = Color.white;
-            float xLabelWidth = 60;
-            float xLabelX = graphRect.x + (graphRect.width / 2) - (xLabelWidth / 2); // Center it
-            GUI.Label(new Rect(xLabelX, graphRect.y + graphRect.height + 25, xLabelWidth, 20), xLabel);
-            
-            // Y-axis label without rotation - position it to the left of Y axis
-            float yLabelWidth = 80;
-            GUI.Label(new Rect(graphRect.x - yLabelWidth - 5, graphRect.y + (graphRect.height / 2) - 10, yLabelWidth, 20), yLabel);
-            
-            // Y-axis tick marks and values
-            int tickCount = 5;
-            for (int i = 0; i <= tickCount; i++)
-            {
-                float yPos = graphRect.y + graphRect.height - (i * (graphRect.height / tickCount));
-                float value = (float)i * maxYValue / tickCount;
-                
-                // Draw tick
-                Handles.DrawLine(
-                    new Vector3(graphRect.x - 2, yPos, 0),
-                    new Vector3(graphRect.x + 2, yPos, 0)
-                );
-                
-                // Draw value - further left with right alignment
-                var valueStyle = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleRight };
-                GUI.Label(new Rect(graphRect.x - 75, yPos - 10, 70, 20), value.ToString("F1"), valueStyle);
-            }
-            
-            // Get the actual data length for x-axis (parameter or real data)
-            int dataLength = 0;
-            if (graphRect == parameterGraphRect)
-            {
-                // For parameter graph, use the selected parameter history length
-                switch (selectedParameterIndex)
-                {
-                    case 0: dataLength = productivityHistory.Count; break;
-                    case 1: dataLength = laborElasticityHistory.Count; break;
-                    case 2: dataLength = capitalElasticityHistory.Count; break;
-                    case 3: dataLength = cycleMultiplierHistory.Count; break;
-                    default: dataLength = productivityHistory.Count; break;
-                }
-            }
-            else
-            {
-                // For main graph, use wealth history length
-                dataLength = wealthHistory.Count;
-            }
-            
-            // Only draw x-axis labels if we have data
-            if (dataLength > 0)
-            {
-                // Determine optimal tick spacing based on data length
-                int majorTickInterval;
-                if (dataLength <= 10) 
-                    majorTickInterval = 1;
-                else if (dataLength <= 20) 
-                    majorTickInterval = 2;
-                else if (dataLength <= 50) 
-                    majorTickInterval = 5;
-                else 
-                    majorTickInterval = 10;
-                
-                // Draw minor ticks for each data point
-                for (int i = 0; i < dataLength; i++)
-                {
-                    // Calculate position (the full history is shown, index 0 at the left)
-                    float xPos = graphRect.x + ((float)i / (dataLength - 1 > 0 ? dataLength - 1 : 1)) * graphRect.width;
-                        
-                    // Draw minor tick
-                    Handles.DrawLine(
-                        new Vector3(xPos, graphRect.y + graphRect.height, 0),
-                        new Vector3(xPos, graphRect.y + graphRect.height + 2, 0)
-                    );
-                }
-                
-                // Draw major ticks and labels
-                for (int i = 0; i < dataLength; i += majorTickInterval)
-                {
-                    // Calculate position
-                    float xPos = graphRect.x + ((float)i / (dataLength - 1 > 0 ? dataLength - 1 : 1)) * graphRect.width;
-                    
-                    // Also show the last tick explicitly if it's not already included
-                    if (i > 0 && i + majorTickInterval >= dataLength && i != dataLength - 1)
-                    {
-                        int lastIndex = dataLength - 1;
-                        float lastPos = graphRect.x + ((float)lastIndex / (dataLength - 1)) * graphRect.width;
-                        
-                        // Draw major tick
-                        Handles.DrawLine(
-                            new Vector3(lastPos, graphRect.y + graphRect.height, 0),
-                            new Vector3(lastPos, graphRect.y + graphRect.height + 5, 0)
-                        );
-                        
-                        // Draw day label - centered below tick
-                        var valueStyle = new GUIStyle(GUI.skin.label) { 
-                            alignment = TextAnchor.UpperCenter,
-                            fontSize = 10
-                        };
-                        // Show as a tick number rather than a "day" to avoid confusion
-                        GUI.Label(new Rect(lastPos - 15, graphRect.y + graphRect.height + 6, 30, 20), 
-                            $"{lastIndex+1}", valueStyle);
-                    }
-                    
-                    // Draw major tick
-                    Handles.DrawLine(
-                        new Vector3(xPos, graphRect.y + graphRect.height, 0),
-                        new Vector3(xPos, graphRect.y + graphRect.height + 5, 0)
-                    );
-                    
-                    // Draw tick label - centered below tick
-                    var style = new GUIStyle(GUI.skin.label) { 
-                        alignment = TextAnchor.UpperCenter,
-                        fontSize = 10
-                    };
-                    
-                    // Show as a tick number rather than a "day" to avoid confusion
-                    GUI.Label(new Rect(xPos - 15, graphRect.y + graphRect.height + 6, 30, 20), 
-                        $"{i+1}", style);
-                }
-            }
-        }
-
-
-        private void RecordHistory(RegionEntity region)
-        {
-            if (region == null) return;
-            
-            // Always record history on each display update for consistent tracking
-            // Check if values have changed before adding to avoid duplicate entries
-            bool shouldRecord = wealthHistory.Count == 0 || 
-                               (region.Economy.Wealth != wealthHistory[wealthHistory.Count - 1] || 
-                                region.Economy.Production != productionHistory[productionHistory.Count - 1] || 
-                                !Mathf.Approximately(region.Population.Satisfaction, satisfactionHistory[satisfactionHistory.Count - 1]));
-            
-            if (shouldRecord)
-            {
-                wealthHistory.Add(region.Economy.Wealth);
-                productionHistory.Add(region.Economy.Production);
-                satisfactionHistory.Add(region.Population.Satisfaction);
-                
-                // Calculate and record supply, demand and imbalance
-                float supply = region.Economy.Production * 0.8f;
-                float demand = region.Population.LaborAvailable * 1.2f;
-                float imbalance = supply - demand;
-                
-                supplyHistory.Add(supply);
-                demandHistory.Add(demand);
-                imbalanceHistory.Add(imbalance);
-                
-                // Keep lists at a reasonable size
-                if (wealthHistory.Count > maxHistoryPoints)
-                {
-                    wealthHistory.RemoveAt(0);
-                    productionHistory.RemoveAt(0);
-                    satisfactionHistory.RemoveAt(0);
-                    supplyHistory.RemoveAt(0);
-                    demandHistory.RemoveAt(0);
-                    imbalanceHistory.RemoveAt(0);
-                }
-            }
-        }
-
-        private void RecordParameterHistory()
-        {
-            // Add current parameter values to history
-            productivityHistory.Add(parameters.productivityFactor);
-            laborElasticityHistory.Add(parameters.laborElasticity);
-            capitalElasticityHistory.Add(parameters.capitalElasticity);
-            cycleMultiplierHistory.Add(parameters.cycleMultiplier);
-            
-            // Keep lists at a reasonable size
-            if (productivityHistory.Count > maxHistoryPoints)
-            {
-                productivityHistory.RemoveAt(0);
-                laborElasticityHistory.RemoveAt(0);
-                capitalElasticityHistory.RemoveAt(0);
-                cycleMultiplierHistory.RemoveAt(0);
-            }
         }
 
         private void RunSimulationTick()
@@ -1081,8 +770,8 @@ namespace V2.Editor
                 // Record history after the tick
                 if (economicSystem.testRegion != null)
                 {
-                    RecordHistory(economicSystem.testRegion);
-                    RecordParameterHistory();
+                    dataHistory.RecordHistory(economicSystem.testRegion);
+                    dataHistory.RecordParameterHistory(parameters);
                 }
                 
                 // Force repaint to update graphs immediately
@@ -1094,22 +783,11 @@ namespace V2.Editor
         {
             if (economicSystem != null && economicSystem.testRegion != null && simulationActive)
             {
-                // Reset region values
-                RegionEntity region = economicSystem.testRegion;
-                
-                // Reset component values
-                region.Economy.Wealth = 100;
-                region.Economy.Production = 50;
-                region.Population.UpdateSatisfaction(1.0f);
-                
-                // Reset population and infrastructure
-                region.Population.UpdateLabor(100 - region.Population.LaborAvailable);
-                SetInfrastructureLevel(region.Infrastructure, 1);
+                // Use region controller to reset the region
+                regionController.ResetRegion(economicSystem.testRegion);
                 
                 // Clear history
-                wealthHistory.Clear();
-                productionHistory.Clear();
-                satisfactionHistory.Clear();
+                dataHistory.ClearAll();
                 
                 // Resync values
                 SyncFromSystem();
@@ -1127,23 +805,19 @@ namespace V2.Editor
             }
             
             // Sync economic parameters
-            parameters.productivityFactor = economicSystem.productivityFactor;
-            parameters.laborElasticity = economicSystem.laborElasticity;
-            parameters.capitalElasticity = economicSystem.capitalElasticity;
-            parameters.cycleMultiplier = economicSystem.cycleMultiplier;
+            parameters.SyncFromSystem(economicSystem);
             
             // Sync region values
             RegionEntity region = economicSystem.testRegion;
             if (region != null)
             {
-                laborAvailable = region.Population.LaborAvailable;
-                infrastructureLevel = region.Infrastructure.Level;
+                regionController.SyncFromRegion(region);
                 
                 // Record initial history if empty
-                if (wealthHistory.Count == 0)
+                if (dataHistory.wealthHistory.Count == 0)
                 {
-                    RecordHistory(region);
-                    RecordParameterHistory(); // Add this line
+                    dataHistory.RecordHistory(region);
+                    dataHistory.RecordParameterHistory(parameters);
                 }
             }
         }
@@ -1153,33 +827,19 @@ namespace V2.Editor
             if (economicSystem == null) return;
             
             // Apply economic parameters
-            economicSystem.productivityFactor = parameters.productivityFactor;
-            economicSystem.laborElasticity = parameters.laborElasticity;
-            economicSystem.capitalElasticity = parameters.capitalElasticity;
-            economicSystem.cycleMultiplier = parameters.cycleMultiplier;
+            parameters.ApplyToSystem(economicSystem);
             
             // Record parameter history when applying changes
-            RecordParameterHistory();
+            dataHistory.RecordParameterHistory(parameters);
             
             // Apply region values if in play mode
             if (simulationActive && economicSystem.testRegion != null)
             {
                 RegionEntity region = economicSystem.testRegion;
-                
-                // Apply labor (if different)
-                if (region.Population.LaborAvailable != laborAvailable)
-                {
-                    region.Population.UpdateLabor(laborAvailable - region.Population.LaborAvailable);
-                }
-                
-                // Apply infrastructure (if different)
-                if (region.Infrastructure.Level != infrastructureLevel)
-                {
-                    SetInfrastructureLevel(region.Infrastructure, infrastructureLevel);
-                }
+                regionController.ApplyToRegion(region, simulationActive);
                 
                 // Record region history when applying changes in play mode
-                RecordHistory(region);
+                dataHistory.RecordHistory(region);
             }
             
             // Mark the object as dirty to ensure values persist
@@ -1188,53 +848,6 @@ namespace V2.Editor
                 serializedEconomicSystem.ApplyModifiedProperties();
                 EditorUtility.SetDirty(economicSystem);
             }
-        }
-
-        // Helper method to set infrastructure level using reflection
-        private void SetInfrastructureLevel(InfrastructureComponent component, int level)
-        {
-            // If we're not in play mode, we can't modify the component
-            if (!simulationActive) return;
-            
-            // Use Upgrade method if available
-            var method = typeof(InfrastructureComponent).GetMethod("Upgrade");
-            if (method != null)
-            {
-                // Call Upgrade method until we reach desired level
-                while (component.Level < level)
-                {
-                    method.Invoke(component, null);
-                }
-            }
-        }
-
-        // Utility method to create a colored texture
-        private Texture2D MakeTexture(int width, int height, Color color)
-        {
-            Color[] pixels = new Color[width * height];
-            for (int i = 0; i < pixels.Length; i++)
-            {
-                pixels[i] = color;
-            }
-            
-            Texture2D texture = new Texture2D(width, height);
-            texture.SetPixels(pixels);
-            texture.Apply();
-            return texture;
-        }
-
-        // Helper method to find maximum value in a list
-        private float MaxList(List<float> list)
-        {
-            if (list == null || list.Count == 0)
-                return 0f;
-                
-            float max = list[0];
-            foreach (var val in list)
-            {
-                if (val > max) max = val;
-            }
-            return max;
         }
     }
 }
