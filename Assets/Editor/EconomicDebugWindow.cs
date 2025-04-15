@@ -89,6 +89,19 @@ namespace V2.Editor
         private double lastUIUpdateTime;
         private float uiUpdateInterval = 0.1f; // Update UI 10 times per second
 
+        // New history lists
+        private List<float> supplyHistory = new List<float>();
+        private List<float> demandHistory = new List<float>();
+        private List<float> imbalanceHistory = new List<float>();
+
+        // New graph toggle fields
+        private bool showSupplyGraph = true;
+        private bool showDemandGraph = true;
+        private bool showImbalanceGraph = true;
+        private Color supplyColor = new Color(0.2f, 0.8f, 0.8f); // Cyan
+        private Color demandColor = new Color(0.9f, 0.3f, 0.7f); // Magenta
+        private Color imbalanceColor = new Color(0.9f, 0.9f, 0.2f); // Yellow
+
         [MenuItem("Window/Economic Cycles/Debug Window")]
         public static void ShowWindow()
         {
@@ -544,6 +557,25 @@ namespace V2.Editor
                 satisfactionColor = EditorGUILayout.ColorField(satisfactionColor, GUILayout.Width(50));
                 EditorGUILayout.EndHorizontal();
                 
+                // New graph toggles for supply/demand
+                EditorGUILayout.Space(5);
+                EditorGUILayout.LabelField("Market Dynamics", EditorStyles.boldLabel);
+                
+                EditorGUILayout.BeginHorizontal();
+                showSupplyGraph = EditorGUILayout.Toggle("Show Supply", showSupplyGraph);
+                supplyColor = EditorGUILayout.ColorField(supplyColor, GUILayout.Width(50));
+                EditorGUILayout.EndHorizontal();
+                
+                EditorGUILayout.BeginHorizontal();
+                showDemandGraph = EditorGUILayout.Toggle("Show Demand", showDemandGraph);
+                demandColor = EditorGUILayout.ColorField(demandColor, GUILayout.Width(50));
+                EditorGUILayout.EndHorizontal();
+                
+                EditorGUILayout.BeginHorizontal();
+                showImbalanceGraph = EditorGUILayout.Toggle("Show Imbalance", showImbalanceGraph);
+                imbalanceColor = EditorGUILayout.ColorField(imbalanceColor, GUILayout.Width(50));
+                EditorGUILayout.EndHorizontal();
+                
                 EditorGUI.indentLevel--;
             }
             
@@ -558,6 +590,9 @@ namespace V2.Editor
             // Define default minimum values for scaling
             int maxWealth = 100;  // Default minimum if no data
             int maxProduction = 50;  // Default minimum if no data
+            float maxSupply = 50f; // Default minimum
+            float maxDemand = 50f; // Default minimum
+            float maxImbalance = 50f; // Default minimum for absolute value
 
             // Calculate actual maximum values from history
             if (wealthHistory.Count > 0)
@@ -567,60 +602,127 @@ namespace V2.Editor
                 
                 foreach (int value in productionHistory)
                     maxProduction = Mathf.Max(maxProduction, value);
+                
+                maxSupply = MaxList(supplyHistory);
+                maxDemand = MaxList(demandHistory);
+                
+                // For imbalance, find the maximum absolute value
+                foreach (float value in imbalanceHistory)
+                {
+                    maxImbalance = Mathf.Max(maxImbalance, Mathf.Abs(value));
+                }
                     
                 // Add some headroom (10%) so the max value isn't right at the top
                 maxWealth = (int)(maxWealth * 1.1f);
                 maxProduction = (int)(maxProduction * 1.1f);
+                maxSupply *= 1.1f;
+                maxDemand *= 1.1f;
+                maxImbalance *= 1.1f;
             }
 
+            // Calculate overall max value for scaling
+            float maxYValue = Mathf.Max(
+                maxWealth, 
+                maxProduction, 
+                maxSupply,
+                maxDemand,
+                maxImbalance
+            );
+
             // Draw axes with dynamically calculated max value
-            DrawAxes(graphRect, "Time", "Value", Mathf.Max(maxWealth, maxProduction)); 
+            DrawAxes(graphRect, "Time", "Value", maxYValue); 
             
             // Draw graph data
             if (wealthHistory.Count > 1)
             {
                 // Draw wealth graph
                 if (showWealthGraph)
-                    DrawLineGraph(wealthHistory, maxWealth, wealthColor);
+                    DrawLineGraph(wealthHistory, maxYValue, wealthColor);
                 
                 // Draw production graph
                 if (showProductionGraph)
-                    DrawLineGraph(productionHistory, maxProduction, productionColor);
+                    DrawLineGraph(productionHistory, maxYValue, productionColor);
                 
                 // Draw satisfaction graph
                 if (showSatisfactionGraph)
                     DrawLineGraph(satisfactionHistory, 1.0f, satisfactionColor);
+                    
+                // Draw new market dynamics graphs
+                if (showSupplyGraph)
+                    DrawLineGraph(supplyHistory, maxYValue, supplyColor);
+                    
+                if (showDemandGraph)
+                    DrawLineGraph(demandHistory, maxYValue, demandColor);
+                    
+                if (showImbalanceGraph)
+                    DrawLineGraph(imbalanceHistory, maxYValue, imbalanceColor);
                 
-                // Draw legend in the top right corner instead of overlapping data
+                // Draw legend in the top right corner
                 float legendY = graphRect.y + 10;
                 float legendX = graphRect.x + graphRect.width - 130;  // Right-aligned
                 float legendWidth = 120;
-                float legendHeight = 70;
+                float legendHeight = 70 + (showSupplyGraph ? 20 : 0) + (showDemandGraph ? 20 : 0) + (showImbalanceGraph ? 20 : 0);
                 
                 // Semi-transparent background
                 EditorGUI.DrawRect(new Rect(legendX, legendY, legendWidth, legendHeight), new Color(0.1f, 0.1f, 0.1f, 0.7f));
                 
+                int legendOffset = 0;
+                
                 if (showWealthGraph)
                 {
-                    EditorGUI.DrawRect(new Rect(legendX + 5, legendY + 10, 15, 5), wealthColor);
+                    EditorGUI.DrawRect(new Rect(legendX + 5, legendY + 10 + legendOffset, 15, 5), wealthColor);
                     GUI.contentColor = wealthColor;
-                    GUI.Label(new Rect(legendX + 25, legendY + 5, 90, 20), "Wealth: " + region.Economy.Wealth);
+                    GUI.Label(new Rect(legendX + 25, legendY + 5 + legendOffset, 90, 20), "Wealth: " + region.Economy.Wealth);
                     GUI.contentColor = Color.white;
+                    legendOffset += 20;
                 }
                 
                 if (showProductionGraph)
                 {
-                    EditorGUI.DrawRect(new Rect(legendX + 5, legendY + 30, 15, 5), productionColor);
+                    EditorGUI.DrawRect(new Rect(legendX + 5, legendY + 10 + legendOffset, 15, 5), productionColor);
                     GUI.contentColor = productionColor;
-                    GUI.Label(new Rect(legendX + 25, legendY + 25, 90, 20), "Prod: " + region.Economy.Production);
+                    GUI.Label(new Rect(legendX + 25, legendY + 5 + legendOffset, 90, 20), "Prod: " + region.Economy.Production);
                     GUI.contentColor = Color.white;
+                    legendOffset += 20;
                 }
                 
                 if (showSatisfactionGraph)
                 {
-                    EditorGUI.DrawRect(new Rect(legendX + 5, legendY + 50, 15, 5), satisfactionColor);
+                    EditorGUI.DrawRect(new Rect(legendX + 5, legendY + 10 + legendOffset, 15, 5), satisfactionColor);
                     GUI.contentColor = satisfactionColor;
-                    GUI.Label(new Rect(legendX + 25, legendY + 45, 90, 20), "Sat: " + region.Population.Satisfaction.ToString("F2"));
+                    GUI.Label(new Rect(legendX + 25, legendY + 5 + legendOffset, 90, 20), "Sat: " + region.Population.Satisfaction.ToString("F2"));
+                    GUI.contentColor = Color.white;
+                    legendOffset += 20;
+                }
+                
+                if (showSupplyGraph)
+                {
+                    EditorGUI.DrawRect(new Rect(legendX + 5, legendY + 10 + legendOffset, 15, 5), supplyColor);
+                    GUI.contentColor = supplyColor;
+                    GUI.Label(new Rect(legendX + 25, legendY + 5 + legendOffset, 90, 20), 
+                        "Supply: " + (supplyHistory.Count > 0 ? supplyHistory[supplyHistory.Count-1].ToString("F1") : "0"));
+                    GUI.contentColor = Color.white;
+                    legendOffset += 20;
+                }
+                
+                if (showDemandGraph)
+                {
+                    EditorGUI.DrawRect(new Rect(legendX + 5, legendY + 10 + legendOffset, 15, 5), demandColor);
+                    GUI.contentColor = demandColor;
+                    GUI.Label(new Rect(legendX + 25, legendY + 5 + legendOffset, 90, 20), 
+                        "Demand: " + (demandHistory.Count > 0 ? demandHistory[demandHistory.Count-1].ToString("F1") : "0"));
+                    GUI.contentColor = Color.white;
+                    legendOffset += 20;
+                }
+                
+                if (showImbalanceGraph)
+                {
+                    EditorGUI.DrawRect(new Rect(legendX + 5, legendY + 10 + legendOffset, 15, 5), imbalanceColor);
+                    GUI.contentColor = imbalanceColor;
+                    float currentImbalance = imbalanceHistory.Count > 0 ? imbalanceHistory[imbalanceHistory.Count-1] : 0;
+                    string imbalancePrefix = currentImbalance >= 0 ? "+" : "";
+                    GUI.Label(new Rect(legendX + 25, legendY + 5 + legendOffset, 90, 20), 
+                        "Imb: " + imbalancePrefix + currentImbalance.ToString("F1"));
                     GUI.contentColor = Color.white;
                 }
             }
@@ -923,12 +1025,24 @@ namespace V2.Editor
                 productionHistory.Add(region.Economy.Production);
                 satisfactionHistory.Add(region.Population.Satisfaction);
                 
+                // Calculate and record supply, demand and imbalance
+                float supply = region.Economy.Production * 0.8f;
+                float demand = region.Population.LaborAvailable * 1.2f;
+                float imbalance = supply - demand;
+                
+                supplyHistory.Add(supply);
+                demandHistory.Add(demand);
+                imbalanceHistory.Add(imbalance);
+                
                 // Keep lists at a reasonable size
                 if (wealthHistory.Count > maxHistoryPoints)
                 {
                     wealthHistory.RemoveAt(0);
                     productionHistory.RemoveAt(0);
                     satisfactionHistory.RemoveAt(0);
+                    supplyHistory.RemoveAt(0);
+                    demandHistory.RemoveAt(0);
+                    imbalanceHistory.RemoveAt(0);
                 }
             }
         }
@@ -1107,6 +1221,20 @@ namespace V2.Editor
             texture.SetPixels(pixels);
             texture.Apply();
             return texture;
+        }
+
+        // Helper method to find maximum value in a list
+        private float MaxList(List<float> list)
+        {
+            if (list == null || list.Count == 0)
+                return 0f;
+                
+            float max = list[0];
+            foreach (var val in list)
+            {
+                if (val > max) max = val;
+            }
+            return max;
         }
     }
 }

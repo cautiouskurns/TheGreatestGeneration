@@ -268,8 +268,253 @@ This appendix contains design ideas that are not yet part of the core GDD, but m
 - Experimental debug-first scripting for narrative flow control
 
 # 2. Project Plan
+ 
+## Phase 1: Core Simulation & Dialogue Foundations
+ 
+This phase focuses on implementing the foundational systems required for economic simulation and narrative delivery. The goal is to produce a fully functional vertical slice that allows turn progression, economic changes in regions, and event-driven dialogue interactions.
+ 
+### Objectives
+ 
+- ✅ Implement turn-based structure with EventBus communication
+- ✅ Create GameManager and TurnManager for simulation control
+- ✅ Initialize MapModel with one or more test regions
+- ⏳ Finalize RegionEntity architecture and all core components
+- ⏳ Develop production and consumption flows using ResourceComponent and ProductionComponent
+- ⏳ Introduce economic cycles with basic phase effects via EconomicCycleSystem
+- ⏳ Visualize economic state through debug logs or minimal UI
+ 
+### Narrative & Event System
+ 
+- ✅ EventDialogueManager with basic dialogue display
+- ⏳ Implement dialogue event loading and triggering from events
+- ⏳ Link narrative flags to game state (e.g., satisfaction, resources)
+- ⏳ Create sample dialogue events with multiple branches
+- ⏳ Integrate DialogueOutcome with GameStateManager for persistent effects
+ 
+### Vertical Slice Goals
+ 
+- End-turn progression updates economy
+- Population satisfaction reflects economic outcomes
+- Triggered event dialogue based on region conditions
+- Debug tools to simulate, test, and validate logic paths
 
-# 3. Game Architecture
+# 3. Game Architecture Working
+
+## Architecture Components
+
+### 1. Data Layer (ScriptableObjects)
+While the overall architecture mentions ScriptableObjects, none are directly visible in the provided git files. References to them exist in code comments.
+
+### 2. Entity Component System (Game Logic)
+
+#### Entities (Domain Objects)
+
+| Entity | Purpose | Implementation Status |
+|--------|---------|------------------------|
+| **RegionEntity** | Represents an economic region with components | Implemented in `3_Entities/RegionEntity.cs` |
+| **NationEntity** | Not visible in current files | Not found in provided files |
+| **ProjectEntity** | Not visible in current files | Not found in provided files |
+
+#### Components (Data Containers)
+
+| Component | Purpose | Implementation Status |
+|-----------|---------|------------------------|
+| **ResourceComponent** | Manages basic resources (Food, Wood) with generation and access methods | Implemented in `4_Components/RegionComponents/ResourceComponent.cs` |
+| **ProductionComponent** | Processes production from resources with simplified output calculation | Implemented in `4_Components/RegionComponents/ProductionComponent.cs` |
+| **RegionEconomyComponent** | Tracks wealth and production values for a region | Implemented in `4_Components/RegionComponents/RegionEconomyComponent.cs` |
+| **PopulationComponent** | Manages labor availability and satisfaction | Implemented in `4_Components/RegionComponents/PopulationComponent.cs` |
+| **InfrastructureComponent** | Basic implementation with level tracking and maintenance costs | Implemented in `4_Components/RegionComponents/InfrastructureComponent.cs` |
+
+#### Systems (Logic Processors)
+
+| System | Purpose | Implementation Status |
+|--------|---------|------------------------|
+| **EconomicSystem** | Processes economic simulation including supply/demand, production, infrastructure, cycles | Implemented in `5_Systems/EconomicSystem.cs` |
+| **Other systems** | Not visible in current files | Not found in provided files |
+
+### 3. Core Management
+
+| Component | Purpose | Implementation Status |
+|-----------|---------|------------------------|
+| **GameManager** | Singleton that manages game state and test region | Implemented in `1_Core/GameManager.cs` |
+| **TurnManager** | Handles turn progression, time controls, and turn events | Implemented in `1_Core/TurnManager.cs` |
+| **EventBus** | Central event communication system with subscription management | Implemented in `8_Managers/EventBus.cs` |
+
+### 4. Event System (Communication Layer)
+
+| Key Event | Triggered By | Subscribed By | Implementation Status |
+|-----------|--------------|---------------|------------------------|
+| **TurnEnded** | TurnManager | GameManager, EconomicSystem | Implemented |
+| **RegionUpdated** | RegionEntity | EconomicSystem | Implemented |
+| **RegionsUpdated** | GameManager | Not visible in files | Implemented |
+| **GameReset** | GameManager | Not visible in files | Implemented |
+
+## Folder Structure Implementation
+
+The current implementation follows a numbered folder structure:
+
+```
+Assets/Scripts/V2/
+  ├── 1_Core/
+  │    ├── GameManager.cs
+  │    └── TurnManager.cs
+  ├── 2_Data/
+  │    └── [Empty or not visible in provided files]
+  ├── 3_Entities/
+  │    └── RegionEntity.cs
+  ├── 4_Components/
+  │    └── RegionComponents/
+  │         ├── ResourceComponent.cs
+  │         ├── ProductionComponent.cs
+  │         ├── RegionEconomyComponent.cs
+  │         ├── PopulationComponent.cs
+  │         └── InfrastructureComponent.cs
+  ├── 5_Systems/
+  │    └── EconomicSystem.cs
+  ├── 6_UI/
+  │    └── [Empty or not visible in provided files]
+  ├── 7_Controllers/
+  │    └── [Empty or not visible in provided files]
+  ├── 8_Managers/
+  │    └── EventBus.cs
+  └── 9_Utils/
+       └── [Empty or not visible in provided files]
+```
+
+## Implementation Details
+
+### RegionEntity Implementation
+```csharp
+public class RegionEntity
+{
+    // Identity
+    public string Name { get; set; }
+    
+    // Components
+    public ResourceComponent Resources { get; private set; }
+    public ProductionComponent Production { get; private set; }
+    public RegionEconomyComponent Economy { get; private set; }
+    public InfrastructureComponent Infrastructure { get; private set; }
+    public PopulationComponent Population { get; private set; }
+
+    // Processing methods
+    public void ProcessTurn() { ... }
+    public string GetSummary() { ... }
+}
+```
+
+### EventBus Implementation
+```csharp
+public static class EventBus
+{
+    private static Dictionary<string, Action<object>> eventDictionary = new();
+    
+    // Core methods
+    public static void Subscribe(string eventName, Action<object> listener) { ... }
+    public static void Unsubscribe(string eventName, Action<object> listener) { ... }
+    public static void Trigger(string eventName, object eventData = null) { ... }
+}
+```
+
+### EconomicSystem Implementation
+```csharp
+public class EconomicSystem : MonoBehaviour
+{
+    // Singleton pattern
+    public static EconomicSystem Instance { get; private set; }
+    
+    // References
+    public RegionEntity testRegion;
+    
+    // Economic processing methods
+    public void ProcessEconomicTick() { ... }
+    private void ProcessSupplyAndDemand(RegionEntity region) { ... }
+    private void ProcessProduction(RegionEntity region) { ... }
+    private void ProcessInfrastructure(RegionEntity region) { ... }
+    private void ProcessPopulationConsumption(RegionEntity region) { ... }
+    private void ProcessEconomicCycle(RegionEntity region) { ... }
+    private void ProcessPriceVolatility() { ... }
+}
+```
+
+## Current Architecture Analysis
+
+The current implementation shows:
+
+1. **Strong Component Architecture**: RegionEntity uses composition with specialized components for different aspects of gameplay.
+
+2. **Event-Driven Communication**: EventBus implementation with subscription/unsubscription and event triggering.
+
+3. **Singleton Pattern**: Used for GameManager and EconomicSystem for global access.
+
+4. **Turn-Based Simulation**: TurnManager handles progression with pause/resume functionality.
+
+5. **Early-Stage Economic Model**: 
+   - Basic resource generation
+   - Simple production conversion
+   - Economic calculations using Cobb-Douglas model
+   - Population satisfaction tracking
+   - Infrastructure levels with maintenance costs
+
+6. **Testing Framework**:
+   - Single test region managed by GameManager
+   - Console logging for debugging
+   - Manual tick functionality in EconomicSystem
+
+## Gap Analysis
+
+Comparing the current implementation to the target architecture:
+
+### Present Components
+- Core event system
+- Basic region entity with components
+- Economic simulation foundation
+- Turn-based progression
+- Component-based architecture
+
+### Missing Components
+- ScriptableObjects data layer
+- Nation entities
+- Project entities
+- MapSystem
+- TradeSystem
+- UI components
+- Controllers
+- State management system
+- Dialogue system
+- Economic cycle specialized components
+
+## Next Implementation Steps
+
+Based on the current state:
+
+1. **Complete Resource System**
+   - Expand beyond basic Food/Wood resources
+   - Implement production chains
+   - Add resource constraints
+
+2. **Add Economic Cycle Component**
+   - Implement cycle phases
+   - Connect to EconomicSystem
+   - Add phase-specific modifiers
+
+3. **Develop Multi-Region Support**
+   - Move from single test region to multi-region
+   - Implement region relationships
+   - Add nation grouping
+
+4. **Implement UI Layer**
+   - Create visualization for regions
+   - Build economic dashboards
+   - Develop interaction controls
+
+5. **Add Data-Driven Configuration**
+   - Implement ScriptableObjects
+   - Move hardcoded values to data
+
+The current implementation provides a solid foundation for the entity-component architecture and economic simulation core, requiring expansion to meet the full architectural vision.
+
+# 4. Game Architecture Goal
 
 ## Overview
 
@@ -900,12 +1145,12 @@ Moving forward, the focus will be on:
 
 These enhancements will build upon the solid architectural foundation to create a deep, engaging economic strategy experience with high replayability.
 
-# 4. Game Architecture Diagram Working
+# 5. Game Architecture Diagram Working
 
 
 
 
-# 5. Game Architecture Diagram End Goal
+# 6. Game Architecture Diagram End Goal
 
 ```mermaid
 graph LR
