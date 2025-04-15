@@ -1,8 +1,27 @@
 using UnityEngine;
 using System;
+using System.Collections.Generic;
 
 namespace V2.Editor
 {
+    /// <summary>
+    /// Represents a group of related economic parameters
+    /// </summary>
+    [Serializable]
+    public class ParameterGroup
+    {
+        public string name;
+        public Color groupColor;
+        public string[] parameterNames;
+        
+        public ParameterGroup(string name, Color groupColor, params string[] parameterNames)
+        {
+            this.name = name;
+            this.groupColor = groupColor;
+            this.parameterNames = parameterNames;
+        }
+    }
+
     /// <summary>
     /// Class encapsulating all economic parameters that can be adjusted in the editor
     /// </summary>
@@ -42,10 +61,87 @@ namespace V2.Editor
         
         // Parameter names for display and selection
         private static readonly string[] _parameterNames = new string[] { 
-            "Productivity", "Labor Elasticity", "Capital Elasticity", "Cycle Multiplier" 
+            "Productivity", "Labor Elasticity", "Capital Elasticity", "Cycle Multiplier",
+            "Wealth Growth Rate", "Price Volatility", "Decay Rate", 
+            "Maintenance Cost Multiplier", "Labor Consumption Rate"
+        };
+        
+        // Parameter groups for organization
+        private static readonly ParameterGroup[] _parameterGroups = new ParameterGroup[] {
+            new ParameterGroup("Production", new Color(0.9f, 0.7f, 0.3f, 0.6f), 
+                "Productivity", "Labor Elasticity", "Capital Elasticity"),
+                
+            new ParameterGroup("Economic Cycles", new Color(0.3f, 0.7f, 0.9f, 0.6f),
+                "Cycle Multiplier", "Wealth Growth Rate", "Price Volatility"),
+                
+            new ParameterGroup("Infrastructure", new Color(0.7f, 0.3f, 0.9f, 0.6f),
+                "Decay Rate", "Maintenance Cost Multiplier"),
+                
+            new ParameterGroup("Population", new Color(0.3f, 0.9f, 0.4f, 0.6f),
+                "Labor Consumption Rate")
         };
         
         public static string[] ParameterNames => _parameterNames;
+        public static ParameterGroup[] ParameterGroups => _parameterGroups;
+        
+        /// <summary>
+        /// Get all parameters as a dictionary
+        /// </summary>
+        public Dictionary<string, float> GetAllParameters()
+        {
+            return new Dictionary<string, float>
+            {
+                { "Productivity", productivityFactor },
+                { "Labor Elasticity", laborElasticity },
+                { "Capital Elasticity", capitalElasticity },
+                { "Cycle Multiplier", cycleMultiplier },
+                { "Wealth Growth Rate", wealthGrowthRate },
+                { "Price Volatility", priceVolatility },
+                { "Decay Rate", decayRate },
+                { "Maintenance Cost Multiplier", maintenanceCostMultiplier },
+                { "Labor Consumption Rate", laborConsumptionRate }
+            };
+        }
+        
+        /// <summary>
+        /// Get parameter value by name
+        /// </summary>
+        public float GetParameterByName(string name)
+        {
+            switch (name.ToLower())
+            {
+                case "productivity": return productivityFactor;
+                case "labor elasticity": return laborElasticity;
+                case "capital elasticity": return capitalElasticity;
+                case "cycle multiplier": return cycleMultiplier;
+                case "wealth growth rate": return wealthGrowthRate;
+                case "price volatility": return priceVolatility;
+                case "decay rate": return decayRate;
+                case "maintenance cost multiplier": return maintenanceCostMultiplier;
+                case "labor consumption rate": return laborConsumptionRate;
+                default: return 0f;
+            }
+        }
+        
+        /// <summary>
+        /// Get recommended max value for parameter visualization
+        /// </summary>
+        public float GetRecommendedMaxValue(string parameterName)
+        {
+            switch (parameterName.ToLower())
+            {
+                case "productivity": return 5.0f;
+                case "labor elasticity": 
+                case "capital elasticity": return 1.0f;
+                case "cycle multiplier": return 1.2f;
+                case "wealth growth rate": return 20.0f;
+                case "price volatility": return 0.5f;
+                case "decay rate": return 0.05f;
+                case "maintenance cost multiplier": return 2.0f;
+                case "labor consumption rate": return 3.0f;
+                default: return 1.0f;
+            }
+        }
         
         // Copy values from an economic system component
         public void SyncFromSystem(V2.Systems.EconomicSystem economicSystem)
@@ -71,17 +167,14 @@ namespace V2.Editor
             // Other parameters would be applied here if exposed by EconomicSystem
         }
         
-        // Get parameter value by index for graphing
+        // Get parameter value by index for graphing (for backward compatibility)
         public float GetParameterValueByIndex(int index)
         {
-            switch (index)
+            if (index >= 0 && index < _parameterNames.Length)
             {
-                case 0: return productivityFactor;
-                case 1: return laborElasticity;
-                case 2: return capitalElasticity;
-                case 3: return cycleMultiplier;
-                default: return 0f;
+                return GetParameterByName(_parameterNames[index]);
             }
+            return 0f;
         }
     }
 }

@@ -10,7 +10,7 @@ namespace V2.Editor
     public class EconomicDataHistory
     {
         // Common settings
-        private const int maxHistoryPoints = 50;
+        private const int maxHistoryPoints = 5000;
         
         // Main economic metric histories
         public List<int> wealthHistory = new List<int>();
@@ -22,11 +22,17 @@ namespace V2.Editor
         public List<float> demandHistory = new List<float>();
         public List<float> imbalanceHistory = new List<float>();
         
-        // Parameter histories
-        public List<float> productivityHistory = new List<float>();
-        public List<float> laborElasticityHistory = new List<float>();
-        public List<float> capitalElasticityHistory = new List<float>();
-        public List<float> cycleMultiplierHistory = new List<float>();
+        // Parameter histories - dictionary approach for more flexible parameter tracking
+        private Dictionary<string, List<float>> parameterHistories = new Dictionary<string, List<float>>();
+
+        public EconomicDataHistory()
+        {
+            // Initialize parameter histories for all tracked parameters
+            foreach (string paramName in EconomicParameters.ParameterNames)
+            {
+                parameterHistories[paramName.ToLower()] = new List<float>();
+            }
+        }
         
         /// <summary>
         /// Record current economic data from a region entity
@@ -68,14 +74,56 @@ namespace V2.Editor
         {
             if (parameters == null) return;
             
-            // Add current parameter values to history
-            productivityHistory.Add(parameters.productivityFactor);
-            laborElasticityHistory.Add(parameters.laborElasticity);
-            capitalElasticityHistory.Add(parameters.capitalElasticity);
-            cycleMultiplierHistory.Add(parameters.cycleMultiplier);
+            // Add each parameter to its respective history
+            AddParameterValue("productivity", parameters.productivityFactor);
+            AddParameterValue("labor elasticity", parameters.laborElasticity);
+            AddParameterValue("capital elasticity", parameters.capitalElasticity);
+            AddParameterValue("cycle multiplier", parameters.cycleMultiplier);
+            AddParameterValue("wealth growth rate", parameters.wealthGrowthRate);
+            AddParameterValue("price volatility", parameters.priceVolatility);
+            AddParameterValue("decay rate", parameters.decayRate);
+            AddParameterValue("maintenance cost multiplier", parameters.maintenanceCostMultiplier);
+            AddParameterValue("labor consumption rate", parameters.laborConsumptionRate);
             
             // Keep lists at a reasonable size
             TruncateParameterHistories();
+        }
+        
+        /// <summary>
+        /// Add a value to a parameter history
+        /// </summary>
+        private void AddParameterValue(string parameterKey, float value)
+        {
+            if (!parameterHistories.ContainsKey(parameterKey))
+            {
+                parameterHistories[parameterKey] = new List<float>();
+            }
+            
+            parameterHistories[parameterKey].Add(value);
+        }
+        
+        /// <summary>
+        /// Get parameter history by name
+        /// </summary>
+        public List<float> GetParameterHistory(string parameterName)
+        {
+            string key = parameterName.ToLower();
+            if (parameterHistories.ContainsKey(key))
+            {
+                return parameterHistories[key];
+            }
+            
+            // If not found, create empty list for this parameter
+            parameterHistories[key] = new List<float>();
+            return parameterHistories[key];
+        }
+        
+        /// <summary>
+        /// Get all parameter histories
+        /// </summary>
+        public Dictionary<string, List<float>> GetAllParameterHistories()
+        {
+            return parameterHistories;
         }
         
         /// <summary>
@@ -90,25 +138,20 @@ namespace V2.Editor
             demandHistory.Clear();
             imbalanceHistory.Clear();
             
-            productivityHistory.Clear();
-            laborElasticityHistory.Clear();
-            capitalElasticityHistory.Clear();
-            cycleMultiplierHistory.Clear();
+            // Clear all parameter histories
+            foreach (var history in parameterHistories.Values)
+            {
+                history.Clear();
+            }
         }
         
         /// <summary>
-        /// Get parameter history by index
+        /// Get parameter history by index (for backward compatibility)
         /// </summary>
         public List<float> GetParameterHistoryByIndex(int index)
         {
-            switch (index)
-            {
-                case 0: return productivityHistory;
-                case 1: return laborElasticityHistory;
-                case 2: return capitalElasticityHistory;
-                case 3: return cycleMultiplierHistory;
-                default: return productivityHistory;
-            }
+            string paramName = EconomicParameters.ParameterNames[index].ToLower();
+            return GetParameterHistory(paramName);
         }
         
         /// <summary>
@@ -154,6 +197,26 @@ namespace V2.Editor
         }
         
         /// <summary>
+        /// Get maximum value for a specific parameter history
+        /// </summary>
+        public float GetParameterMaxValue(string parameterName)
+        {
+            List<float> history = GetParameterHistory(parameterName.ToLower());
+            
+            if (history == null || history.Count == 0)
+                return 1.0f;
+                
+            float max = 0f;
+            foreach (float value in history)
+            {
+                max = Mathf.Max(max, value);
+            }
+            
+            // Add some headroom
+            return max * 1.1f;
+        }
+        
+        /// <summary>
         /// Keep main history lists at a reasonable size
         /// </summary>
         private void TruncateHistories()
@@ -174,12 +237,12 @@ namespace V2.Editor
         /// </summary>
         private void TruncateParameterHistories()
         {
-            if (productivityHistory.Count > maxHistoryPoints)
+            foreach (var history in parameterHistories.Values)
             {
-                productivityHistory.RemoveAt(0);
-                laborElasticityHistory.RemoveAt(0);
-                capitalElasticityHistory.RemoveAt(0);
-                cycleMultiplierHistory.RemoveAt(0);
+                if (history.Count > maxHistoryPoints)
+                {
+                    history.RemoveAt(0);
+                }
             }
         }
     }

@@ -5,6 +5,50 @@ using System.Collections.Generic;
 namespace V2.Editor
 {
     /// <summary>
+    /// Represents a group of related metrics to be displayed on a single graph
+    /// </summary>
+    public class GraphGroup
+    {
+        public string name;
+        public string yAxisLabel;
+        public Color titleColor;
+        public float defaultMaxValue;
+        public Dictionary<string, GraphMetric> metrics = new Dictionary<string, GraphMetric>();
+        public bool isVisible = true;
+        public Rect graphRect;
+        public bool customScale = false;
+        public float customMaxValue = 100f;
+        
+        public GraphGroup(string name, string yAxisLabel, Color titleColor, float defaultMaxValue = 100f)
+        {
+            this.name = name;
+            this.yAxisLabel = yAxisLabel;
+            this.titleColor = titleColor;
+            this.defaultMaxValue = defaultMaxValue;
+        }
+        
+        public void AddMetric(string id, string name, Color color)
+        {
+            metrics[id] = new GraphMetric { name = name, color = color, isVisible = true };
+        }
+        
+        public float GetEffectiveMaxValue()
+        {
+            return customScale ? customMaxValue : defaultMaxValue;
+        }
+    }
+    
+    /// <summary>
+    /// Represents a single metric to be displayed on a graph
+    /// </summary>
+    public class GraphMetric
+    {
+        public string name;
+        public Color color;
+        public bool isVisible;
+    }
+
+    /// <summary>
     /// Utility class for drawing economic debug graphs in the editor
     /// </summary>
     public class EconomicDebugGraph
@@ -27,7 +71,57 @@ namespace V2.Editor
         public bool showImbalanceGraph = true;
         public bool showParameterGraph = true;
         
-        // Draw a line graph for any type of data
+        // Graph groups for different metrics
+        private Dictionary<string, GraphGroup> graphGroups = new Dictionary<string, GraphGroup>();
+        
+        public EconomicDebugGraph()
+        {
+            // Initialize default graph groups
+            InitializeDefaultGraphGroups();
+        }
+        
+        private void InitializeDefaultGraphGroups()
+        {
+            // Economic metrics group (wealth and production)
+            var economicGroup = new GraphGroup("Economic", "Value", new Color(0.2f, 0.7f, 0.2f), 500f);
+            economicGroup.AddMetric("wealth", "Wealth", wealthColor);
+            economicGroup.AddMetric("production", "Production", productionColor);
+            graphGroups["economic"] = economicGroup;
+            
+            // Population metrics group (satisfaction only)
+            var populationGroup = new GraphGroup("Population", "Satisfaction", new Color(0.2f, 0.4f, 0.8f), 1.0f);
+            populationGroup.AddMetric("satisfaction", "Satisfaction", satisfactionColor);
+            graphGroups["population"] = populationGroup;
+            
+            // Market dynamics group (supply, demand, imbalance)
+            var marketGroup = new GraphGroup("Market", "Value", new Color(0.8f, 0.5f, 0.2f), 200f);
+            marketGroup.AddMetric("supply", "Supply", supplyColor);
+            marketGroup.AddMetric("demand", "Demand", demandColor);
+            marketGroup.AddMetric("imbalance", "Imbalance", imbalanceColor);
+            graphGroups["market"] = marketGroup;
+        }
+        
+        /// <summary>
+        /// Get all graph groups
+        /// </summary>
+        public Dictionary<string, GraphGroup> GetGraphGroups()
+        {
+            return graphGroups;
+        }
+        
+        /// <summary>
+        /// Get a specific graph group
+        /// </summary>
+        public GraphGroup GetGraphGroup(string id)
+        {
+            if (graphGroups.TryGetValue(id, out GraphGroup group))
+                return group;
+            return null;
+        }
+        
+        /// <summary>
+        /// Draw a line graph for any type of data
+        /// </summary>
         public void DrawLineGraph<T>(List<T> data, float maxValue, Color color, Rect graphRect)
         {
             if (data.Count < 2) return;
@@ -63,7 +157,9 @@ namespace V2.Editor
             }
         }
         
-        // Draw graph axes with tick marks and labels
+        /// <summary>
+        /// Draw graph axes with tick marks and labels
+        /// </summary>
         public void DrawAxes(Rect graphRect, string xLabel, string yLabel, float maxYValue, int dataLength)
         {
             // Draw axes
@@ -183,7 +279,80 @@ namespace V2.Editor
             }
         }
         
-        // Draw a colored background box
+        /// <summary>
+        /// Draw graph title centered at the top of the graph
+        /// </summary>
+        public void DrawGraphTitle(Rect graphRect, string title, Color titleColor)
+        {
+            // Title positioning at the top of the graph
+            GUI.contentColor = titleColor;
+            var titleStyle = new GUIStyle(GUI.skin.label) {
+                alignment = TextAnchor.UpperCenter,
+                fontStyle = FontStyle.Bold,
+                fontSize = 12
+            };
+            
+            GUI.Label(new Rect(graphRect.x, graphRect.y - 20, graphRect.width, 20), title, titleStyle);
+            GUI.contentColor = Color.white;
+        }
+        
+        /// <summary>
+        /// Draw graph legend
+        /// </summary>
+        public void DrawLegend(Rect graphRect, Dictionary<string, object> values, Dictionary<string, GraphMetric> metrics)
+        {
+            // Legend positioning and background
+            float legendY = graphRect.y + 10;
+            float legendX = graphRect.x + graphRect.width - 130;
+            float legendWidth = 120;
+            
+            // Calculate height based on number of visible metrics
+            int visibleMetricsCount = 0;
+            foreach (var metric in metrics.Values)
+            {
+                if (metric.isVisible) visibleMetricsCount++;
+            }
+            
+            float legendHeight = visibleMetricsCount * 20 + 10;
+            if (legendHeight < 30) legendHeight = 30;
+            
+            // Semi-transparent background
+            EditorGUI.DrawRect(new Rect(legendX, legendY, legendWidth, legendHeight), new Color(0.1f, 0.1f, 0.1f, 0.7f));
+            
+            // Draw legend items
+            int legendOffset = 0;
+            foreach (var metricEntry in metrics)
+            {
+                var metricId = metricEntry.Key;
+                var metric = metricEntry.Value;
+                
+                if (!metric.isVisible) continue;
+                
+                // Get value if available
+                string valueText = "";
+                if (values.TryGetValue(metricId, out object value))
+                {
+                    if (value is float floatVal)
+                        valueText = floatVal.ToString("F1");
+                    else if (value is int intVal)
+                        valueText = intVal.ToString();
+                    else
+                        valueText = value.ToString();
+                }
+                
+                EditorGUI.DrawRect(new Rect(legendX + 5, legendY + 10 + legendOffset, 15, 5), metric.color);
+                GUI.contentColor = metric.color;
+                GUI.Label(new Rect(legendX + 25, legendY + 5 + legendOffset, 90, 20), 
+                    $"{metric.name}: {valueText}");
+                GUI.contentColor = Color.white;
+                
+                legendOffset += 20;
+            }
+        }
+        
+        /// <summary>
+        /// Draw a colored background box
+        /// </summary>
         public Texture2D MakeTexture(int width, int height, Color color)
         {
             Color[] pixels = new Color[width * height];
@@ -198,13 +367,31 @@ namespace V2.Editor
             return texture;
         }
         
-        // Find the maximum value in a float list
+        /// <summary>
+        /// Find the maximum value in a float list
+        /// </summary>
         public float MaxList(List<float> list)
         {
             if (list == null || list.Count == 0)
                 return 0f;
                 
             float max = list[0];
+            foreach (var val in list)
+            {
+                if (val > max) max = val;
+            }
+            return max;
+        }
+        
+        /// <summary>
+        /// Find the maximum value in an int list
+        /// </summary>
+        public int MaxList(List<int> list)
+        {
+            if (list == null || list.Count == 0)
+                return 0;
+                
+            int max = list[0];
             foreach (var val in list)
             {
                 if (val > max) max = val;
