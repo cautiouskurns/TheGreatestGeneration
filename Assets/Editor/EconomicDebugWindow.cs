@@ -153,6 +153,13 @@ namespace V2.Editor
             {
                 lastUIUpdateTime = currentUpdateTime;
                 UpdateTimeInfoFromTurnManager();
+                
+                // Auto-record parameters at regular intervals to keep graphs in sync
+                if (economicSystem != null)
+                {
+                    dataHistory.RecordParameterHistory(parameters);
+                }
+                
                 Repaint();
             }
         }
@@ -782,6 +789,12 @@ namespace V2.Editor
 
         private void DrawParameterGraphsSection()
         {
+            // Always record parameter history to keep in sync with other graphs
+            if (economicSystem != null && parameters != null)
+            {
+                dataHistory.RecordParameterHistory(parameters);
+            }
+            
             // Parameter graph controls
             showParameterGraphs = EditorGUILayout.Foldout(showParameterGraphs, "Parameter History Graphs", true, EditorStyles.foldoutHeader);
             
@@ -820,6 +833,10 @@ namespace V2.Editor
                 
                 // Get current parameter values for legend display
                 Dictionary<string, float> currentParameterValues = parameters.GetAllParameters();
+                
+                // Get the common x-axis point count - use the same count as the main graphs
+                // This ensures all graphs have the same time scale
+                int pointCount = dataHistory.wealthHistory.Count;
                 
                 // Draw each parameter group
                 foreach (var group in EconomicParameters.ParameterGroups)
@@ -882,9 +899,8 @@ namespace V2.Editor
                         }
                     }
                     
-                    // Draw axes
-                    graphHelper.DrawAxes(graphRect, "Time", "Value", maxValue, 
-                        hasData ? dataHistory.GetParameterHistory(group.parameterNames[0]).Count : 0);
+                    // Draw axes - use the common point count from wealth history
+                    graphHelper.DrawAxes(graphRect, "Time", "Value", maxValue, pointCount);
                     
                     // Create metrics dictionary for the legend
                     Dictionary<string, GraphMetric> metrics = new Dictionary<string, GraphMetric>();
