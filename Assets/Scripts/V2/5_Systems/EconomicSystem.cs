@@ -23,7 +23,7 @@ namespace V2.Systems
         public float cycleMultiplier = 1.05f;
         
         [Header("Wealth Management")]
-        public float wealthGrowthRate = 5.0f;
+        public float wealthGrowthRate = 1.0f;
         
         [Header("Market Settings")]
         public float priceVolatility = 0.1f;

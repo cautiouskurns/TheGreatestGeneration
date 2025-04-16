@@ -777,7 +777,7 @@ namespace V2.Systems.DialogueSystem.Editor
             }
             EditorGUILayout.EndHorizontal();
             
-            // Category filters
+            // Category filters - FIX: Make a copy of the keys to avoid enumeration issues
             showCategories = EditorGUILayout.Foldout(showCategories, "Event Categories", true);
             if (showCategories)
             {
@@ -785,7 +785,9 @@ namespace V2.Systems.DialogueSystem.Editor
                 
                 if (GUILayout.Button("Select All", GUILayout.Width(100)))
                 {
-                    foreach (var key in categoryFilters.Keys)
+                    // Fix: Avoid "collection modified during enumeration" error
+                    var keys = new List<EventCategory>(categoryFilters.Keys);
+                    foreach (var key in keys)
                     {
                         categoryFilters[key] = true;
                     }
@@ -794,7 +796,9 @@ namespace V2.Systems.DialogueSystem.Editor
                 
                 if (GUILayout.Button("Select None", GUILayout.Width(100)))
                 {
-                    foreach (var key in categoryFilters.Keys)
+                    // Fix: Avoid "collection modified during enumeration" error
+                    var keys = new List<EventCategory>(categoryFilters.Keys);
+                    foreach (var key in keys)
                     {
                         categoryFilters[key] = false;
                     }
@@ -803,11 +807,14 @@ namespace V2.Systems.DialogueSystem.Editor
                 
                 EditorGUILayout.EndHorizontal();
                 
-                EditorGUILayout.BeginHorizontal();
+                // Fix: Avoid "collection modified during enumeration" error
+                var categories = new List<EventCategory>(categoryFilters.Keys);
                 int count = 0;
                 bool changed = false;
                 
-                foreach (var category in categoryFilters.Keys)
+                EditorGUILayout.BeginHorizontal();
+                
+                foreach (var category in categories)
                 {
                     if (count > 0 && count % 3 == 0)
                     {
@@ -1092,7 +1099,7 @@ namespace V2.Systems.DialogueSystem.Editor
                 
                 // Show triggered events
                 showTriggeredEvents = EditorGUILayout.Foldout(showTriggeredEvents, "Triggered Events", true);
-                if (showTriggeredEvents)
+                if (showTriggeredEvents && eventTrigger != null) // Fixed: null check for eventTrigger
                 {
                     EditorGUI.indentLevel++;
                     
@@ -1102,7 +1109,10 @@ namespace V2.Systems.DialogueSystem.Editor
                     }
                     else
                     {
-                        foreach (string eventId in eventTrigger.triggeredEvents)
+                        // Fix: Make a copy of the collection to avoid enumeration issues
+                        var triggeredEventsCopy = new List<string>(eventTrigger.triggeredEvents);
+                        
+                        foreach (string eventId in triggeredEventsCopy)
                         {
                             EditorGUILayout.BeginHorizontal();
                             EditorGUILayout.LabelField(eventId);
@@ -1131,7 +1141,7 @@ namespace V2.Systems.DialogueSystem.Editor
                 
                 // Test economic effects
                 showTestEffects = EditorGUILayout.Foldout(showTestEffects, "Test Economic Effects", true);
-                if (showTestEffects)
+                if (showTestEffects && eventEffect != null) // Fixed: null check for eventEffect
                 {
                     EditorGUI.indentLevel++;
                     
@@ -1177,31 +1187,26 @@ namespace V2.Systems.DialogueSystem.Editor
             GUILayout.Space(10);
         }
         
-        // Create any missing economic components
+        // Create any missing economic components - Fixed: Handling null references properly
         private void CreateMissingEconomicComponents()
         {
             GameObject economicObj = null;
             
             // Find or create the EconomicSystem
+            economicSystem = FindFirstObjectByType<EconomicSystem>();
+            
             if (economicSystem == null)
             {
-                economicSystem = FindFirstObjectByType<EconomicSystem>();
-                
-                if (economicSystem == null)
+                // Check if we need to create a GameObject
+                economicObj = GameObject.Find("EconomicSystem");
+                if (economicObj == null)
                 {
-                    // Check if we need to create a GameObject
-                    economicObj = GameObject.Find("EconomicSystem");
-                    if (economicObj == null)
-                    {
-                        economicObj = new GameObject("EconomicSystem");
-                        economicSystem = economicObj.AddComponent<EconomicSystem>();
-                        Debug.Log("Created EconomicSystem GameObject");
-                    }
-                    else
-                    {
-                        economicSystem = economicObj.AddComponent<EconomicSystem>();
-                    }
+                    economicObj = new GameObject("EconomicSystem");
                 }
+                
+                // Add the EconomicSystem component
+                economicSystem = economicObj.AddComponent<EconomicSystem>();
+                Debug.Log("Created EconomicSystem component");
             }
             else
             {
@@ -1209,25 +1214,19 @@ namespace V2.Systems.DialogueSystem.Editor
             }
             
             // Add event trigger if missing
-            if (eventTrigger == null)
+            eventTrigger = FindFirstObjectByType<EconomicEventTrigger>();
+            if (eventTrigger == null && economicObj != null)
             {
-                eventTrigger = FindFirstObjectByType<EconomicEventTrigger>();
-                if (eventTrigger == null)
-                {
-                    eventTrigger = economicObj.AddComponent<EconomicEventTrigger>();
-                    Debug.Log("Added EconomicEventTrigger component");
-                }
+                eventTrigger = economicObj.AddComponent<EconomicEventTrigger>();
+                Debug.Log("Added EconomicEventTrigger component");
             }
             
             // Add event effect if missing
-            if (eventEffect == null)
+            eventEffect = FindFirstObjectByType<EconomicEventEffect>();
+            if (eventEffect == null && economicObj != null)
             {
-                eventEffect = FindFirstObjectByType<EconomicEventEffect>();
-                if (eventEffect == null)
-                {
-                    eventEffect = economicObj.AddComponent<EconomicEventEffect>();
-                    Debug.Log("Added EconomicEventEffect component");
-                }
+                eventEffect = economicObj.AddComponent<EconomicEventEffect>();
+                Debug.Log("Added EconomicEventEffect component");
             }
         }
         
