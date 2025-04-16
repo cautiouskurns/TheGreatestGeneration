@@ -955,12 +955,22 @@ namespace V2.Systems.DialogueSystem.Editor
             
             bool wasSelected = (index == selectedChoiceIndex);
             
-            if (GUILayout.Button(choice.text, style, GUILayout.MinHeight(40)))
+            // Check if this choice has economic effects
+            bool hasEconomicEffects = (choice.economicEffects != null && choice.economicEffects.Count > 0);
+            
+            // Create a label that includes an indicator for economic effects
+            string choiceText = choice.text;
+            if (hasEconomicEffects)
+            {
+                choiceText = "🔄 " + choiceText; // Add an icon to indicate economic effect
+            }
+            
+            if (GUILayout.Button(choiceText, style, GUILayout.MinHeight(40)))
             {
                 selectedChoiceIndex = index;
                 
                 // Apply economic effects when a choice is selected
-                if (!wasSelected && economicSystem != null && eventEffect != null && choice.economicEffects != null && choice.economicEffects.Count > 0)
+                if (!wasSelected && economicSystem != null && eventEffect != null && hasEconomicEffects)
                 {
                     // Get the current event
                     SampleEvent currentEvent = filteredEvents[selectedEventIndex];
@@ -968,12 +978,41 @@ namespace V2.Systems.DialogueSystem.Editor
                 }
             }
             
-            // Add an indicator if this choice has economic effects
-            if (choice.economicEffects != null && choice.economicEffects.Count > 0)
+            // Add a colored indicator if this choice has economic effects
+            if (hasEconomicEffects)
             {
                 Rect lastRect = GUILayoutUtility.GetLastRect();
-                Rect indicatorRect = new Rect(lastRect.x + 5, lastRect.y + 5, 10, 10);
-                EditorGUI.DrawRect(indicatorRect, new Color(0.3f, 0.85f, 0.3f, 0.7f)); // Green indicator
+                
+                // Draw a more visible indicator
+                Rect indicatorRect = new Rect(lastRect.x + 5, lastRect.y + 5, 16, 16);
+                EditorGUI.DrawRect(indicatorRect, new Color(0.2f, 0.8f, 0.2f, 0.8f)); // Bright green indicator
+                
+                // Add a small label inside the indicator
+                GUI.Label(indicatorRect, "€", new GUIStyle(EditorStyles.boldLabel) { 
+                    alignment = TextAnchor.MiddleCenter,
+                    normal = { textColor = Color.white }
+                });
+                
+                // Add a tooltip area
+                EditorGUIUtility.AddCursorRect(indicatorRect, MouseCursor.Link);
+                if (indicatorRect.Contains(Event.current.mousePosition))
+                {
+                    // Show a tooltip on hover
+                    string tooltip = "This choice has economic effects";
+                    if (choice.economicEffects.Count > 0)
+                    {
+                        tooltip += ":\n";
+                        foreach (var effect in choice.economicEffects)
+                        {
+                            tooltip += $"• {effect.description}\n";
+                        }
+                    }
+                    
+                    GUI.Label(new Rect(Event.current.mousePosition.x + 15, 
+                                      Event.current.mousePosition.y, 200, 50), 
+                              tooltip, 
+                              new GUIStyle(EditorStyles.helpBox));
+                }
             }
             
             EditorGUILayout.EndVertical();
