@@ -68,6 +68,10 @@ namespace V2.Editor
         private double lastUIUpdateTime;
         private float uiUpdateInterval = 0.1f; // Update UI 10 times per second
 
+        // Add this as a new field in the EconomicDebugWindow class
+        private int selectedScenarioIndex = 0;
+        private bool showScenarios = true;
+
         [MenuItem("Window/Economic Cycles/Debug Window")]
         public static void ShowWindow()
         {
@@ -217,6 +221,7 @@ namespace V2.Editor
 
             // Main sections
             DrawPlayModeControls();
+            DrawScenariosSection();
             DrawControlsSection();
             DrawParametersSection();
             DrawRegionControlsSection();
@@ -266,6 +271,52 @@ namespace V2.Editor
             EditorGUILayout.EndHorizontal();
             
             EditorGUILayout.Space(10);
+        }
+
+        // Add this method after the DrawPlayModeControls method
+        private void DrawScenariosSection()
+        {
+            showScenarios = EditorGUILayout.Foldout(showScenarios, "Economic Scenarios", true, EditorStyles.foldoutHeader);
+            
+            if (showScenarios)
+            {
+                EditorGUI.indentLevel++;
+                
+                // Draw scenario selector dropdown
+                EditorGUILayout.BeginHorizontal();
+                EditorGUILayout.LabelField("Select Scenario:", GUILayout.Width(120));
+                int newScenario = EditorGUILayout.Popup(selectedScenarioIndex, EconomicScenarios.ScenarioNames);
+                if (newScenario != selectedScenarioIndex)
+                {
+                    selectedScenarioIndex = newScenario;
+                }
+                EditorGUILayout.EndHorizontal();
+                
+                // Display scenario description
+                EditorGUILayout.HelpBox(EconomicScenarios.GetScenarioDescription(selectedScenarioIndex), MessageType.Info);
+                
+                // Apply scenario button
+                EditorGUILayout.BeginHorizontal();
+                if (GUILayout.Button("Apply Scenario", GUILayout.Height(30)))
+                {
+                    EconomicScenarios.ApplyScenario(selectedScenarioIndex, parameters, regionController);
+                    
+                    // Apply changes to the system and record history
+                    ApplyToSystem();
+                    
+                    // If simulation is active, recalculate production immediately
+                    if (simulationActive && economicSystem != null && economicSystem.testRegion != null)
+                    {
+                        RecalculateProduction(economicSystem.testRegion);
+                        dataHistory.RecordHistory(economicSystem.testRegion);
+                    }
+                }
+                EditorGUILayout.EndHorizontal();
+                
+                EditorGUI.indentLevel--;
+            }
+            
+            EditorGUILayout.Space(5);
         }
 
         private void DrawControlsSection()
@@ -1078,6 +1129,27 @@ namespace V2.Editor
                 serializedEconomicSystem.ApplyModifiedProperties();
                 EditorUtility.SetDirty(economicSystem);
             }
+        }
+
+        // Add helper method for recalculating production
+        private void RecalculateProduction(RegionEntity region)
+        {
+            // Recalculate production using Cobb-Douglas function
+            float labor = region.Population.LaborAvailable;
+            float capital = region.Infrastructure.Level;
+            float productivityFactor = parameters.productivityFactor;
+            float laborElasticity = parameters.laborElasticity;
+            float capitalElasticity = parameters.capitalElasticity;
+            
+            // Use the same calculation as in ProductionCalculator
+            float calculatedProduction = productivityFactor * 
+                Mathf.Pow(Mathf.Max(1f, labor), laborElasticity) * 
+                Mathf.Pow(Mathf.Max(1f, capital), capitalElasticity);
+            int productionOutput = Mathf.RoundToInt(calculatedProduction);
+            
+            // Set the production values directly
+            region.Production.SetOutput(productionOutput);
+            region.Economy.Production = productionOutput;
         }
     }
 }

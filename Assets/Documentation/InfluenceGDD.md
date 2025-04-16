@@ -712,3 +712,195 @@ sequenceDiagram
     TM-->>User: Update visual state
     Note over TM,User: Player sees updated game state
 ```
+
+# 4. System Architecture Diagrams
+## Economy Architecture
+```mermaid
+graph LR
+    %% Main System
+    EconomicSystem["EconomicSystem\n(MonoBehaviour)"]
+    
+    %% Core Components
+    RegionEntity["RegionEntity"]
+    
+    %% Subsystems
+    ProductionCalc["ProductionCalculator"]
+    InfraManager["InfrastructureManager"]
+    ConsumptionMgr["ConsumptionManager"]
+    MarketBalancer["MarketBalancer"]
+    CycleMgr["CycleManager"]
+    PriceVolatility["PriceVolatilityManager"]
+    WealthMgr["WealthManager"]
+    
+    %% Region Components
+    EconomyComp["RegionEconomyComponent"]
+    ProdComp["ProductionComponent"]
+    ResourceComp["ResourceComponent"]
+    InfraComp["InfrastructureComponent"]
+    PopulationComp["PopulationComponent"]
+    
+    %% Debug & Editor
+    EconomicDebugWindow["EconomicDebugWindow\n(EditorWindow)"]
+    EconomicDataHistory["EconomicDataHistory"]
+    EconomicParameters["EconomicParameters"]
+    EconomicRegionController["EconomicRegionController"]
+    
+    %% Event System
+    EventBus[("EventBus")]
+    
+    %% Action Node
+    ManualTick["ManualTick()"]
+    
+    %% Connections - Main System
+    EconomicSystem --"owns"--> ProductionCalc
+    EconomicSystem --"owns"--> InfraManager
+    EconomicSystem --"owns"--> ConsumptionMgr
+    EconomicSystem --"owns"--> MarketBalancer
+    EconomicSystem --"owns"--> CycleMgr
+    EconomicSystem --"owns"--> PriceVolatility
+    EconomicSystem --"owns"--> WealthMgr
+    EconomicSystem --"manages"--> RegionEntity
+    
+    %% Region Entity owns Components
+    RegionEntity --"owns"--> EconomyComp
+    RegionEntity --"owns"--> ProdComp
+    RegionEntity --"owns"--> ResourceComp
+    RegionEntity --"owns"--> InfraComp
+    RegionEntity --"owns"--> PopulationComp
+    
+    %% Component interactions
+    ProdComp --"reads"--> ResourceComp
+    ProdComp --"provides output to"--> EconomyComp
+    
+    %% Subsystem interactions
+    ProductionCalc --"processes"--> RegionEntity
+    ProductionCalc --"updates"--> ProdComp
+    ProductionCalc --"updates"--> EconomyComp
+    
+    InfraManager --"processes"--> RegionEntity
+    InfraManager --"updates"--> InfraComp
+    InfraManager --"deducts maintenance from"--> EconomyComp
+    
+    ConsumptionMgr --"processes"--> RegionEntity
+    ConsumptionMgr --"updates"--> PopulationComp
+    
+    WealthMgr --"processes"--> RegionEntity
+    WealthMgr --"updates"--> EconomyComp
+    
+    CycleMgr --"processes"--> RegionEntity
+    CycleMgr --"modifies"--> EconomyComp
+    
+    PriceVolatility --"processes"--> RegionEntity
+    
+    %% Debug window connections
+    EconomicDebugWindow --"displays"--> EconomicSystem
+    EconomicDebugWindow --"manages"--> EconomicParameters
+    EconomicDebugWindow --"records data in"--> EconomicDataHistory
+    EconomicDebugWindow --"controls region with"--> EconomicRegionController
+    
+    EconomicParameters --"syncs with"--> EconomicSystem
+    EconomicRegionController --"modifies"--> RegionEntity
+    
+    %% Event flow
+    RegionEntity --"triggers events via"--> EventBus
+    EconomicSystem --"subscribes to"--> EventBus
+
+    %% Processing flow
+    EconomicSystem --"calls"--> ManualTick
+    ManualTick --"triggers"--> ProductionCalc
+    ManualTick --"triggers"--> InfraManager
+    ManualTick --"triggers"--> ConsumptionMgr
+    ManualTick --"triggers"--> MarketBalancer
+    ManualTick --"triggers"--> WealthMgr
+    ManualTick --"triggers"--> CycleMgr
+    ManualTick --"triggers"--> PriceVolatility
+    
+    %% Class type notes
+    classDef component fill:#c2e0ff,stroke:#6495ed,stroke-width:2px,color:#000000,font-weight:bold
+    classDef system fill:#ffe6cc,stroke:#d79b00,stroke-width:2px,color:#000000,font-weight:bold
+    classDef entity fill:#d5e8d4,stroke:#82b366,stroke-width:2px,color:#000000,font-weight:bold
+    classDef editor fill:#e1d5e7,stroke:#9673a6,stroke-width:2px,color:#000000,font-weight:bold
+    classDef event fill:#f5f5f5,stroke:#666666,stroke-width:2px,color:#000000,font-weight:bold
+    classDef action fill:#fff2cc,stroke:#d6b656,stroke-width:2px,color:#000000,font-weight:bold
+
+    class EconomyComp,ProdComp,ResourceComp,InfraComp,PopulationComp component
+    class EconomicSystem,ProductionCalc,InfraManager,ConsumptionMgr,MarketBalancer,CycleMgr,PriceVolatility,WealthMgr system
+    class RegionEntity entity
+    class EconomicDebugWindow,EconomicDataHistory,EconomicParameters,EconomicRegionController editor
+    class EventBus event
+    class ManualTick action
+
+```
+
+## Economy Flow
+```mermaid
+flowchart TD
+    %% Main Economic Flow Concepts
+    
+    %% Resources & Inputs
+    Labor["Labor\n(PopulationComponent)"] 
+    Capital["Capital/Infrastructure\n(InfrastructureComponent)"]
+    Resources["Resources\n(ResourceComponent)"]
+    
+    %% Core Economic Processes
+    Production["Production Process\n(Cobb-Douglas Function)"]
+    MarketDynamics["Market Dynamics\n(Supply & Demand)"]
+    Consumption["Consumption\n(Population Needs)"]
+    EconomicCycle["Economic Cycle\n(Growth & Contraction)"]
+    
+    %% Outputs & Results
+    Wealth["Wealth Accumulation"]
+    ProductionOutput["Production Output"]
+    Satisfaction["Population Satisfaction"]
+    MarketPrices["Market Prices & Volatility"]
+    
+    %% Main Flow Connections
+    Labor -->|"Labor Input (L^α)"|Production
+    Capital -->|"Capital Input (K^β)"|Production
+    Resources -->|"Resource Consumption"|Production
+    
+    Production -->|"Generates"|ProductionOutput
+    ProductionOutput -->|"Supply"|MarketDynamics
+    ProductionOutput -->|"Contributes to"|Wealth
+    
+    Labor -->|"Creates Demand"|MarketDynamics
+    Labor -->|"Population Size"|Consumption
+    
+    MarketDynamics -->|"Price Signals"|MarketPrices
+    MarketDynamics -->|"Imbalance"|EconomicCycle
+    
+    ProductionOutput -->|"Available Goods"|Consumption
+    Consumption -->|"Satisfaction Level"|Satisfaction
+    
+    EconomicCycle -->|"Multiplier Effect"|Production
+    EconomicCycle -->|"Growth Rate"|Wealth
+    EconomicCycle -->|"Volatility"|MarketPrices
+    
+    %% Maintenance & Decay
+    Capital -->|"Decay Rate"|Capital
+    Wealth -->|"Maintenance Costs"|Capital
+    
+    %% Parameter Influences
+    Params["Economic Parameters"]
+    Params -->|"Productivity Factor"|Production
+    Params -->|"Labor Elasticity"|Production
+    Params -->|"Capital Elasticity"|Production
+    Params -->|"Cycle Multiplier"|EconomicCycle
+    Params -->|"Wealth Growth Rate"|Wealth
+    Params -->|"Price Volatility"|MarketPrices
+    Params -->|"Decay Rate"|Capital
+    Params -->|"Maintenance Cost"|Capital
+    Params -->|"Consumption Rate"|Consumption
+    
+    %% Visual Styling with lighter backgrounds
+    classDef input fill:#e8f5e9,stroke:#81c784,stroke-width:2px,color:#2e7d32,font-weight:bold
+    classDef process fill:#fff8e1,stroke:#ffca28,stroke-width:2px,color:#f57f17,font-weight:bold
+    classDef output fill:#e3f2fd,stroke:#64b5f6,stroke-width:2px,color:#1565c0,font-weight:bold
+    classDef parameter fill:#f3e5f5,stroke:#ba68c8,stroke-width:2px,color:#7b1fa2,font-weight:bold
+    
+    class Labor,Capital,Resources input
+    class Production,MarketDynamics,Consumption,EconomicCycle process
+    class Wealth,ProductionOutput,Satisfaction,MarketPrices output
+    class Params parameter
+```
+
