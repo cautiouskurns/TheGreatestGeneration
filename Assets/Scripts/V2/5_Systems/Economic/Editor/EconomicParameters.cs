@@ -152,6 +152,7 @@ namespace V2.Editor
             laborElasticity = economicSystem.laborElasticity;
             capitalElasticity = economicSystem.capitalElasticity;
             cycleMultiplier = economicSystem.cycleMultiplier;
+            
             // Other parameters would be synced here if exposed by EconomicSystem
         }
         

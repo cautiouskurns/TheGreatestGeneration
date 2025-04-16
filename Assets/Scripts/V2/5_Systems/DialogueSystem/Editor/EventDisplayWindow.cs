@@ -19,6 +19,7 @@ namespace V2.Systems.DialogueSystem.Editor
         private GUIStyle effectPositiveStyle;
         private GUIStyle effectNegativeStyle;
         private GUIStyle effectNeutralStyle;
+        private bool stylesInitialized = false;
         
         // State tracking
         private int selectedChoiceIndex = -1;
@@ -42,7 +43,6 @@ namespace V2.Systems.DialogueSystem.Editor
 
         private void OnEnable()
         {
-            InitializeStyles();
             InitializeCategories();
             CreateHardcodedEvents();
             FilterEvents();
@@ -50,6 +50,9 @@ namespace V2.Systems.DialogueSystem.Editor
         
         private void InitializeStyles()
         {
+            if (stylesInitialized)
+                return;
+                
             titleStyle = new GUIStyle(EditorStyles.boldLabel)
             {
                 fontSize = 16,
@@ -99,6 +102,8 @@ namespace V2.Systems.DialogueSystem.Editor
             {
                 normal = { textColor = new Color(0.5f, 0.5f, 0.7f) }
             };
+            
+            stylesInitialized = true;
         }
         
         private void InitializeCategories()
@@ -449,6 +454,9 @@ namespace V2.Systems.DialogueSystem.Editor
 
         private void OnGUI()
         {
+            // Initialize styles here to ensure EditorStyles is ready
+            InitializeStyles();
+            
             if (sampleEvents.Count == 0)
             {
                 EditorGUILayout.HelpBox("No events defined. Please create some events.", MessageType.Info);
