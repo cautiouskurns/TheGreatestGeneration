@@ -46,6 +46,9 @@ namespace V2.Systems.DialogueSystem.Editor
         private bool showEconomicIntegration = true;
         private bool showTriggeredEvents = false;
         private bool showTestEffects = false;
+        
+        // Track play mode state
+        private bool wasInPlayMode = false;
 
         [MenuItem("Window/Narrative/Event Display")]
         public static void ShowWindow()
@@ -58,15 +61,64 @@ namespace V2.Systems.DialogueSystem.Editor
             InitializeCategories();
             
             // Get references to economic components
-            economicSystem = FindFirstObjectByType<EconomicSystem>();
-            eventTrigger = FindFirstObjectByType<EconomicEventTrigger>();
-            eventEffect = FindFirstObjectByType<EconomicEventEffect>();
+            RefreshEconomicComponents();
             
             CreateHardcodedEvents();
             FilterEvents();
             
             // Check if we need to create sample economic events
             CreateEconomicEvents();
+            
+            // Register for play mode state change events
+            EditorApplication.playModeStateChanged += PlayModeStateChanged;
+        }
+
+        private void OnDisable()
+        {
+            // Unregister from play mode state change events
+            EditorApplication.playModeStateChanged -= PlayModeStateChanged;
+        }
+        
+        // Handle play mode state changes
+        private void PlayModeStateChanged(PlayModeStateChange state)
+        {
+            // When entering play mode
+            if (state == PlayModeStateChange.EnteredPlayMode)
+            {
+                // Wait a frame to make sure all components are initialized
+                EditorApplication.delayCall += () =>
+                {
+                    RefreshEconomicComponents();
+                    CreateEconomicEvents();
+                    Repaint();
+                    Debug.Log("EventDisplayWindow: Refreshed economic events for play mode");
+                };
+            }
+        }
+        
+        // New method to refresh all economic components
+        private void RefreshEconomicComponents()
+        {
+            economicSystem = FindFirstObjectByType<EconomicSystem>();
+            eventTrigger = FindFirstObjectByType<EconomicEventTrigger>();
+            eventEffect = FindFirstObjectByType<EconomicEventEffect>();
+            
+            // Auto-create components if in play mode
+            if (Application.isPlaying && (economicSystem == null || eventTrigger == null || eventEffect == null))
+            {
+                CreateMissingEconomicComponents();
+            }
+        }
+        
+        // Add a manual refresh button
+        private void DrawRefreshButton()
+        {
+            if (GUILayout.Button("Refresh Economic Integration"))
+            {
+                RefreshEconomicComponents();
+                CreateEconomicEvents();
+                Repaint();
+            }
         }
         
         private void InitializeStyles()
@@ -749,6 +801,22 @@ namespace V2.Systems.DialogueSystem.Editor
         
         private void OnGUI()
         {
+            // Check if play mode status changed
+            if (wasInPlayMode != Application.isPlaying)
+            {
+                wasInPlayMode = Application.isPlaying;
+                if (wasInPlayMode)
+                {
+                    // We just entered play mode, refresh economic components after a short delay
+                    EditorApplication.delayCall += () =>
+                    {
+                        RefreshEconomicComponents();
+                        CreateEconomicEvents();
+                        Repaint();
+                    };
+                }
+            }
+            
             // Initialize styles here to ensure EditorStyles is ready
             InitializeStyles();
             
@@ -1121,6 +1189,9 @@ namespace V2.Systems.DialogueSystem.Editor
                 return;
                 
             EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+            
+            // Add refresh button at the top
+            DrawRefreshButton();
             
             if (economicSystem == null || eventTrigger == null || eventEffect == null)
             {
