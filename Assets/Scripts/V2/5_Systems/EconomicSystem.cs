@@ -116,6 +116,9 @@ namespace V2.Systems
                 return;
             }
 
+            // Calculate production using the Cobb-Douglas function before processing subsystems
+            CalculateAndApplyProduction(testRegion);
+            
             // Process each economic aspect using the specialized subsystems
             marketBalancer.Process(testRegion);
             productionCalculator.Process(testRegion);
@@ -124,6 +127,34 @@ namespace V2.Systems
             wealthManager.Process(testRegion);
             cycleManager.Process(testRegion);
             priceVolatilityManager.Process(testRegion);
+        }
+        
+        /// <summary>
+        /// Calculates and applies production using the Cobb-Douglas function
+        /// </summary>
+        private void CalculateAndApplyProduction(RegionEntity region)
+        {
+            // Get inputs for Cobb-Douglas production function
+            float labor = region.Population.LaborAvailable;
+            float capital = region.Infrastructure.Level;
+            
+            // Guard against zero values
+            labor = Mathf.Max(1f, labor);
+            capital = Mathf.Max(1f, capital);
+            
+            // Calculate production using Cobb-Douglas: Y = A * L^α * K^β
+            float production = productivityFactor * 
+                Mathf.Pow(labor, laborElasticity) * 
+                Mathf.Pow(capital, capitalElasticity);
+                
+            int productionOutput = Mathf.RoundToInt(production);
+            
+            // Update both Production and Economy components
+            region.Production.SetOutput(productionOutput);
+            region.Economy.Production = productionOutput;
+            
+            Debug.Log($"[Production] Applied Cobb-Douglas calculation: Labor={labor}, Capital={capital}, " +
+                      $"Productivity={productivityFactor}, Output={productionOutput}");
         }
     }
 }

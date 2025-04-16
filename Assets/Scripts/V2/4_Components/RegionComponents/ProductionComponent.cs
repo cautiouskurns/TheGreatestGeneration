@@ -50,10 +50,10 @@ namespace V2.Components
             resources.UseResource("Food", 2);
             resources.UseResource("Wood", 1);
             
-            // Calculate output
-            output = 10; // Simplified for now
+            // Note: We no longer set output = 10 here
+            // Production output will be calculated by the EconomicSystem using the Cobb-Douglas function
             
-            Debug.Log($"Production completed: output = {output}");
+            Debug.Log($"Production resource processing completed. Current output = {output}");
         }
 
         public int GetOutput()

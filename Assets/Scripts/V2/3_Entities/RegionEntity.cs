@@ -68,8 +68,12 @@ namespace V2.Entities
             
             // Process components
             Resources.GenerateResources();
+            
+            // Instead of using the hardcoded production value, we'll let the EconomicSystem handle it
+            // The Production.ProcessProduction() call is kept for backward compatibility and resource consumption
             Production.ProcessProduction();
-            Economy.UpdateEconomy(Production.GetOutput());
+            
+            // We'll update the Economy component in EconomicSystem.ManualTick() using the Cobb-Douglas function
             
             // Notify systems
             EventBus.Trigger("RegionUpdated", this);
