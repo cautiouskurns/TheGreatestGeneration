@@ -127,6 +127,10 @@ namespace V2.Systems
             wealthManager.Process(testRegion);
             cycleManager.Process(testRegion);
             priceVolatilityManager.Process(testRegion);
+            
+            // Notify listeners that an economic tick has occurred
+            // This allows the event system to check for economic parameter thresholds
+            EventBus.Trigger("EconomicTick", testRegion);
         }
         
         /// <summary>
