@@ -977,10 +977,30 @@ namespace V2.Editor
                 // Resync values
                 SyncFromSystem();
                 
-                // Record history after the tick
+                // Force recalculation and update of production
                 if (economicSystem.testRegion != null)
                 {
-                    dataHistory.RecordHistory(economicSystem.testRegion);
+                    RegionEntity region = economicSystem.testRegion;
+                    
+                    // Recalculate production using Cobb-Douglas function
+                    float labor = region.Population.LaborAvailable;
+                    float capital = region.Infrastructure.Level;
+                    float productivityFactor = parameters.productivityFactor;
+                    float laborElasticity = parameters.laborElasticity;
+                    float capitalElasticity = parameters.capitalElasticity;
+                    
+                    // Use the same calculation as in ProductionCalculator
+                    float calculatedProduction = productivityFactor * 
+                        Mathf.Pow(Mathf.Max(1f, labor), laborElasticity) * 
+                        Mathf.Pow(Mathf.Max(1f, capital), capitalElasticity);
+                    int productionOutput = Mathf.RoundToInt(calculatedProduction);
+                    
+                    // Set the production values directly
+                    region.Production.SetOutput(productionOutput);
+                    region.Economy.Production = productionOutput;
+                    
+                    // Record history after the tick and production recalculation
+                    dataHistory.RecordHistory(region);
                     dataHistory.RecordParameterHistory(parameters);
                 }
                 
