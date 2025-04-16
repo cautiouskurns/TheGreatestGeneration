@@ -8,8 +8,6 @@ namespace V2.Systems.Economic
     /// </summary>
     public class PriceVolatilityManager : EconomicSubsystem
     {
-        private float volatilityRange = 0.1f;
-        
         public PriceVolatilityManager(EconomicSystem system) : base(system)
         {
         }
@@ -17,6 +15,9 @@ namespace V2.Systems.Economic
         public override void Process(RegionEntity region)
         {
             Debug.Log("Processing Price Volatility...");
+            
+            // Get volatility from the economic system
+            float volatilityRange = economicSystem.priceVolatility;
             
             float volatility = Random.Range(-volatilityRange, volatilityRange);
             float priceIndex = 100f * (1 + volatility);

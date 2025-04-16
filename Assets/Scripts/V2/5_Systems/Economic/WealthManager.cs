@@ -19,12 +19,16 @@ namespace V2.Systems.Economic
             // Production contributes to wealth accumulation
             int wealthFromProduction = region.Economy.Production;
             
-            // Update wealth accounting for production
-            region.Economy.Wealth += wealthFromProduction;
+            // Apply wealth growth rate from the economic system
+            float wealthGrowth = economicSystem.wealthGrowthRate;
+            int additionalWealth = Mathf.RoundToInt(region.Economy.Wealth * (wealthGrowth / 100f));
+            
+            // Update wealth accounting for both production and growth rate
+            region.Economy.Wealth += wealthFromProduction + additionalWealth;
             
             // In a more complex implementation, we might handle investments, returns, etc.
             
-            Debug.Log($"[Wealth] Production Income: {wealthFromProduction}, Total Wealth: {region.Economy.Wealth}");
+            Debug.Log($"[Wealth] Production Income: {wealthFromProduction}, Growth: {additionalWealth}, Total Wealth: {region.Economy.Wealth}");
         }
     }
 }

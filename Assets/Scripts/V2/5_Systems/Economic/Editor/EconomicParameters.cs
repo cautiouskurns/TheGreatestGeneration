@@ -152,8 +152,11 @@ namespace V2.Editor
             laborElasticity = economicSystem.laborElasticity;
             capitalElasticity = economicSystem.capitalElasticity;
             cycleMultiplier = economicSystem.cycleMultiplier;
-            
-            // Other parameters would be synced here if exposed by EconomicSystem
+            wealthGrowthRate = economicSystem.wealthGrowthRate;
+            priceVolatility = economicSystem.priceVolatility;
+            decayRate = economicSystem.decayRate;
+            maintenanceCostMultiplier = economicSystem.maintenanceCostMultiplier;
+            laborConsumptionRate = economicSystem.laborConsumptionRate;
         }
         
         // Apply values to an economic system component
@@ -165,7 +168,11 @@ namespace V2.Editor
             economicSystem.laborElasticity = laborElasticity;
             economicSystem.capitalElasticity = capitalElasticity;
             economicSystem.cycleMultiplier = cycleMultiplier;
-            // Other parameters would be applied here if exposed by EconomicSystem
+            economicSystem.wealthGrowthRate = wealthGrowthRate;
+            economicSystem.priceVolatility = priceVolatility;
+            economicSystem.decayRate = decayRate;
+            economicSystem.maintenanceCostMultiplier = maintenanceCostMultiplier;
+            economicSystem.laborConsumptionRate = laborConsumptionRate;
         }
         
         // Get parameter value by index for graphing (for backward compatibility)

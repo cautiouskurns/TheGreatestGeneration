@@ -22,6 +22,19 @@ namespace V2.Systems
         [Header("Economic Cycle")]
         public float cycleMultiplier = 1.05f;
         
+        [Header("Wealth Management")]
+        public float wealthGrowthRate = 5.0f;
+        
+        [Header("Market Settings")]
+        public float priceVolatility = 0.1f;
+        
+        [Header("Infrastructure Settings")]
+        public float decayRate = 0.01f;
+        public float maintenanceCostMultiplier = 0.5f;
+        
+        [Header("Population Settings")]
+        public float laborConsumptionRate = 1.5f;
+        
         // Economic subsystems
         private ProductionCalculator productionCalculator;
         private InfrastructureManager infrastructureManager;
