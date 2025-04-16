@@ -17,6 +17,7 @@ namespace V2.Systems.Economic
         {
             Debug.Log("Processing Production...");
             
+            // Get inputs for production calculation
             float labor = region.Population.LaborAvailable;
             float capital = region.Infrastructure.Level;
             float productivityFactor = economicSystem.productivityFactor;
@@ -26,13 +27,18 @@ namespace V2.Systems.Economic
             // Cobb-Douglas production function
             float production = Calculate(labor, capital, productivityFactor, laborElasticity, capitalElasticity);
 
-            // Update output in ProductionComponent
+            // Update output in both Production and Economy components
             int productionOutput = Mathf.RoundToInt(production);
             
-            // Set output through method
-            SetProductionOutput(region.Production, productionOutput);
+            // Update the Production component using the new SetOutput method
+            region.Production.SetOutput(productionOutput);
             
-            Debug.Log($"[Production] Labor: {labor}, Capital: {capital}, Production: {productionOutput}");
+            // Update the Economy component's Production value
+            region.Economy.Production = productionOutput;
+            
+            Debug.Log($"[Production] Labor: {labor}, Capital: {capital}, Productivity: {productivityFactor}, " +
+                     $"Labor Elasticity: {laborElasticity}, Capital Elasticity: {capitalElasticity}, " +
+                     $"Production Output: {productionOutput}");
         }
         
         /// <summary>
@@ -40,16 +46,19 @@ namespace V2.Systems.Economic
         /// </summary>
         public float Calculate(float labor, float capital, float productivity, float laborElasticity, float capitalElasticity)
         {
+            // Guard against zero values to prevent NaN results
+            labor = Mathf.Max(1f, labor);
+            capital = Mathf.Max(1f, capital);
+            
+            // Cobb-Douglas production function: Y = A * L^α * K^β
+            // Where:
+            // Y = Production output
+            // A = Total factor productivity
+            // L = Labor input
+            // K = Capital input
+            // α = Output elasticity of labor
+            // β = Output elasticity of capital
             return productivity * Mathf.Pow(labor, laborElasticity) * Mathf.Pow(capital, capitalElasticity);
-        }
-        
-        // Helper method to set production output without breaking encapsulation
-        private void SetProductionOutput(ProductionComponent productionComponent, int output)
-        {
-            // This would ideally be replaced by ProductionComponent's own calculation
-            typeof(ProductionComponent).GetField("output", 
-                System.Reflection.BindingFlags.NonPublic | 
-                System.Reflection.BindingFlags.Instance)?.SetValue(productionComponent, output);
         }
     }
 }

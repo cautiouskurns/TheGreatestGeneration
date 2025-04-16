@@ -32,7 +32,7 @@ namespace V2.Components
     /// - Emit production-related events or hooks for dependent systems
     /// - Integrate with infrastructure, workforce, or policy systems for depth
     /// </summary>
-    public class ProductionComponent
+    public class ProductionComponent    
     {
         private ResourceComponent resources;
         private int output = 10; // Default output
@@ -59,6 +59,21 @@ namespace V2.Components
         public int GetOutput()
         {
             return output;
+        }
+        
+        /// <summary>
+        /// Sets the production output value
+        /// </summary>
+        /// <param name="newOutput">The new production output value</param>
+        public void SetOutput(int newOutput)
+        {
+            // Only update and log if value actually changes
+            if (newOutput != output)
+            {
+                int oldOutput = output;
+                output = newOutput;
+                Debug.Log($"Production output updated: {oldOutput} → {newOutput}");
+            }
         }
     }
 }

@@ -4,7 +4,7 @@ using V2.Entities;
 namespace V2.Systems.Economic
 {
     /// <summary>
-    /// Handles population consumption and satisfaction calculations
+    /// Handles consumption of resources by population and industry
     /// </summary>
     public class ConsumptionManager : EconomicSubsystem
     {
@@ -14,22 +14,26 @@ namespace V2.Systems.Economic
 
         public override void Process(RegionEntity region)
         {
-            Debug.Log("Processing Population Consumption...");
+            Debug.Log("Processing Consumption...");
             
-            float consumption = region.Population.LaborAvailable * 1.5f;
-            float unmetDemand = Mathf.Max(0, consumption - region.Economy.Production);
-            float satisfaction = 1.0f;
+            // Get labor consumption rate from the economic system
+            float laborConsumptionRate = economicSystem.laborConsumptionRate;
             
-            if (consumption > 0)
-            {
-                float unrestFactor = unmetDemand / consumption;
-                satisfaction = Mathf.Clamp01(1.0f - unrestFactor);
-            }
-
+            int laborAvailable = region.Population.LaborAvailable;
+            
+            // Calculate total consumption based on population size and consumption rate
+            int totalConsumption = Mathf.RoundToInt(laborAvailable * laborConsumptionRate);
+            
+            // Calculate satisfaction based on production vs. consumption ratio
+            float productionConsumptionRatio = (float)region.Economy.Production / Mathf.Max(1, totalConsumption);
+            float satisfaction = Mathf.Clamp01(productionConsumptionRatio);
+            
             // Update population satisfaction
             region.Population.UpdateSatisfaction(satisfaction);
             
-            Debug.Log($"[Consumption] Total: {consumption}, Unmet: {unmetDemand}, Satisfaction: {satisfaction:F2}");
+            Debug.Log($"[Consumption] Labor: {laborAvailable}, Rate: {laborConsumptionRate:F2}, " +
+                     $"Total Consumption: {totalConsumption}, Production/Consumption Ratio: {productionConsumptionRatio:F2}, " +
+                     $"Satisfaction: {satisfaction:F2}");
         }
     }
 }
