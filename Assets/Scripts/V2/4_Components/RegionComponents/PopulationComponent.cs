@@ -4,8 +4,8 @@ namespace V2.Components
 {
     public class PopulationComponent
     {
-        public int LaborAvailable { get; private set; } = 100;
-        public float Satisfaction { get; private set; } = 1.0f;
+        public int LaborAvailable { get; set; } = 100;
+        public float Satisfaction { get; set; } = 1.0f;
 
         public void UpdateSatisfaction(float value)
         {

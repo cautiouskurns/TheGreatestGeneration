@@ -46,9 +46,9 @@ namespace V2.Entities
         // Components
         public ResourceComponent Resources { get; private set; }
         public ProductionComponent Production { get; private set; }
-        public RegionEconomyComponent Economy { get; private set; }
-        public InfrastructureComponent Infrastructure { get; private set; }
-        public PopulationComponent Population { get; private set; }
+        public RegionEconomyComponent Economy { get; set; }
+        public InfrastructureComponent Infrastructure { get; set; }
+        public PopulationComponent Population { get; set; }
 
         public RegionEntity(string name, int initialWealth, int initialProduction)
         {

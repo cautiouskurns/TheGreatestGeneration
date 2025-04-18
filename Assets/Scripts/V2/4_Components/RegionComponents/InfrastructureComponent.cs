@@ -4,7 +4,7 @@ namespace V2.Components
 {
     public class InfrastructureComponent
     {
-        public int Level { get; private set; } = 1;
+        public int Level { get; set; } = 1;
         private float maintenanceCost = 0.5f;
 
         public InfrastructureComponent()
