@@ -1047,30 +1047,36 @@ namespace V2.Editor
                 // This ensures all graphs have the same time scale
                 int pointCount = dataHistory.wealthHistory.Count;
                 
-                // Draw each parameter group
-                foreach (var group in EconomicParameters.ParameterGroups)
+                // Create custom parameter groupings for better scale compatibility
+                Dictionary<string, ParameterGraphGroup> customGroups = CreateCustomParameterGroups();
+                
+                // Draw custom parameter groups
+                foreach (var groupEntry in customGroups)
                 {
+                    string groupId = groupEntry.Key;
+                    ParameterGraphGroup group = groupEntry.Value;
+                    
                     // Handle foldout state for this group
-                    if (!parameterGroupFoldouts.ContainsKey(group.name))
+                    if (!parameterGroupFoldouts.ContainsKey(groupId))
                     {
-                        parameterGroupFoldouts[group.name] = true;
+                        parameterGroupFoldouts[groupId] = true;
                     }
                     
-                    parameterGroupFoldouts[group.name] = EditorGUILayout.Foldout(
-                        parameterGroupFoldouts[group.name], 
-                        group.name + " Parameters", 
+                    parameterGroupFoldouts[groupId] = EditorGUILayout.Foldout(
+                        parameterGroupFoldouts[groupId], 
+                        group.name, 
                         true
                     );
                     
-                    if (!parameterGroupFoldouts[group.name])
+                    if (!parameterGroupFoldouts[groupId])
                         continue;
                     
                     // Draw titled box for this parameter group
                     EditorGUILayout.BeginVertical(EditorStyles.helpBox);
                     
                     // Draw group header with its color
-                    GUI.color = group.groupColor;
-                    EditorGUILayout.LabelField(group.name + " Parameters", EditorStyles.boldLabel);
+                    GUI.color = group.color;
+                    EditorGUILayout.LabelField(group.name, EditorStyles.boldLabel);
                     GUI.color = Color.white;
                     
                     // Calculate graph rect
@@ -1086,57 +1092,53 @@ namespace V2.Editor
                     // Draw graph background
                     GUI.Box(graphRect, "");
                     
-                    // Determine max Y value for this group
-                    float maxValue = 1.0f;
-                    bool hasData = false;
+                    // Determine if we should use dual axis
+                    bool useDualAxis = group.useDualAxis;
+                    float primaryMaxValue = group.primaryMaxValue;
+                    float secondaryMaxValue = group.secondaryMaxValue;
                     
-                    foreach (string paramName in group.parameterNames)
+                    // Draw appropriate axes based on group settings
+                    if (useDualAxis)
                     {
-                        // Get parameter history
-                        List<float> history = dataHistory.GetParameterHistory(paramName);
-                        
-                        if (history != null && history.Count > 0)
-                        {
-                            hasData = true;
-                            
-                            // Use recommended max value from parameters class
-                            float recommendedMax = parameters.GetRecommendedMaxValue(paramName);
-                            float actualMax = dataHistory.GetParameterMaxValue(paramName);
-                            
-                            // Use the larger of recommended or actual max value
-                            maxValue = Mathf.Max(maxValue, recommendedMax, actualMax);
-                        }
+                        graphHelper.DrawDualAxes(graphRect, "Time", 
+                            group.primaryAxisLabel, 
+                            group.secondaryAxisLabel, 
+                            primaryMaxValue, 
+                            secondaryMaxValue, 
+                            pointCount);
+                    }
+                    else
+                    {
+                        graphHelper.DrawAxes(graphRect, "Time", group.primaryAxisLabel, primaryMaxValue, pointCount);
                     }
                     
-                    // Draw axes - use the common point count from wealth history
-                    graphHelper.DrawAxes(graphRect, "Time", "Value", maxValue, pointCount);
-                    
-                    // Create metrics dictionary for the legend
+                    // Prepare metrics for legend
                     Dictionary<string, GraphMetric> metrics = new Dictionary<string, GraphMetric>();
                     Dictionary<string, object> currentValues = new Dictionary<string, object>();
                     
                     // Draw each parameter in this group
-                    for (int i = 0; i < group.parameterNames.Length; i++)
+                    for (int i = 0; i < group.parameters.Count; i++)
                     {
-                        string paramName = group.parameterNames[i];
+                        string paramName = group.parameters[i];
+                        bool useSecondaryAxis = group.secondaryAxisParams.Contains(paramName);
                         List<float> history = dataHistory.GetParameterHistory(paramName);
                         
-                        // Assign a color based on index within group
-                        Color paramColor;
-                        switch (i % 5)
-                        {
-                            case 0: paramColor = new Color(0.9f, 0.4f, 0.4f); break; // Red
-                            case 1: paramColor = new Color(0.4f, 0.9f, 0.4f); break; // Green
-                            case 2: paramColor = new Color(0.4f, 0.4f, 0.9f); break; // Blue
-                            case 3: paramColor = new Color(0.9f, 0.9f, 0.4f); break; // Yellow
-                            case 4: paramColor = new Color(0.9f, 0.4f, 0.9f); break; // Purple
-                            default: paramColor = Color.white; break;
-                        }
+                        // Assign a color to this parameter
+                        Color paramColor = group.parameterColors.ContainsKey(paramName) ? 
+                            group.parameterColors[paramName] : 
+                            DefaultParameterColor(i);
                         
                         if (history != null && history.Count > 1)
                         {
-                            // Draw the graph line
-                            graphHelper.DrawLineGraph(history, maxValue, paramColor, graphRect);
+                            // Draw the graph line with appropriate axis
+                            if (useDualAxis && useSecondaryAxis)
+                            {
+                                graphHelper.DrawLineGraphSecondaryAxis(history, secondaryMaxValue, paramColor, graphRect);
+                            }
+                            else
+                            {
+                                graphHelper.DrawLineGraph(history, primaryMaxValue, paramColor, graphRect);
+                            }
                         }
                         
                         // Add to metrics for legend
@@ -1166,11 +1168,123 @@ namespace V2.Editor
                 EditorGUILayout.EndScrollView();
                 EditorGUILayout.EndVertical();
                 
-                // Add helpful note about scrolling
-                EditorGUILayout.HelpBox("Scroll to see all parameter graphs. Adjust graph height and area size using the controls above.", MessageType.Info);
+                // Add helpful note about dual-axis
+                EditorGUILayout.HelpBox("Parameters are grouped based on compatible scale ranges, with dual-axis graphs when necessary.", MessageType.Info);
             }
             
             EditorGUILayout.Space(10);
+        }
+        
+        /// <summary>
+        /// Create custom parameter groups with appropriate scaling for better visualization
+        /// </summary>
+        private Dictionary<string, ParameterGraphGroup> CreateCustomParameterGroups()
+        {
+            Dictionary<string, ParameterGraphGroup> groups = new Dictionary<string, ParameterGraphGroup>();
+            
+            // Growth & Productivity parameters (ranges differ significantly)
+            var growthGroup = new ParameterGraphGroup
+            {
+                name = "Growth & Productivity Parameters",
+                color = new Color(0.9f, 0.7f, 0.3f, 0.8f),
+                primaryAxisLabel = "Productivity",
+                primaryMaxValue = 5.0f,
+                secondaryAxisLabel = "Rate",
+                secondaryMaxValue = 20.0f,
+                useDualAxis = true
+            };
+            
+            // Add parameters to growth group
+            growthGroup.parameters.Add("productivity factor");
+            growthGroup.parameterColors["productivity factor"] = new Color(0.9f, 0.4f, 0.2f);
+            
+            growthGroup.parameters.Add("wealth growth rate");
+            growthGroup.parameterColors["wealth growth rate"] = new Color(0.2f, 0.8f, 0.4f);
+            growthGroup.secondaryAxisParams.Add("wealth growth rate"); // Different scale
+            
+            groups["growth"] = growthGroup;
+            
+            // Elasticity parameters (all in 0-1 range)
+            var elasticityGroup = new ParameterGraphGroup
+            {
+                name = "Elasticity Parameters",
+                color = new Color(0.3f, 0.7f, 0.9f, 0.8f),
+                primaryAxisLabel = "Elasticity",
+                primaryMaxValue = 1.0f,
+                useDualAxis = false
+            };
+            
+            // Add parameters to elasticity group
+            elasticityGroup.parameters.Add("labor elasticity");
+            elasticityGroup.parameterColors["labor elasticity"] = new Color(0.2f, 0.4f, 0.9f);
+            
+            elasticityGroup.parameters.Add("capital elasticity");
+            elasticityGroup.parameterColors["capital elasticity"] = new Color(0.9f, 0.4f, 0.8f);
+            
+            groups["elasticity"] = elasticityGroup;
+            
+            // Cycle & Volatility parameters (mixed ranges)
+            var cycleGroup = new ParameterGraphGroup
+            {
+                name = "Cycle & Volatility Parameters",
+                color = new Color(0.4f, 0.6f, 0.4f, 0.8f),
+                primaryAxisLabel = "Cycle",
+                primaryMaxValue = 1.2f,
+                secondaryAxisLabel = "Volatility",
+                secondaryMaxValue = 0.5f,
+                useDualAxis = true
+            };
+            
+            // Add parameters to cycle group
+            cycleGroup.parameters.Add("cycle multiplier");
+            cycleGroup.parameterColors["cycle multiplier"] = new Color(0.3f, 0.7f, 0.3f);
+            
+            cycleGroup.parameters.Add("price volatility");
+            cycleGroup.parameterColors["price volatility"] = new Color(0.9f, 0.6f, 0.2f);
+            cycleGroup.secondaryAxisParams.Add("price volatility"); // Different scale
+            
+            groups["cycle"] = cycleGroup;
+            
+            // Infrastructure parameters (similar small rates)
+            var infraGroup = new ParameterGraphGroup
+            {
+                name = "Infrastructure Parameters",
+                color = new Color(0.7f, 0.3f, 0.9f, 0.8f),
+                primaryAxisLabel = "Rate",
+                primaryMaxValue = 2.0f,
+                useDualAxis = false
+            };
+            
+            // Add parameters to infrastructure group
+            infraGroup.parameters.Add("decay rate");
+            infraGroup.parameterColors["decay rate"] = new Color(0.8f, 0.3f, 0.3f);
+            
+            infraGroup.parameters.Add("maintenance cost multiplier");
+            infraGroup.parameterColors["maintenance cost multiplier"] = new Color(0.6f, 0.3f, 0.8f);
+            
+            // Labor consumption in the infrastructure group since its scale is more compatible
+            infraGroup.parameters.Add("labor consumption rate");
+            infraGroup.parameterColors["labor consumption rate"] = new Color(0.3f, 0.8f, 0.8f);
+            
+            groups["infrastructure"] = infraGroup;
+            
+            return groups;
+        }
+        
+        /// <summary>
+        /// Generate a default color for a parameter based on index
+        /// </summary>
+        private Color DefaultParameterColor(int index)
+        {
+            switch (index % 5)
+            {
+                case 0: return new Color(0.9f, 0.4f, 0.4f); // Red
+                case 1: return new Color(0.4f, 0.9f, 0.4f); // Green
+                case 2: return new Color(0.4f, 0.4f, 0.9f); // Blue
+                case 3: return new Color(0.9f, 0.9f, 0.4f); // Yellow
+                case 4: return new Color(0.9f, 0.4f, 0.9f); // Purple
+                default: return Color.white;
+            }
         }
 
         private void RunSimulationTick()
@@ -1309,5 +1423,22 @@ namespace V2.Editor
             region.Production.SetOutput(productionOutput);
             region.Economy.Production = productionOutput;
         }
+    }
+
+    /// <summary>
+    /// Helper class for parameter graph groupings with appropriate scale settings
+    /// </summary>
+    public class ParameterGraphGroup
+    {
+        public string name;
+        public Color color;
+        public string primaryAxisLabel;
+        public float primaryMaxValue;
+        public string secondaryAxisLabel;
+        public float secondaryMaxValue;
+        public bool useDualAxis;
+        public List<string> parameters = new List<string>();
+        public List<string> secondaryAxisParams = new List<string>();
+        public Dictionary<string, Color> parameterColors = new Dictionary<string, Color>();
     }
 }
