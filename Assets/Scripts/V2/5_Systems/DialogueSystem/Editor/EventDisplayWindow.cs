@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEditor;
 using System.Collections.Generic;
 using System;
+using System.Linq;
 using V2.Systems;
 using V2.Entities;
 
@@ -1015,6 +1016,7 @@ namespace V2.Systems.DialogueSystem.Editor
             EditorGUILayout.EndScrollView();
         }
 
+        // Display a choice button with proper styling and economic effect indicators
         private void DisplayChoice(SampleChoice choice, int index)
         {
             GUIStyle style = (index == selectedChoiceIndex) ? selectedChoiceStyle : choiceButtonStyle;
@@ -1038,11 +1040,35 @@ namespace V2.Systems.DialogueSystem.Editor
                 selectedChoiceIndex = index;
                 
                 // Apply economic effects when a choice is selected
-                if (!wasSelected && economicSystem != null && eventEffect != null && hasEconomicEffects)
+                if (!wasSelected && economicSystem != null && eventEffect != null)
                 {
                     // Get the current event
                     SampleEvent currentEvent = filteredEvents[selectedEventIndex];
-                    eventEffect.ApplyEffects(currentEvent.title, index, choice.economicEffects);
+                    
+                    // Apply economic effects if available
+                    if (hasEconomicEffects)
+                    {
+                        eventEffect.ApplyEffects(currentEvent.title, index, choice.economicEffects);
+                    }
+                    else 
+                    {
+                        // Even without economic effects, we should still check for event chaining
+                        string nextEventId = eventEffect.GetNextEvent(currentEvent.title, index);
+                        if (!string.IsNullOrEmpty(nextEventId) && eventTrigger != null)
+                        {
+                            Debug.Log($"Progressing to next event: {nextEventId}");
+                            eventTrigger.TriggerEvent(nextEventId, true);
+                            
+                            // Find and select the new event in the UI
+                            ProgressToNextEvent(nextEventId);
+                        }
+                    }
+                    
+                    // Mark current event as completed
+                    if (eventTrigger != null)
+                    {
+                        eventTrigger.CompleteEvent(currentEvent.title);
+                    }
                 }
             }
             
@@ -1087,6 +1113,55 @@ namespace V2.Systems.DialogueSystem.Editor
             GUILayout.Space(5);
         }
         
+        // Helper method to find and select the next event in the UI
+        private void ProgressToNextEvent(string nextEventId)
+        {
+            // Find the event in our filtered list
+            for (int i = 0; i < filteredEvents.Count; i++)
+            {
+                if (filteredEvents[i].title == nextEventId)
+                {
+                    // Select this event and reset choice selection
+                    selectedEventIndex = i;
+                    selectedChoiceIndex = -1;
+                    break;
+                }
+            }
+            
+            // If we couldn't find it in filtered events, maybe it's filtered out
+            // Let's temporarily disable filters to find it
+            if (selectedEventIndex < 0 || filteredEvents[selectedEventIndex].title != nextEventId)
+            {
+                // Save current filter state
+                Dictionary<EventCategory, bool> savedFilters = new Dictionary<EventCategory, bool>(categoryFilters);
+                string savedSearch = searchText;
+                
+                // Enable all filters and clear search
+                foreach (var category in categoryFilters.Keys.ToList())
+                {
+                    categoryFilters[category] = true;
+                }
+                searchText = "";
+                FilterEvents();
+                
+                // Now try to find the event again
+                for (int i = 0; i < filteredEvents.Count; i++)
+                {
+                    if (filteredEvents[i].title == nextEventId)
+                    {
+                        selectedEventIndex = i;
+                        selectedChoiceIndex = -1;
+                        break;
+                    }
+                }
+                
+                // Restore original filters but keep the new event visible
+                // (no need to reset filters if we found the event)
+            }
+            
+            Repaint(); // Refresh the UI
+        }
+
         private void DisplayEffect(string effect)
         {
             // Determine if this is a positive, negative, or neutral effect

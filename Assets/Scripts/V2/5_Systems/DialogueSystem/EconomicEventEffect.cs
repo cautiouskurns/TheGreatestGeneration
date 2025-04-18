@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using V2.Systems;
 using V2.Entities;
 using V2.Components;
+using System.Linq;
 
 namespace V2.Systems.DialogueSystem
 {
@@ -13,6 +14,19 @@ namespace V2.Systems.DialogueSystem
     {
         // Reference to the economic system
         private EconomicSystem economicSystem;
+        
+        // Dictionary to store follow-up events after choices
+        private Dictionary<string, Dictionary<int, string>> nextEventChain = new Dictionary<string, Dictionary<int, string>>();
+        
+        // Reference to trigger component
+        private EconomicEventTrigger eventTrigger;
+        
+        // Flag to enable fallback event generation
+        [SerializeField]
+        private bool generateFallbackEvents = true;
+        
+        // List of event titles we can use for fallback generation
+        private List<string> availableEventTitles = new List<string>();
         
         // Defines a change to apply to an economic parameter
         [System.Serializable]
@@ -184,11 +198,110 @@ namespace V2.Systems.DialogueSystem
         private void Awake()
         {
             economicSystem = FindFirstObjectByType<EconomicSystem>();
+            eventTrigger = FindFirstObjectByType<EconomicEventTrigger>();
             
             if (economicSystem == null)
             {
                 Debug.LogWarning("EconomicEventEffect: No EconomicSystem found in the scene.");
             }
+            
+            if (eventTrigger == null)
+            {
+                Debug.LogWarning("EconomicEventEffect: No EconomicEventTrigger found in the scene.");
+            }
+            
+            // Setup some example chain relationships
+            SetupExampleEventChains();
+            
+            // Collect available event titles for fallback generation
+            CollectAvailableEventTitles();
+        }
+
+        // Setup example event chains for testing
+        private void SetupExampleEventChains()
+        {
+            // Example: From "Economic Reform Proposal", choice 0 leads to "National Arts Initiative"
+            AddNextEvent("Economic Reform Proposal", 0, "National Arts Initiative");
+            
+            // Example: From "Resource Shortage", choice 0 leads to "Economic Reform Proposal"
+            AddNextEvent("Resource Shortage", 0, "Economic Reform Proposal");
+            
+            // Example: From "Military Modernization", choice 0 leads to "Research Breakthrough"
+            AddNextEvent("Military Modernization", 0, "Research Breakthrough");
+            
+            // Example: From "Diplomatic Incident", choice 1 leads to "Labor Shortage Crisis"
+            AddNextEvent("Diplomatic Incident", 1, "Labor Shortage Crisis");
+        }
+        
+        // Collect all available event titles to use for fallback event generation
+        private void CollectAvailableEventTitles()
+        {
+            availableEventTitles.Clear();
+            
+            // Add some default event titles that we know exist in the sample events
+            string[] defaultTitles = new string[]
+            {
+                "Economic Reform Proposal", 
+                "National Arts Initiative",
+                "Military Modernization", 
+                "Resource Shortage",
+                "Diplomatic Incident", 
+                "Devastating Floods",
+                "Research Breakthrough", 
+                "Labor Shortage Crisis"
+            };
+            
+            availableEventTitles.AddRange(defaultTitles);
+            
+            Debug.Log($"Collected {availableEventTitles.Count} events for fallback generation");
+        }
+        
+        // Add a next event to chain to after a specific choice
+        public void AddNextEvent(string currentEventId, int choiceIndex, string nextEventId)
+        {
+            if (!nextEventChain.ContainsKey(currentEventId))
+            {
+                nextEventChain[currentEventId] = new Dictionary<int, string>();
+            }
+            
+            nextEventChain[currentEventId][choiceIndex] = nextEventId;
+            Debug.Log($"Added next event: {currentEventId} choice {choiceIndex} → {nextEventId}");
+        }
+        
+        // Get the next event ID for a choice (if any)
+        public string GetNextEvent(string currentEventId, int choiceIndex)
+        {
+            if (nextEventChain.ContainsKey(currentEventId) && 
+                nextEventChain[currentEventId].ContainsKey(choiceIndex))
+            {
+                return nextEventChain[currentEventId][choiceIndex];
+            }
+            
+            return null;
+        }
+        
+        // Generate a fallback event if we don't have a pre-defined next event
+        private string GenerateFallbackEvent(string currentEventId, int choiceIndex)
+        {
+            if (!generateFallbackEvents || availableEventTitles.Count == 0 || eventTrigger == null)
+                return null;
+                
+            // Don't use the current event as a fallback
+            List<string> possibleEvents = availableEventTitles
+                .Where(title => title != currentEventId)
+                .ToList();
+                
+            if (possibleEvents.Count == 0)
+                return null;
+                
+            // Pick a random event from our available options
+            string nextEventId = possibleEvents[Random.Range(0, possibleEvents.Count)];
+            Debug.Log($"Generating fallback event: {currentEventId} choice {choiceIndex} → {nextEventId} (fallback)");
+            
+            // Store this in our event chain for future use
+            AddNextEvent(currentEventId, choiceIndex, nextEventId);
+            
+            return nextEventId;
         }
 
         // Apply multiple effects at once (from a dialogue choice)
@@ -207,6 +320,38 @@ namespace V2.Systems.DialogueSystem
             
             // After applying effects, recalculate production
             RecalculateProduction(region);
+            
+            // Handle event chaining and event progression
+            ProgressToNextEvent(eventId, choiceIndex);
+        }
+        
+        // New method to handle progression to next event
+        public void ProgressToNextEvent(string eventId, int choiceIndex)
+        {
+            if (eventTrigger == null)
+                return;
+            
+            // Check if there's a next event to trigger
+            string nextEventId = GetNextEvent(eventId, choiceIndex);
+            
+            // If we don't have a pre-defined next event, generate a fallback
+            if (string.IsNullOrEmpty(nextEventId) && generateFallbackEvents)
+            {
+                nextEventId = GenerateFallbackEvent(eventId, choiceIndex);
+            }
+            
+            if (!string.IsNullOrEmpty(nextEventId))
+            {
+                Debug.Log($"Triggering next event in chain: {nextEventId}");
+                eventTrigger.TriggerEvent(nextEventId, true);
+            }
+            else
+            {
+                Debug.Log($"No next event available after {eventId} choice {choiceIndex}");
+            }
+            
+            // Mark the current event as completed
+            eventTrigger.CompleteEvent(eventId);
         }
         
         // Helper method to recalculate production after effects are applied
