@@ -19,6 +19,12 @@ namespace V2.Editor
         public bool customScale = false;
         public float customMaxValue = 100f;
         
+        // Dual axis settings
+        public bool useDualAxis = false;
+        public string secondaryAxisLabel = "";
+        public float secondaryMaxValue = 1f;
+        public Dictionary<string, bool> secondaryAxisMetrics = new Dictionary<string, bool>();
+        
         public GraphGroup(string name, string yAxisLabel, Color titleColor, float defaultMaxValue = 100f)
         {
             this.name = name;
@@ -35,6 +41,11 @@ namespace V2.Editor
         public float GetEffectiveMaxValue()
         {
             return customScale ? customMaxValue : defaultMaxValue;
+        }
+        
+        public float GetEffectiveSecondaryMaxValue()
+        {
+            return secondaryMaxValue;
         }
     }
     
@@ -276,6 +287,88 @@ namespace V2.Editor
                     GUI.Label(new Rect(xPos - 15, graphRect.y + graphRect.height + 6, 30, 20), 
                         $"{i+1}", style);
                 }
+            }
+        }
+        
+        /// <summary>
+        /// Draw dual Y-axis for graphs with metrics of different scales
+        /// </summary>
+        public void DrawDualAxes(Rect graphRect, string xLabel, string primaryYLabel, string secondaryYLabel, 
+                                 float primaryMaxValue, float secondaryMaxValue, int dataLength)
+        {
+            // Draw main axes first
+            DrawAxes(graphRect, xLabel, primaryYLabel, primaryMaxValue, dataLength);
+            
+            // Draw secondary Y-axis on the right side
+            Handles.color = new Color(0.6f, 0.6f, 0.6f); // Slightly different color for secondary axis
+            
+            // Secondary Y-axis
+            Handles.DrawLine(
+                new Vector3(graphRect.x + graphRect.width, graphRect.y, 0),
+                new Vector3(graphRect.x + graphRect.width, graphRect.y + graphRect.height, 0)
+            );
+            
+            // Secondary Y-axis label
+            float yLabelWidth = 80;
+            GUI.Label(new Rect(graphRect.x + graphRect.width + 5, graphRect.y + (graphRect.height / 2) - 10, 
+                     yLabelWidth, 20), secondaryYLabel);
+            
+            // Secondary Y-axis tick marks and values
+            int tickCount = 5;
+            for (int i = 0; i <= tickCount; i++)
+            {
+                float yPos = graphRect.y + graphRect.height - (i * (graphRect.height / tickCount));
+                float value = (float)i * secondaryMaxValue / tickCount;
+                
+                // Draw tick
+                Handles.DrawLine(
+                    new Vector3(graphRect.x + graphRect.width - 2, yPos, 0),
+                    new Vector3(graphRect.x + graphRect.width + 2, yPos, 0)
+                );
+                
+                // Draw value - to the right with left alignment
+                var valueStyle = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleLeft };
+                GUI.Label(new Rect(graphRect.x + graphRect.width + 5, yPos - 10, 70, 20), 
+                          value.ToString("F1"), valueStyle);
+            }
+        }
+        
+        /// <summary>
+        /// Draw a line graph using the secondary Y-axis scale
+        /// </summary>
+        public void DrawLineGraphSecondaryAxis<T>(List<T> data, float maxValue, Color color, Rect graphRect)
+        {
+            if (data.Count < 2) return;
+            
+            Handles.color = color;
+            
+            // Calculate step size
+            float xStep = graphRect.width / (data.Count - 1 > 0 ? data.Count - 1 : 1);
+            
+            for (int i = 0; i < data.Count - 1; i++)
+            {
+                float value1 = System.Convert.ToSingle(data[i]) / maxValue;
+                float value2 = System.Convert.ToSingle(data[i + 1]) / maxValue;
+                
+                // Clamp values to [0,1] range
+                value1 = Mathf.Clamp01(value1);
+                value2 = Mathf.Clamp01(value2);
+                
+                // Calculate points
+                Vector3 p1 = new Vector3(
+                    graphRect.x + i * xStep,
+                    graphRect.y + graphRect.height - (value1 * graphRect.height),
+                    0
+                );
+                
+                Vector3 p2 = new Vector3(
+                    graphRect.x + (i + 1) * xStep,
+                    graphRect.y + graphRect.height - (value2 * graphRect.height),
+                    0
+                );
+                
+                // Draw with dashed line for secondary axis
+                Handles.DrawDottedLine(p1, p2, 3f); // Dotted line helps visually distinguish secondary axis metrics
             }
         }
         

@@ -629,6 +629,67 @@ namespace V2.Editor
                         }
                         EditorGUILayout.EndHorizontal();
                         
+                        // Dual axis settings
+                        EditorGUILayout.BeginHorizontal();
+                        graphGroup.useDualAxis = EditorGUILayout.ToggleLeft("Use Dual Axis", graphGroup.useDualAxis);
+                        
+                        if (graphGroup.useDualAxis)
+                        {
+                            // Secondary axis label
+                            graphGroup.secondaryAxisLabel = EditorGUILayout.TextField(
+                                graphGroup.secondaryAxisLabel.Length > 0 ? graphGroup.secondaryAxisLabel : "Secondary Value");
+                                
+                            // Secondary max value field
+                            EditorGUILayout.LabelField("Max Value:", GUILayout.Width(70));
+                            graphGroup.secondaryMaxValue = EditorGUILayout.FloatField(graphGroup.secondaryMaxValue);
+                        }
+                        
+                        EditorGUILayout.EndHorizontal();
+                        
+                        // If dual axis is enabled, show which metrics go on which axis
+                        if (graphGroup.useDualAxis)
+                        {
+                            EditorGUILayout.Space(5);
+                            EditorGUILayout.LabelField("Configure Metrics For Each Axis:", EditorStyles.boldLabel);
+                            
+                            foreach (var metric in graphGroup.metrics)
+                            {
+                                // Initialize if not exists
+                                if (!graphGroup.secondaryAxisMetrics.ContainsKey(metric.Key))
+                                {
+                                    // Default certain metrics to secondary axis based on type
+                                    bool useSecondaryByDefault = false;
+                                    
+                                    // Default satisfaction to secondary axis in economic group
+                                    if (group.Key == "economic" && metric.Key == "satisfaction")
+                                        useSecondaryByDefault = true;
+                                    
+                                    // Default imbalance to secondary axis in market group
+                                    if (group.Key == "market" && metric.Key == "imbalance")
+                                        useSecondaryByDefault = true;
+                                    
+                                    graphGroup.secondaryAxisMetrics[metric.Key] = useSecondaryByDefault;
+                                }
+                                
+                                // Draw the secondary axis toggle for this metric
+                                EditorGUILayout.BeginHorizontal();
+                                GUI.color = metric.Value.color;
+                                EditorGUILayout.LabelField(metric.Value.name + ":", GUILayout.Width(100));
+                                GUI.color = Color.white;
+                                
+                                bool useSecondary = graphGroup.secondaryAxisMetrics[metric.Key];
+                                string axisLabel = useSecondary ? "Secondary Axis" : "Primary Axis";
+                                
+                                if (GUILayout.Button(axisLabel, GUILayout.Width(120)))
+                                {
+                                    // Toggle between primary and secondary axis
+                                    graphGroup.secondaryAxisMetrics[metric.Key] = !useSecondary;
+                                }
+                                
+                                EditorGUILayout.EndHorizontal();
+                            }
+                        }
+                        
                         // Toggle individual metrics
                         foreach (var metric in graphGroup.metrics)
                         {
@@ -766,8 +827,20 @@ namespace V2.Editor
                 // Draw graph background
                 GUI.Box(graphGroup.graphRect, "");
                 
-                // Draw axes
-                graphHelper.DrawAxes(graphGroup.graphRect, "Time", graphGroup.yAxisLabel, maxValue, dataHistory.wealthHistory.Count);
+                // Draw axes - choose between regular or dual axes based on settings
+                if (graphGroup.useDualAxis)
+                {
+                    graphHelper.DrawDualAxes(graphGroup.graphRect, "Time", 
+                        graphGroup.yAxisLabel, 
+                        graphGroup.secondaryAxisLabel.Length > 0 ? graphGroup.secondaryAxisLabel : "Secondary Value", 
+                        maxValue, 
+                        graphGroup.GetEffectiveSecondaryMaxValue(), 
+                        dataHistory.wealthHistory.Count);
+                }
+                else
+                {
+                    graphHelper.DrawAxes(graphGroup.graphRect, "Time", graphGroup.yAxisLabel, maxValue, dataHistory.wealthHistory.Count);
+                }
                 
                 // Draw data if we have at least two points
                 if (dataHistory.wealthHistory.Count > 1)
@@ -776,33 +849,118 @@ namespace V2.Editor
                     switch (group.Key)
                     {
                         case "economic":
+                            // Economic data with dual axis option (large values vs percentages)
                             if (graphGroup.metrics["wealth"].isVisible)
-                                graphHelper.DrawLineGraph(dataHistory.wealthHistory, maxValue, 
-                                    graphGroup.metrics["wealth"].color, graphGroup.graphRect);
+                            {
+                                bool useSecondary = graphGroup.useDualAxis && 
+                                    graphGroup.secondaryAxisMetrics.ContainsKey("wealth") && 
+                                    graphGroup.secondaryAxisMetrics["wealth"];
+                                    
+                                if (useSecondary)
+                                    graphHelper.DrawLineGraphSecondaryAxis(dataHistory.wealthHistory, 
+                                        graphGroup.GetEffectiveSecondaryMaxValue(), 
+                                        graphGroup.metrics["wealth"].color, graphGroup.graphRect);
+                                else
+                                    graphHelper.DrawLineGraph(dataHistory.wealthHistory, maxValue, 
+                                        graphGroup.metrics["wealth"].color, graphGroup.graphRect);
+                            }
                                 
                             if (graphGroup.metrics["production"].isVisible)
-                                graphHelper.DrawLineGraph(dataHistory.productionHistory, maxValue, 
-                                    graphGroup.metrics["production"].color, graphGroup.graphRect);
+                            {
+                                bool useSecondary = graphGroup.useDualAxis && 
+                                    graphGroup.secondaryAxisMetrics.ContainsKey("production") && 
+                                    graphGroup.secondaryAxisMetrics["production"];
+                                    
+                                if (useSecondary)
+                                    graphHelper.DrawLineGraphSecondaryAxis(dataHistory.productionHistory, 
+                                        graphGroup.GetEffectiveSecondaryMaxValue(), 
+                                        graphGroup.metrics["production"].color, graphGroup.graphRect);
+                                else
+                                    graphHelper.DrawLineGraph(dataHistory.productionHistory, maxValue, 
+                                        graphGroup.metrics["production"].color, graphGroup.graphRect);
+                            }
+                            
+                            // Include satisfaction in economic graph if configured
+                            if (graphGroup.metrics.ContainsKey("satisfaction") && graphGroup.metrics["satisfaction"].isVisible)
+                            {
+                                bool useSecondary = graphGroup.useDualAxis && 
+                                    (!graphGroup.secondaryAxisMetrics.ContainsKey("satisfaction") || 
+                                    graphGroup.secondaryAxisMetrics["satisfaction"]);
+                                    
+                                if (useSecondary)
+                                    graphHelper.DrawLineGraphSecondaryAxis(dataHistory.satisfactionHistory, 
+                                        graphGroup.GetEffectiveSecondaryMaxValue(), 
+                                        graphGroup.metrics["satisfaction"].color, graphGroup.graphRect);
+                                else
+                                    graphHelper.DrawLineGraph(dataHistory.satisfactionHistory, maxValue, 
+                                        graphGroup.metrics["satisfaction"].color, graphGroup.graphRect);
+                            }
                             break;
                             
                         case "population":
+                            // Population data
                             if (graphGroup.metrics["satisfaction"].isVisible)
-                                graphHelper.DrawLineGraph(dataHistory.satisfactionHistory, maxValue, 
-                                    graphGroup.metrics["satisfaction"].color, graphGroup.graphRect);
+                            {
+                                bool useSecondary = graphGroup.useDualAxis && 
+                                    graphGroup.secondaryAxisMetrics.ContainsKey("satisfaction") && 
+                                    graphGroup.secondaryAxisMetrics["satisfaction"];
+                                    
+                                if (useSecondary)
+                                    graphHelper.DrawLineGraphSecondaryAxis(dataHistory.satisfactionHistory, 
+                                        graphGroup.GetEffectiveSecondaryMaxValue(), 
+                                        graphGroup.metrics["satisfaction"].color, graphGroup.graphRect);
+                                else
+                                    graphHelper.DrawLineGraph(dataHistory.satisfactionHistory, maxValue, 
+                                        graphGroup.metrics["satisfaction"].color, graphGroup.graphRect);
+                            }
                             break;
                             
                         case "market":
+                            // Market data with dual axis option (supply/demand vs imbalance)
                             if (graphGroup.metrics["supply"].isVisible)
-                                graphHelper.DrawLineGraph(dataHistory.supplyHistory, maxValue, 
-                                    graphGroup.metrics["supply"].color, graphGroup.graphRect);
+                            {
+                                bool useSecondary = graphGroup.useDualAxis && 
+                                    graphGroup.secondaryAxisMetrics.ContainsKey("supply") && 
+                                    graphGroup.secondaryAxisMetrics["supply"];
+                                    
+                                if (useSecondary)
+                                    graphHelper.DrawLineGraphSecondaryAxis(dataHistory.supplyHistory, 
+                                        graphGroup.GetEffectiveSecondaryMaxValue(), 
+                                        graphGroup.metrics["supply"].color, graphGroup.graphRect);
+                                else
+                                    graphHelper.DrawLineGraph(dataHistory.supplyHistory, maxValue, 
+                                        graphGroup.metrics["supply"].color, graphGroup.graphRect);
+                            }
                                 
                             if (graphGroup.metrics["demand"].isVisible)
-                                graphHelper.DrawLineGraph(dataHistory.demandHistory, maxValue, 
-                                    graphGroup.metrics["demand"].color, graphGroup.graphRect);
+                            {
+                                bool useSecondary = graphGroup.useDualAxis && 
+                                    graphGroup.secondaryAxisMetrics.ContainsKey("demand") && 
+                                    graphGroup.secondaryAxisMetrics["demand"];
+                                    
+                                if (useSecondary)
+                                    graphHelper.DrawLineGraphSecondaryAxis(dataHistory.demandHistory, 
+                                        graphGroup.GetEffectiveSecondaryMaxValue(), 
+                                        graphGroup.metrics["demand"].color, graphGroup.graphRect);
+                                else
+                                    graphHelper.DrawLineGraph(dataHistory.demandHistory, maxValue, 
+                                        graphGroup.metrics["demand"].color, graphGroup.graphRect);
+                            }
                                 
                             if (graphGroup.metrics["imbalance"].isVisible)
-                                graphHelper.DrawLineGraph(dataHistory.imbalanceHistory, maxValue, 
-                                    graphGroup.metrics["imbalance"].color, graphGroup.graphRect);
+                            {
+                                bool useSecondary = graphGroup.useDualAxis && 
+                                    (!graphGroup.secondaryAxisMetrics.ContainsKey("imbalance") || 
+                                    graphGroup.secondaryAxisMetrics["imbalance"]);
+                                    
+                                if (useSecondary)
+                                    graphHelper.DrawLineGraphSecondaryAxis(dataHistory.imbalanceHistory, 
+                                        graphGroup.GetEffectiveSecondaryMaxValue(), 
+                                        graphGroup.metrics["imbalance"].color, graphGroup.graphRect);
+                                else
+                                    graphHelper.DrawLineGraph(dataHistory.imbalanceHistory, maxValue, 
+                                        graphGroup.metrics["imbalance"].color, graphGroup.graphRect);
+                            }
                             break;
                     }
                     
