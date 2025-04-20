@@ -93,25 +93,42 @@ namespace V2.Systems.DialogueSystem.Editor
                     DialogueEvent currentEvent = eventManager.CurrentEvent;
                     if (currentEvent != null)
                     {
+                        // Always refresh event list to ensure we have the current state
+                        RefreshEventList();
+                        
                         // Find this event in our list
+                        int foundIndex = -1;
                         for (int i = 0; i < filteredEvents.Count; i++)
                         {
                             if (filteredEvents[i].id == currentEvent.id)
                             {
-                                // Select this event if it's not already selected
-                                if (selectedEventIndex != i)
-                                {
-                                    selectedEventIndex = i;
-                                    selectedChoiceIndex = -1;
-                                    Repaint();
-                                }
+                                foundIndex = i;
                                 break;
                             }
+                        }
+                        
+                        // If found, select it
+                        if (foundIndex >= 0)
+                        {
+                            // Select this event if it's not already selected
+                            if (selectedEventIndex != foundIndex)
+                            {
+                                selectedEventIndex = foundIndex;
+                                selectedChoiceIndex = -1;
+                                Debug.Log($"Auto-selected active event: {currentEvent.id}");
+                                Repaint();
+                            }
+                        }
+                        else
+                        {
+                            // Current event not in filtered list - might be filtered out
+                            Debug.Log($"Active event ({currentEvent.id}) not found in filtered list. Ensure all categories are selected.");
                         }
                     }
                 }
                 
                 lastRefreshTime = currentTime;
+                Repaint(); // Always repaint on refresh interval
             }
             
             // Check if play mode status changed
@@ -728,8 +745,13 @@ namespace V2.Systems.DialogueSystem.Editor
             
             GUILayout.Space(20);
             
-            // Display choices
+            // Display choices section with a header
+            EditorGUILayout.BeginVertical(EditorStyles.helpBox);
             EditorGUILayout.LabelField("Available Response Options:", EditorStyles.boldLabel);
+            
+            // Create a scroll view for choices if there are many
+            float choiceAreaHeight = Mathf.Min(200, currentEvent.choices.Count * 40);
+            EditorGUILayout.BeginScrollView(Vector2.zero, GUILayout.Height(choiceAreaHeight));
             
             if (currentEvent.choices != null && currentEvent.choices.Count > 0)
             {
@@ -743,12 +765,16 @@ namespace V2.Systems.DialogueSystem.Editor
                 EditorGUILayout.HelpBox("No choices available for this event.", MessageType.Warning);
             }
             
+            EditorGUILayout.EndScrollView();
+            EditorGUILayout.EndVertical();
+            
             // Show selected choice response
             if (selectedChoiceIndex >= 0 && selectedChoiceIndex < currentEvent.choices.Count)
             {
                 EventChoice selectedChoice = currentEvent.choices[selectedChoiceIndex];
                 
-                GUILayout.Space(20);
+                GUILayout.Space(15);
+                EditorGUILayout.BeginVertical(EditorStyles.helpBox);
                 EditorGUILayout.LabelField("Response:", EditorStyles.boldLabel);
                 
                 if (!string.IsNullOrEmpty(selectedChoice.response))
@@ -786,6 +812,7 @@ namespace V2.Systems.DialogueSystem.Editor
                         EditorGUI.indentLevel--;
                     }
                 }
+                
                 // Show next event if exists
                 if (!string.IsNullOrEmpty(selectedChoice.nextEventId))
                 {
@@ -794,16 +821,77 @@ namespace V2.Systems.DialogueSystem.Editor
                     EditorGUILayout.LabelField(selectedChoice.nextEventId, EditorStyles.helpBox);
                 }
                 
-                // Add simulate choice button
-                if (Application.isPlaying && eventManager != null && 
-                    eventManager.CurrentEvent != null && 
-                    eventManager.CurrentEvent.id == currentEvent.id)
+                EditorGUILayout.EndVertical();
+                
+                // Add simulate choice button that's more visible
+                if (Application.isPlaying && eventManager != null)
                 {
                     GUILayout.Space(15);
-                    if (GUILayout.Button("Simulate This Choice", GUILayout.Height(30)))
+                    
+                    // Check if we can simulate this choice
+                    bool canSimulate = (eventManager.CurrentEvent != null && 
+                        eventManager.CurrentEvent.id == currentEvent.id);
+                        
+                    // Display different messages based on whether we can simulate
+                    if (!canSimulate)
                     {
-                        eventManager.MakeChoice(selectedChoiceIndex);
+                        // Show why we can't simulate
+                        if (eventManager.CurrentEvent == null)
+                        {
+                            EditorGUILayout.HelpBox("No active event. Use the 'Trigger' button to activate this event.", MessageType.Info);
+                        }
+                        else
+                        {
+                            EditorGUILayout.HelpBox($"This is not the currently active event. Current active event is: {eventManager.CurrentEvent.title}", MessageType.Info);
+                            
+                            // Add a button to switch to the active event
+                            if (GUILayout.Button("Switch to Active Event"))
+                            {
+                                // Try to find and select the currently active event
+                                for (int i = 0; i < filteredEvents.Count; i++)
+                                {
+                                    if (filteredEvents[i].id == eventManager.CurrentEvent.id)
+                                    {
+                                        selectedEventIndex = i;
+                                        selectedChoiceIndex = -1;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                        
+                        // Add a direct trigger button
+                        if (GUILayout.Button("Trigger This Event First", GUILayout.Height(30)))
+                        {
+                            eventManager.TriggerEvent(currentEvent.id);
+                            // Force immediate refresh
+                            Repaint();
+                        }
                     }
+                    else
+                    {
+                        // Draw a more prominent simulate button
+                        GUI.backgroundColor = new Color(0.3f, 0.8f, 0.3f);
+                        if (GUILayout.Button("Simulate This Choice", GUILayout.Height(30)))
+                        {
+                            eventManager.MakeChoice(selectedChoiceIndex);
+                            
+                            // Add debug to help diagnose issues
+                            Debug.Log($"Simulated choice {selectedChoiceIndex} for event '{currentEvent.id}'");
+                            if (!string.IsNullOrEmpty(selectedChoice.nextEventId))
+                            {
+                                Debug.Log($"This choice should lead to event '{selectedChoice.nextEventId}'");
+                            }
+                            
+                            // Force immediate refresh to show next event
+                            EditorApplication.delayCall += () => Repaint();
+                        }
+                        GUI.backgroundColor = Color.white;
+                    }
+                }
+                else if (!Application.isPlaying)
+                {
+                    EditorGUILayout.HelpBox("Enter Play Mode to simulate choices.", MessageType.Info);
                 }
             }
             
@@ -813,23 +901,39 @@ namespace V2.Systems.DialogueSystem.Editor
         // Display a choice button with proper styling and economic effect indicators
         private void DisplayChoice(EventChoice choice, int index)
         {
-            GUIStyle style = (index == selectedChoiceIndex) ? selectedChoiceStyle : choiceButtonStyle;
+            // Create a more compact button style with fixed height
+            GUIStyle style = new GUIStyle(GUI.skin.button);
+            style.alignment = TextAnchor.MiddleLeft;
+            style.wordWrap = true;
+            style.padding = new RectOffset(8, 8, 5, 5);
+            style.margin = new RectOffset(3, 3, 2, 2);
+            style.fixedHeight = 32; // Fixed height for consistent button size
             
-            EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+            // Apply styling for selected choice
+            if (index == selectedChoiceIndex)
+            {
+                style.normal.background = MakeTex(2, 2, new Color(0.6f, 0.8f, 1f, 0.5f));
+                style.hover.background = MakeTex(2, 2, new Color(0.7f, 0.9f, 1f, 0.6f));
+            }
+            
+            EditorGUILayout.BeginVertical(new GUIStyle { margin = new RectOffset(0, 0, 2, 2) });
             
             // Check if this choice has economic effects
             bool hasEconomicEffects = (choice.economicEffects != null && choice.economicEffects.Count > 0);
             
             // Create a label that includes an indicator for economic effects
             string choiceText = choice.text;
-            if (hasEconomicEffects)
+            if (!string.IsNullOrEmpty(choice.nextEventId))
             {
-                choiceText = "🔄 " + choiceText; // Add an icon to indicate economic effect
+                choiceText = "» " + choiceText; // Add an arrow to indicate this leads to another event
             }
             
-            if (GUILayout.Button(choiceText, style, GUILayout.MinHeight(40)))
+            if (GUILayout.Button(choiceText, style))
             {
                 selectedChoiceIndex = index;
+                
+                // Force repaint to show selection immediately
+                Repaint();
             }
             
             // Add a colored indicator if this choice has economic effects
@@ -838,11 +942,11 @@ namespace V2.Systems.DialogueSystem.Editor
                 Rect lastRect = GUILayoutUtility.GetLastRect();
                 
                 // Draw a more visible indicator
-                Rect indicatorRect = new Rect(lastRect.x + 5, lastRect.y + 5, 16, 16);
+                Rect indicatorRect = new Rect(lastRect.x + 5, lastRect.y + 8, 12, 12); // Center vertically
                 EditorGUI.DrawRect(indicatorRect, new Color(0.2f, 0.8f, 0.2f, 0.8f)); // Bright green indicator
                 
                 // Add a small label inside the indicator
-                GUI.Label(indicatorRect, "€", new GUIStyle(EditorStyles.boldLabel) { 
+                GUI.Label(indicatorRect, "€", new GUIStyle(EditorStyles.miniBoldLabel) { 
                     alignment = TextAnchor.MiddleCenter,
                     normal = { textColor = Color.white }
                 });
@@ -870,7 +974,7 @@ namespace V2.Systems.DialogueSystem.Editor
             }
             
             EditorGUILayout.EndVertical();
-            GUILayout.Space(5);
+            GUILayout.Space(2); // Reduced space between choices
         }
 
         private void DisplayEffect(string effect)
