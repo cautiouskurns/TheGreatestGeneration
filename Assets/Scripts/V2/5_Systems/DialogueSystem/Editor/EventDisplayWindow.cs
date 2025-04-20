@@ -29,24 +29,27 @@ namespace V2.Systems.DialogueSystem.Editor
         private bool showEffects = true;
         private bool showCategories = true;
         
-        // Hardcoded sample events
-        private List<SampleEvent> sampleEvents = new List<SampleEvent>();
+        // Event list
+        private List<DialogueEvent> allEvents = new List<DialogueEvent>();
         private int selectedEventIndex = 0;
         
-        // Event categories
+        // Event filters
         private Dictionary<EventCategory, bool> categoryFilters = new Dictionary<EventCategory, bool>();
-        private List<SampleEvent> filteredEvents = new List<SampleEvent>();
+        private List<DialogueEvent> filteredEvents = new List<DialogueEvent>();
         private string searchText = "";
         
-        // References to economic system components
+        // System references
         private EconomicSystem economicSystem;
-        private EconomicEventTrigger eventTrigger;
-        private EconomicEventEffect eventEffect;
+        private DialogueEventManager eventManager;
         
-        // Economic integration UI state
+        // UI state
         private bool showEconomicIntegration = true;
-        private bool showTriggeredEvents = false;
-        private bool showTestEffects = false;
+        private bool showAvailableEvents = true;
+        private bool showEventCreator = false;
+        
+        // Auto-refresh timer
+        private double lastRefreshTime;
+        private const double refreshInterval = 0.5; // 500ms
         
         // Track play mode state
         private bool wasInPlayMode = false;
@@ -61,67 +64,117 @@ namespace V2.Systems.DialogueSystem.Editor
         {
             InitializeCategories();
             
-            // Get references to economic components
-            RefreshEconomicComponents();
+            // Get system references
+            RefreshSystemReferences();
             
-            CreateHardcodedEvents();
-            FilterEvents();
+            // Set up auto-refresh
+            EditorApplication.update += OnEditorUpdate;
             
-            // Check if we need to create sample economic events
-            CreateEconomicEvents();
-            
-            // Register for play mode state change events
-            EditorApplication.playModeStateChanged += PlayModeStateChanged;
+            // Refresh the event list
+            RefreshEventList();
         }
 
         private void OnDisable()
         {
-            // Unregister from play mode state change events
-            EditorApplication.playModeStateChanged -= PlayModeStateChanged;
+            EditorApplication.update -= OnEditorUpdate;
         }
         
-        // Handle play mode state changes
-        private void PlayModeStateChanged(PlayModeStateChange state)
+        // Auto-refresh logic
+        private void OnEditorUpdate()
         {
-            // When entering play mode
-            if (state == PlayModeStateChange.EnteredPlayMode)
+            double currentTime = EditorApplication.timeSinceStartup;
+            
+            // Check if we need to refresh based on time
+            if (currentTime - lastRefreshTime >= refreshInterval)
             {
-                // Wait a frame to make sure all components are initialized
-                EditorApplication.delayCall += () =>
+                if (Application.isPlaying && eventManager != null)
                 {
-                    RefreshEconomicComponents();
-                    CreateEconomicEvents();
-                    Repaint();
-                    Debug.Log("EventDisplayWindow: Refreshed economic events for play mode");
-                };
+                    // Check for changes in current event
+                    DialogueEvent currentEvent = eventManager.CurrentEvent;
+                    if (currentEvent != null)
+                    {
+                        // Find this event in our list
+                        for (int i = 0; i < filteredEvents.Count; i++)
+                        {
+                            if (filteredEvents[i].id == currentEvent.id)
+                            {
+                                // Select this event if it's not already selected
+                                if (selectedEventIndex != i)
+                                {
+                                    selectedEventIndex = i;
+                                    selectedChoiceIndex = -1;
+                                    Repaint();
+                                }
+                                break;
+                            }
+                        }
+                    }
+                }
+                
+                lastRefreshTime = currentTime;
+            }
+            
+            // Check if play mode status changed
+            if (wasInPlayMode != Application.isPlaying)
+            {
+                wasInPlayMode = Application.isPlaying;
+                if (wasInPlayMode)
+                {
+                    // We just entered play mode, refresh after a short delay
+                    EditorApplication.delayCall += () =>
+                    {
+                        RefreshSystemReferences();
+                        RefreshEventList();
+                        Repaint();
+                    };
+                }
             }
         }
         
-        // New method to refresh all economic components
-        private void RefreshEconomicComponents()
+        // Refresh system references
+        private void RefreshSystemReferences()
         {
             economicSystem = FindFirstObjectByType<EconomicSystem>();
-            eventTrigger = FindFirstObjectByType<EconomicEventTrigger>();
-            eventEffect = FindFirstObjectByType<EconomicEventEffect>();
+            eventManager = FindFirstObjectByType<DialogueEventManager>();
             
-            // Auto-create components if in play mode
-            if (Application.isPlaying && (economicSystem == null || eventTrigger == null || eventEffect == null))
+            // Auto-create components if in play mode and missing
+            if (Application.isPlaying && (economicSystem == null || eventManager == null))
             {
-                CreateMissingEconomicComponents();
+                CreateMissingComponents();
             }
         }
         
-        // Add a manual refresh button
-        private void DrawRefreshButton()
+        // Create any missing components
+        private void CreateMissingComponents()
         {
-            if (GUILayout.Button("Refresh Economic Integration"))
+            GameObject economicObj = null;
+            
+            // Find or create the EconomicSystem
+            if (economicSystem == null)
             {
-                RefreshEconomicComponents();
-                CreateEconomicEvents();
-                Repaint();
+                economicObj = GameObject.Find("EconomicSystem");
+                if (economicObj == null)
+                {
+                    economicObj = new GameObject("EconomicSystem");
+                }
+                
+                economicSystem = economicObj.AddComponent<EconomicSystem>();
+                Debug.Log("Created EconomicSystem component");
+            }
+            else
+            {
+                economicObj = economicSystem.gameObject;
+            }
+            
+            // Add event manager if missing
+            if (eventManager == null && economicObj != null)
+            {
+                eventManager = economicObj.AddComponent<DialogueEventManager>();
+                Debug.Log("Added DialogueEventManager component");
             }
         }
         
+        // Initialize styles for the UI
         private void InitializeStyles()
         {
             if (stylesInitialized)
@@ -180,6 +233,7 @@ namespace V2.Systems.DialogueSystem.Editor
             stylesInitialized = true;
         }
         
+        // Initialize category filters
         private void InitializeCategories()
         {
             foreach (EventCategory category in Enum.GetValues(typeof(EventCategory)))
@@ -188,651 +242,332 @@ namespace V2.Systems.DialogueSystem.Editor
             }
         }
         
+        // Get the current event list (from manager if available, otherwise from code)
+        private void RefreshEventList()
+        {
+            allEvents.Clear();
+            
+            if (Application.isPlaying && eventManager != null)
+            {
+                // Get events from the manager
+                allEvents.AddRange(eventManager.GetAllEvents());
+            }
+            else
+            {
+                // Create hardcoded test events
+                CreateHardcodedEvents();
+            }
+            
+            // Apply filters
+            FilterEvents();
+        }
+        
+        // Create test events (when not in play mode)
         private void CreateHardcodedEvents()
         {
-            // Create sample events
-            sampleEvents.Clear();
-            
             // Event 1: Resource Shortage
-            SampleEvent resourceEvent = new SampleEvent
+            DialogueEvent resourceEvent = new DialogueEvent
             {
+                id = "resource_shortage",
                 title = "Resource Shortage",
                 description = "Your economic advisor reports a serious shortage of essential resources. The manufacturing sector is at risk of a major slowdown if action is not taken.",
                 category = EventCategory.Economic,
-                choices = new List<SampleChoice>
+            };
+            
+            // Add a basic condition
+            resourceEvent.conditions.Add(new EventCondition
+            {
+                parameter = EventCondition.ParameterType.Production,
+                comparison = EventCondition.ComparisonType.LessThan,
+                thresholdValue = 80f
+            });
+            
+            // Add choices
+            resourceEvent.choices.Add(new EventChoice
+            {
+                text = "Import resources from neighboring nations",
+                response = "You negotiate favorable import terms with neighboring nations.",
+                narrativeEffects = new List<string>
                 {
-                    new SampleChoice
+                    "Money: -50 (Treasury)",
+                    "Resources: +100 (Raw Materials)"
+                },
+                economicEffects = new List<ParameterEffect>
+                {
+                    new ParameterEffect
                     {
-                        text = "Import resources from neighboring nations",
-                        response = "You negotiate favorable import terms with neighboring nations.",
-                        effects = new List<string>
-                        {
-                            "Money: -50 (Treasury)",
-                            "Resources: +100 (Raw Materials)"
-                        }
+                        target = ParameterEffect.EffectTarget.Wealth,
+                        effectType = ParameterEffect.EffectType.Add,
+                        value = -50f,
+                        description = "Wealth -50"
+                    }
+                },
+                nextEventId = "economic_reform_proposal"
+            });
+            
+            resourceEvent.choices.Add(new EventChoice
+            {
+                text = "Divert labor to resource extraction",
+                response = "You order an emergency reallocation of labor to increase domestic resource production.",
+                narrativeEffects = new List<string>
+                {
+                    "Production: -20 (Manufacturing)",
+                    "Resources: +60 (Raw Materials)",
+                    "Happiness: -10 (Population)"
+                },
+                economicEffects = new List<ParameterEffect>
+                {
+                    new ParameterEffect
+                    {
+                        target = ParameterEffect.EffectTarget.Production,
+                        effectType = ParameterEffect.EffectType.Add,
+                        value = -20f,
+                        description = "Production -20"
                     },
-                    new SampleChoice
+                    new ParameterEffect
                     {
-                        text = "Divert labor to resource extraction",
-                        response = "You order an emergency reallocation of labor to increase domestic resource production.",
-                        effects = new List<string>
-                        {
-                            "Production: -20 (Manufacturing)",
-                            "Resources: +60 (Raw Materials)",
-                            "Happiness: -10 (Population)"
-                        }
-                    },
-                    new SampleChoice
-                    {
-                        text = "Do nothing and hope the market resolves the shortage",
-                        response = "You decide to let market forces handle the shortage naturally.",
-                        effects = new List<string>
-                        {
-                            "Economic Stability: -1"
-                        }
+                        target = ParameterEffect.EffectTarget.PopulationSatisfaction,
+                        effectType = ParameterEffect.EffectType.Add,
+                        value = -0.1f,
+                        description = "Population Satisfaction -0.1"
                     }
                 }
-            };
-            sampleEvents.Add(resourceEvent);
+            });
             
-            // Event 2: Diplomatic Incident
-            SampleEvent diplomaticEvent = new SampleEvent
+            resourceEvent.choices.Add(new EventChoice
             {
-                title = "Diplomatic Incident",
-                description = "An envoy from a neighboring nation has been found with confidential documents. They claim they were planted, but your security chief insists they were caught in the act of espionage.",
-                category = EventCategory.Diplomatic,
-                choices = new List<SampleChoice>
+                text = "Do nothing and hope the market resolves the shortage",
+                response = "You decide to let market forces handle the shortage naturally.",
+                narrativeEffects = new List<string>
                 {
-                    new SampleChoice
-                    {
-                        text = "Expel the envoy and issue a formal protest",
-                        response = "You expel the envoy and issue a stern diplomatic protest. Relations with their nation cool significantly.",
-                        effects = new List<string>
-                        {
-                            "Diplomatic Relations: -30 (Neighboring Nation)",
-                            "National Security: +10"
-                        }
-                    },
-                    new SampleChoice
-                    {
-                        text = "Accept their explanation and increase security",
-                        response = "You accept their explanation but quietly strengthen your security protocols. The neighboring nation appreciates your discretion.",
-                        effects = new List<string>
-                        {
-                            "Diplomatic Relations: +15 (Neighboring Nation)",
-                            "National Security: +5"
-                        }
-                    },
-                    new SampleChoice
-                    {
-                        text = "Detain the envoy for questioning",
-                        response = "You detain the envoy for further questioning, causing an international incident.",
-                        effects = new List<string>
-                        {
-                            "Diplomatic Relations: -50 (Neighboring Nation)",
-                            "National Security: +15",
-                            "Political Stability: -5"
-                        }
-                    }
+                    "Economic Stability: -1"
                 }
-            };
-            sampleEvents.Add(diplomaticEvent);
+            });
             
-            // Event 3: Economic Reform
-            SampleEvent economicEvent = new SampleEvent
+            allEvents.Add(resourceEvent);
+            
+            // Event 2: Economic Reform
+            DialogueEvent economicEvent = new DialogueEvent
             {
+                id = "economic_reform_proposal",
                 title = "Economic Reform Proposal",
                 description = "Your finance minister has presented a series of possible economic reforms aimed at increasing long-term growth. Each approach has different implications for various sectors of society.",
-                category = EventCategory.Economic,
-                choices = new List<SampleChoice>
-                {
-                    new SampleChoice
-                    {
-                        text = "Implement market liberalization reforms",
-                        response = "You begin a program of market liberalization, reducing regulations and trade barriers.",
-                        effects = new List<string>
-                        {
-                            "Economic Growth: +15",
-                            "Worker Satisfaction: -10",
-                            "Business Confidence: +25"
-                        }
-                    },
-                    new SampleChoice
-                    {
-                        text = "Focus on industrial modernization",
-                        response = "You invest heavily in modernizing industrial infrastructure and production methods.",
-                        effects = new List<string>
-                        {
-                            "Money: -80 (Treasury)",
-                            "Production: +30 (Long-term)",
-                            "Technology: +15"
-                        }
-                    },
-                    new SampleChoice
-                    {
-                        text = "Implement worker protection and welfare programs",
-                        response = "You strengthen worker protections and expand social safety nets.",
-                        effects = new List<string>
-                        {
-                            "Money: -60 (Treasury)",
-                            "Population Happiness: +25",
-                            "Business Confidence: -15",
-                            "Political Support: +20"
-                        }
-                    }
-                }
+                category = EventCategory.Economic
             };
-            sampleEvents.Add(economicEvent);
             
-            // Event 4: Military Modernization
-            SampleEvent militaryEvent = new SampleEvent
+            // Add choices
+            economicEvent.choices.Add(new EventChoice
             {
-                title = "Military Modernization",
-                description = "Your generals have presented plans for military modernization. With tensions rising in the region, they argue that strengthening defenses is prudent, though the costs are significant.",
-                category = EventCategory.Military,
-                choices = new List<SampleChoice>
+                text = "Implement market liberalization reforms",
+                response = "You begin a program of market liberalization, reducing regulations and trade barriers.",
+                narrativeEffects = new List<string>
                 {
-                    new SampleChoice
+                    "Economic Growth: +15",
+                    "Worker Satisfaction: -10",
+                    "Business Confidence: +25"
+                },
+                economicEffects = new List<ParameterEffect>
+                {
+                    new ParameterEffect
                     {
-                        text = "Invest heavily in new military technology",
-                        response = "You approve a major military modernization program focusing on advanced technology.",
-                        effects = new List<string>
-                        {
-                            "Military Strength: +25",
-                            "Money: -120 (Treasury)",
-                            "Technology: +15",
-                            "Diplomatic Relations: -10 (Neighboring Nations)"
-                        }
+                        target = ParameterEffect.EffectTarget.ProductivityFactor,
+                        effectType = ParameterEffect.EffectType.Add,
+                        value = 0.3f,
+                        description = "Productivity Factor +0.3"
                     },
-                    new SampleChoice
+                    new ParameterEffect
                     {
-                        text = "Focus on expanding troop numbers",
-                        response = "You authorize a recruitment drive to expand the size of your armed forces.",
-                        effects = new List<string>
-                        {
-                            "Military Strength: +15",
-                            "Money: -60 (Treasury)",
-                            "Population Happiness: -5 (Conscription concerns)"
-                        }
-                    },
-                    new SampleChoice
-                    {
-                        text = "Pursue diplomatic solutions instead",
-                        response = "You redirect funds toward diplomatic initiatives to reduce tensions in the region.",
-                        effects = new List<string>
-                        {
-                            "Diplomatic Relations: +20 (All Nations)",
-                            "Money: -30 (Treasury)",
-                            "Military Approval: -15"
-                        }
-                    },
-                    new SampleChoice
-                    {
-                        text = "Maintain current military spending levels",
-                        response = "You decide to maintain the status quo while monitoring the situation.",
-                        effects = new List<string>
-                        {
-                            "No immediate effects"
-                        }
+                        target = ParameterEffect.EffectTarget.PopulationSatisfaction,
+                        effectType = ParameterEffect.EffectType.Add,
+                        value = -0.1f,
+                        description = "Population Satisfaction -0.1"
                     }
-                }
-            };
-            sampleEvents.Add(militaryEvent);
+                },
+                nextEventId = "national_arts_initiative"
+            });
             
-            // Event 5: Natural Disaster
-            SampleEvent disasterEvent = new SampleEvent
+            economicEvent.choices.Add(new EventChoice
             {
-                title = "Devastating Floods",
-                description = "Heavy rainfall has caused severe flooding in the eastern provinces. Infrastructure is damaged, crops are ruined, and many citizens are displaced. Your response will determine how quickly the region recovers.",
-                category = EventCategory.Disaster,
-                choices = new List<SampleChoice>
+                text = "Focus on industrial modernization",
+                response = "You invest heavily in modernizing industrial infrastructure and production methods.",
+                narrativeEffects = new List<string>
                 {
-                    new SampleChoice
+                    "Money: -80 (Treasury)",
+                    "Production: +30 (Long-term)",
+                    "Technology: +15"
+                },
+                economicEffects = new List<ParameterEffect>
+                {
+                    new ParameterEffect
                     {
-                        text = "Immediate large-scale emergency relief",
-                        response = "You mobilize all available resources for an immediate and comprehensive relief effort.",
-                        effects = new List<string>
-                        {
-                            "Money: -100 (Treasury)",
-                            "Population Happiness: +20 (Eastern Provinces)",
-                            "Infrastructure: +10 (Recovery)",
-                            "Political Support: +15"
-                        }
+                        target = ParameterEffect.EffectTarget.Wealth,
+                        effectType = ParameterEffect.EffectType.Add,
+                        value = -80f,
+                        description = "Wealth -80"
                     },
-                    new SampleChoice
+                    new ParameterEffect
                     {
-                        text = "Limited government intervention with private sector support",
-                        response = "You provide modest government aid and incentivize businesses to assist in recovery efforts.",
-                        effects = new List<string>
-                        {
-                            "Money: -40 (Treasury)",
-                            "Population Happiness: +5 (Eastern Provinces)",
-                            "Business Relations: +15",
-                            "Recovery Speed: Medium"
-                        }
-                    },
-                    new SampleChoice
-                    {
-                        text = "Minimal emergency response, focus on long-term prevention",
-                        response = "You provide only essential emergency aid while directing resources toward future flood prevention.",
-                        effects = new List<string>
-                        {
-                            "Money: -30 (Treasury) now, -60 later",
-                            "Population Happiness: -15 (Eastern Provinces)",
-                            "Future Disaster Risk: -30%",
-                            "Political Support: -10"
-                        }
+                        target = ParameterEffect.EffectTarget.InfrastructureLevel,
+                        effectType = ParameterEffect.EffectType.Add,
+                        value = 2f,
+                        description = "Infrastructure Level +2"
                     }
                 }
-            };
-            sampleEvents.Add(disasterEvent);
+            });
             
-            // Event 6: Cultural Initiative
-            SampleEvent culturalEvent = new SampleEvent
-            {
-                title = "National Arts Initiative",
-                description = "The Minister of Culture proposes a comprehensive program to promote the arts and cultural heritage. It could enhance national identity and tourism, but requires significant funding.",
-                category = EventCategory.Social,
-                choices = new List<SampleChoice>
-                {
-                    new SampleChoice
-                    {
-                        text = "Full funding for nationwide cultural programs",
-                        response = "You authorize a comprehensive cultural initiative spanning museums, festivals, and artistic grants.",
-                        effects = new List<string>
-                        {
-                            "Money: -70 (Treasury)",
-                            "Cultural Development: +25",
-                            "Tourism: +15 (Long-term)",
-                            "Population Happiness: +10"
-                        }
-                    },
-                    new SampleChoice
-                    {
-                        text = "Focus on preserving heritage sites only",
-                        response = "You direct funding primarily to preserving historical sites and national monuments.",
-                        effects = new List<string>
-                        {
-                            "Money: -30 (Treasury)",
-                            "Cultural Preservation: +20",
-                            "Tourism: +10 (Long-term)",
-                            "Artist Community Satisfaction: -5"
-                        }
-                    },
-                    new SampleChoice
-                    {
-                        text = "Reject the initiative as non-essential",
-                        response = "You politely decline the proposal, citing more pressing economic priorities.",
-                        effects = new List<string>
-                        {
-                            "Money: +0 (Treasury)",
-                            "Cultural Community Relations: -15",
-                            "Population Happiness: -5"
-                        }
-                    }
-                }
-            };
-            sampleEvents.Add(culturalEvent);
+            allEvents.Add(economicEvent);
             
-            // Event 7: Scientific Breakthrough
-            SampleEvent scientificEvent = new SampleEvent
-            {
-                title = "Research Breakthrough",
-                description = "Scientists in your nation have made a significant breakthrough that could revolutionize several industries. However, further development requires substantial government support.",
-                category = EventCategory.Technology,
-                choices = new List<SampleChoice>
-                {
-                    new SampleChoice
-                    {
-                        text = "Provide full government backing",
-                        response = "You allocate substantial resources to develop the breakthrough into practical applications.",
-                        effects = new List<string>
-                        {
-                            "Money: -90 (Treasury)",
-                            "Technology: +30",
-                            "Industrial Productivity: +20 (Long-term)",
-                            "Scientific Community Relations: +25"
-                        }
-                    },
-                    new SampleChoice
-                    {
-                        text = "Partner with private industry",
-                        response = "You facilitate partnerships between the researchers and major corporations to commercialize the discovery.",
-                        effects = new List<string>
-                        {
-                            "Money: -30 (Treasury)",
-                            "Technology: +15",
-                            "Business Relations: +20",
-                            "Scientific Community Relations: -5"
-                        }
-                    },
-                    new SampleChoice
-                    {
-                        text = "Patent the technology internationally",
-                        response = "You secure international patents and license the technology to generate revenue.",
-                        effects = new List<string>
-                        {
-                            "Money: +50 (Treasury, long-term)",
-                            "Technology Access: -10",
-                            "International Relations: -5",
-                            "Scientific Development: +5"
-                        }
-                    }
-                }
-            };
-            sampleEvents.Add(scientificEvent);
-            
-            // Apply the initial filtering
-            FilterEvents();
-        }
-
-        // Add economic versions of sample events
-        private void CreateEconomicEvents()
-        {
-            // Only create economic events if we have the integration components
-            if (eventEffect == null) return;
-            
-            // Find the "Economic Reform Proposal" event and add economic effects
-            foreach (var evt in sampleEvents)
-            {
-                if (evt.title == "Economic Reform Proposal")
-                {
-                    // Add economic effects to the first choice: market liberalization
-                    if (evt.choices.Count > 0)
-                    {
-                        evt.choices[0].economicEffects = new List<EconomicEventEffect.ParameterEffect>
-                        {
-                            new EconomicEventEffect.ParameterEffect
-                            {
-                                target = EconomicEventEffect.ParameterEffect.EffectTarget.ProductivityFactor,
-                                effectType = EconomicEventEffect.ParameterEffect.EffectType.Add,
-                                value = 0.3f,
-                                description = "Productivity Factor +0.3"
-                            },
-                            new EconomicEventEffect.ParameterEffect
-                            {
-                                target = EconomicEventEffect.ParameterEffect.EffectTarget.PopulationSatisfaction,
-                                effectType = EconomicEventEffect.ParameterEffect.EffectType.Add,
-                                value = -0.1f,
-                                description = "Population Satisfaction -0.1"
-                            }
-                        };
-                    }
-                    
-                    // Add economic effects to the second choice: industrial modernization
-                    if (evt.choices.Count > 1)
-                    {
-                        evt.choices[1].economicEffects = new List<EconomicEventEffect.ParameterEffect>
-                        {
-                            new EconomicEventEffect.ParameterEffect
-                            {
-                                target = EconomicEventEffect.ParameterEffect.EffectTarget.Wealth,
-                                effectType = EconomicEventEffect.ParameterEffect.EffectType.Add,
-                                value = -80f,
-                                description = "Wealth -80"
-                            },
-                            new EconomicEventEffect.ParameterEffect
-                            {
-                                target = EconomicEventEffect.ParameterEffect.EffectTarget.InfrastructureLevel,
-                                effectType = EconomicEventEffect.ParameterEffect.EffectType.Add,
-                                value = 2f,
-                                description = "Infrastructure Level +2"
-                            }
-                        };
-                    }
-                    
-                    // Add economic effects to the third choice: worker protection
-                    if (evt.choices.Count > 2)
-                    {
-                        evt.choices[2].economicEffects = new List<EconomicEventEffect.ParameterEffect>
-                        {
-                            new EconomicEventEffect.ParameterEffect
-                            {
-                                target = EconomicEventEffect.ParameterEffect.EffectTarget.Wealth,
-                                effectType = EconomicEventEffect.ParameterEffect.EffectType.Add,
-                                value = -60f,
-                                description = "Wealth -60"
-                            },
-                            new EconomicEventEffect.ParameterEffect
-                            {
-                                target = EconomicEventEffect.ParameterEffect.EffectTarget.PopulationSatisfaction,
-                                effectType = EconomicEventEffect.ParameterEffect.EffectType.Add,
-                                value = 0.25f,
-                                description = "Population Satisfaction +0.25"
-                            }
-                        };
-                    }
-                }
-                
-                // Add economic effects to Resource Shortage event
-                if (evt.title == "Resource Shortage")
-                {
-                    // 1st choice: Import resources
-                    if (evt.choices.Count > 0)
-                    {
-                        evt.choices[0].economicEffects = new List<EconomicEventEffect.ParameterEffect>
-                        {
-                            new EconomicEventEffect.ParameterEffect
-                            {
-                                target = EconomicEventEffect.ParameterEffect.EffectTarget.Wealth,
-                                effectType = EconomicEventEffect.ParameterEffect.EffectType.Add,
-                                value = -50f,
-                                description = "Wealth -50"
-                            }
-                        };
-                    }
-                    
-                    // 2nd choice: Divert labor
-                    if (evt.choices.Count > 1)
-                    {
-                        evt.choices[1].economicEffects = new List<EconomicEventEffect.ParameterEffect>
-                        {
-                            new EconomicEventEffect.ParameterEffect
-                            {
-                                target = EconomicEventEffect.ParameterEffect.EffectTarget.Production,
-                                effectType = EconomicEventEffect.ParameterEffect.EffectType.Add,
-                                value = -20f,
-                                description = "Production -20"
-                            },
-                            new EconomicEventEffect.ParameterEffect
-                            {
-                                target = EconomicEventEffect.ParameterEffect.EffectTarget.PopulationSatisfaction,
-                                effectType = EconomicEventEffect.ParameterEffect.EffectType.Add,
-                                value = -0.1f,
-                                description = "Population Satisfaction -0.1"
-                            }
-                        };
-                    }
-                }
-                
-                // Add economic effects to Military Modernization event
-                if (evt.title == "Military Modernization")
-                {
-                    // 1st choice: Invest in military tech
-                    if (evt.choices.Count > 0)
-                    {
-                        evt.choices[0].economicEffects = new List<EconomicEventEffect.ParameterEffect>
-                        {
-                            new EconomicEventEffect.ParameterEffect
-                            {
-                                target = EconomicEventEffect.ParameterEffect.EffectTarget.Wealth,
-                                effectType = EconomicEventEffect.ParameterEffect.EffectType.Add,
-                                value = -120f,
-                                description = "Wealth -120"
-                            },
-                            new EconomicEventEffect.ParameterEffect
-                            {
-                                target = EconomicEventEffect.ParameterEffect.EffectTarget.ProductivityFactor,
-                                effectType = EconomicEventEffect.ParameterEffect.EffectType.Add,
-                                value = 0.1f,
-                                description = "Productivity Factor +0.1 (from technology)"
-                            }
-                        };
-                    }
-                }
-            }
-            
-            // Add new economic-focused events
-            SampleEvent laborEvent = new SampleEvent
-            {
-                title = "Labor Shortage Crisis",
-                description = "The economy is experiencing a severe labor shortage, affecting production across all sectors. Your advisors have prepared several options to address the crisis.",
-                category = EventCategory.Economic,
-                choices = new List<SampleChoice>
-                {
-                    new SampleChoice
-                    {
-                        text = "Increase automation and technological investment",
-                        response = "You approve funding for automation and technological improvements to reduce labor dependence.",
-                        effects = new List<string>
-                        {
-                            "Wealth: -100",
-                            "Productivity: +15%",
-                            "Labor Elasticity: -0.1",
-                            "Capital Elasticity: +0.1"
-                        },
-                        economicEffects = new List<EconomicEventEffect.ParameterEffect>
-                        {
-                            new EconomicEventEffect.ParameterEffect
-                            {
-                                target = EconomicEventEffect.ParameterEffect.EffectTarget.Wealth,
-                                effectType = EconomicEventEffect.ParameterEffect.EffectType.Add,
-                                value = -100f,
-                                description = "Wealth -100"
-                            },
-                            new EconomicEventEffect.ParameterEffect
-                            {
-                                target = EconomicEventEffect.ParameterEffect.EffectTarget.ProductivityFactor,
-                                effectType = EconomicEventEffect.ParameterEffect.EffectType.Add,
-                                value = 0.15f,
-                                description = "Productivity +15%"
-                            },
-                            new EconomicEventEffect.ParameterEffect
-                            {
-                                target = EconomicEventEffect.ParameterEffect.EffectTarget.LaborElasticity,
-                                effectType = EconomicEventEffect.ParameterEffect.EffectType.Add,
-                                value = -0.1f,
-                                description = "Labor Elasticity -0.1"
-                            },
-                            new EconomicEventEffect.ParameterEffect
-                            {
-                                target = EconomicEventEffect.ParameterEffect.EffectTarget.CapitalElasticity,
-                                effectType = EconomicEventEffect.ParameterEffect.EffectType.Add,
-                                value = 0.1f,
-                                description = "Capital Elasticity +0.1"
-                            }
-                        }
-                    },
-                    new SampleChoice
-                    {
-                        text = "Implement incentives for workforce expansion",
-                        response = "You implement a program of incentives to expand the workforce through immigration and increased participation.",
-                        effects = new List<string>
-                        {
-                            "Wealth: -50",
-                            "Labor Available: +40",
-                            "Population Satisfaction: +0.05"
-                        },
-                        economicEffects = new List<EconomicEventEffect.ParameterEffect>
-                        {
-                            new EconomicEventEffect.ParameterEffect
-                            {
-                                target = EconomicEventEffect.ParameterEffect.EffectTarget.Wealth,
-                                effectType = EconomicEventEffect.ParameterEffect.EffectType.Add,
-                                value = -50f,
-                                description = "Wealth -50"
-                            },
-                            new EconomicEventEffect.ParameterEffect
-                            {
-                                target = EconomicEventEffect.ParameterEffect.EffectTarget.LaborAvailable,
-                                effectType = EconomicEventEffect.ParameterEffect.EffectType.Add,
-                                value = 40f,
-                                description = "Labor Available +40"
-                            },
-                            new EconomicEventEffect.ParameterEffect
-                            {
-                                target = EconomicEventEffect.ParameterEffect.EffectTarget.PopulationSatisfaction,
-                                effectType = EconomicEventEffect.ParameterEffect.EffectType.Add,
-                                value = 0.05f,
-                                description = "Population Satisfaction +0.05"
-                            }
-                        }
-                    },
-                    new SampleChoice
-                    {
-                        text = "Restructure economy to be less labor-intensive",
-                        response = "You initiate fundamental economic restructuring to prioritize sectors that require less labor.",
-                        effects = new List<string>
-                        {
-                            "Labor Elasticity: -0.15",
-                            "Capital Elasticity: +0.15",
-                            "Production: -10% (short-term)"
-                        },
-                        economicEffects = new List<EconomicEventEffect.ParameterEffect>
-                        {
-                            new EconomicEventEffect.ParameterEffect
-                            {
-                                target = EconomicEventEffect.ParameterEffect.EffectTarget.LaborElasticity,
-                                effectType = EconomicEventEffect.ParameterEffect.EffectType.Add,
-                                value = -0.15f,
-                                description = "Labor Elasticity -0.15"
-                            },
-                            new EconomicEventEffect.ParameterEffect
-                            {
-                                target = EconomicEventEffect.ParameterEffect.EffectTarget.CapitalElasticity,
-                                effectType = EconomicEventEffect.ParameterEffect.EffectType.Add,
-                                value = 0.15f,
-                                description = "Capital Elasticity +0.15"
-                            },
-                            new EconomicEventEffect.ParameterEffect
-                            {
-                                target = EconomicEventEffect.ParameterEffect.EffectTarget.Production,
-                                effectType = EconomicEventEffect.ParameterEffect.EffectType.Multiply,
-                                value = 0.9f,
-                                description = "Production -10%"
-                            }
-                        }
-                    }
-                }
-            };
-            sampleEvents.Add(laborEvent);
-            
-            FilterEvents(); // Refresh the filtered list
+            // Add more sample events based on your original EventDisplayWindow code
+            // This is just a starter set
         }
         
         private void OnGUI()
         {
-            // Check if play mode status changed
-            if (wasInPlayMode != Application.isPlaying)
-            {
-                wasInPlayMode = Application.isPlaying;
-                if (wasInPlayMode)
-                {
-                    // We just entered play mode, refresh economic components after a short delay
-                    EditorApplication.delayCall += () =>
-                    {
-                        RefreshEconomicComponents();
-                        CreateEconomicEvents();
-                        Repaint();
-                    };
-                }
-            }
-            
             // Initialize styles here to ensure EditorStyles is ready
             InitializeStyles();
             
             // Add Economic Integration Section
             DrawEconomicIntegrationSection();
             
-            if (sampleEvents.Count == 0)
+            // Event list/filters section
+            DrawEventListSection();
+            
+            // Display the selected event
+            if (filteredEvents.Count > 0 && selectedEventIndex >= 0 && selectedEventIndex < filteredEvents.Count)
             {
-                EditorGUILayout.HelpBox("No events defined. Please create some events.", MessageType.Info);
+                DrawEventDetails(filteredEvents[selectedEventIndex]);
+            }
+            else
+            {
+                EditorGUILayout.HelpBox("No events available or selected.", MessageType.Info);
+            }
+        }
+        
+        // Draw the economic integration section
+        private void DrawEconomicIntegrationSection()
+        {
+            showEconomicIntegration = EditorGUILayout.Foldout(showEconomicIntegration, "Economic Integration", true, EditorStyles.foldoutHeader);
+            
+            if (!showEconomicIntegration)
                 return;
+                
+            EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+            
+            // Add refresh button
+            if (GUILayout.Button("Refresh System References"))
+            {
+                RefreshSystemReferences();
+                RefreshEventList();
+                Repaint();
             }
             
-            GUILayout.Space(10);
+            // Status display
+            bool hasAllComponents = economicSystem != null && eventManager != null;
             
-            // Search and filter area
+            if (!hasAllComponents)
+            {
+                EditorGUILayout.HelpBox("Economic integration requires EconomicSystem and DialogueEventManager components in the scene.", MessageType.Warning);
+                
+                if (GUILayout.Button("Create Missing Components"))
+                {
+                    CreateMissingComponents();
+                }
+            }
+            else
+            {
+                // Display status
+                EditorGUILayout.LabelField("Economic Integration Status: Active", EditorStyles.boldLabel);
+                
+                // Currently active event
+                if (Application.isPlaying && eventManager.CurrentEvent != null)
+                {
+                    EditorGUILayout.LabelField("Current Active Event:", EditorStyles.boldLabel);
+                    EditorGUILayout.LabelField(eventManager.CurrentEvent.title, EditorStyles.helpBox);
+                }
+                else
+                {
+                    EditorGUILayout.LabelField("No active event", EditorStyles.miniLabel);
+                }
+                
+                // Control buttons
+                EditorGUILayout.BeginHorizontal();
+                
+                if (GUILayout.Button("Check Event Conditions"))
+                {
+                    if (Application.isPlaying)
+                    {
+                        eventManager.CheckForEvents();
+                    }
+                    else
+                    {
+                        EditorUtility.DisplayDialog("Play Mode Required", 
+                            "Please enter Play Mode to check event conditions.", "OK");
+                    }
+                }
+                
+                if (GUILayout.Button("Reset All Events"))
+                {
+                    if (Application.isPlaying)
+                    {
+                        eventManager.ResetAllEvents();
+                    }
+                    else
+                    {
+                        EditorUtility.DisplayDialog("Play Mode Required", 
+                            "Please enter Play Mode to reset events.", "OK");
+                    }
+                }
+                
+                EditorGUILayout.EndHorizontal();
+                
+                // Test economic effects
+                EditorGUILayout.BeginHorizontal();
+                
+                if (GUILayout.Button("Boost Economy"))
+                {
+                    if (Application.isPlaying && economicSystem != null && economicSystem.testRegion != null)
+                    {
+                        economicSystem.testRegion.Economy.Wealth += 100;
+                        economicSystem.productivityFactor += 0.1f;
+                    }
+                    else
+                    {
+                        EditorUtility.DisplayDialog("Play Mode Required", 
+                            "Please enter Play Mode to test economic effects.", "OK");
+                    }
+                }
+                
+                if (GUILayout.Button("Economic Crisis"))
+                {
+                    if (Application.isPlaying && economicSystem != null && economicSystem.testRegion != null)
+                    {
+                        economicSystem.testRegion.Economy.Wealth = Mathf.Max(0, economicSystem.testRegion.Economy.Wealth - 50);
+                        economicSystem.testRegion.Population.UpdateSatisfaction(
+                            Mathf.Max(0, economicSystem.testRegion.Population.Satisfaction - 0.2f));
+                    }
+                    else
+                    {
+                        EditorUtility.DisplayDialog("Play Mode Required", 
+                            "Please enter Play Mode to test economic effects.", "OK");
+                    }
+                }
+                
+                EditorGUILayout.EndHorizontal();
+            }
+            
+            EditorGUILayout.EndVertical();
+            
+            GUILayout.Space(10);
+        }
+        
+        // Draw the event list and filter controls
+        private void DrawEventListSection()
+        {
+            showAvailableEvents = EditorGUILayout.Foldout(showAvailableEvents, "Available Events", true, EditorStyles.foldoutHeader);
+            
+            if (!showAvailableEvents)
+                return;
+                
             EditorGUILayout.BeginVertical(EditorStyles.helpBox);
             
             // Search bar
@@ -846,7 +581,7 @@ namespace V2.Systems.DialogueSystem.Editor
             }
             EditorGUILayout.EndHorizontal();
             
-            // Category filters - FIX: Make a copy of the keys to avoid enumeration issues
+            // Category filters
             showCategories = EditorGUILayout.Foldout(showCategories, "Event Categories", true);
             if (showCategories)
             {
@@ -854,36 +589,33 @@ namespace V2.Systems.DialogueSystem.Editor
                 
                 if (GUILayout.Button("Select All", GUILayout.Width(100)))
                 {
-                    // Fix: Avoid "collection modified during enumeration" error
-                    var keys = new List<EventCategory>(categoryFilters.Keys);
-                    foreach (var key in keys)
+                    var categories = new List<EventCategory>(categoryFilters.Keys);
+                    foreach (var category in categories)
                     {
-                        categoryFilters[key] = true;
+                        categoryFilters[category] = true;
                     }
                     FilterEvents();
                 }
                 
                 if (GUILayout.Button("Select None", GUILayout.Width(100)))
                 {
-                    // Fix: Avoid "collection modified during enumeration" error
-                    var keys = new List<EventCategory>(categoryFilters.Keys);
-                    foreach (var key in keys)
+                    var categories = new List<EventCategory>(categoryFilters.Keys);
+                    foreach (var category in categories)
                     {
-                        categoryFilters[key] = false;
+                        categoryFilters[category] = false;
                     }
                     FilterEvents();
                 }
                 
                 EditorGUILayout.EndHorizontal();
                 
-                // Fix: Avoid "collection modified during enumeration" error
-                var categories = new List<EventCategory>(categoryFilters.Keys);
+                var categoryKeys = new List<EventCategory>(categoryFilters.Keys);
                 int count = 0;
                 bool changed = false;
                 
                 EditorGUILayout.BeginHorizontal();
                 
-                foreach (var category in categories)
+                foreach (var category in categoryKeys)
                 {
                     if (count > 0 && count % 3 == 0)
                     {
@@ -909,47 +641,62 @@ namespace V2.Systems.DialogueSystem.Editor
                 }
             }
             
-            EditorGUILayout.EndVertical();
-            
-            // Display no events message
+            // Event list
             if (filteredEvents.Count == 0)
             {
                 EditorGUILayout.HelpBox("No events match your current filters.", MessageType.Info);
-                return;
             }
-            
-            GUILayout.Space(5);
-            
-            // Event selection dropdown
-            string[] eventTitles = new string[filteredEvents.Count];
-            for (int i = 0; i < filteredEvents.Count; i++)
+            else
             {
-                eventTitles[i] = filteredEvents[i].title;
+                // Event selection dropdown
+                string[] eventTitles = new string[filteredEvents.Count];
+                for (int i = 0; i < filteredEvents.Count; i++)
+                {
+                    eventTitles[i] = filteredEvents[i].title;
+                }
+                
+                EditorGUILayout.BeginHorizontal();
+                EditorGUILayout.LabelField("Event:", GUILayout.Width(50));
+                int newSelectedIndex = EditorGUILayout.Popup(selectedEventIndex, eventTitles);
+                
+                if (newSelectedIndex != selectedEventIndex)
+                {
+                    selectedEventIndex = newSelectedIndex;
+                    selectedChoiceIndex = -1; // Reset selected choice
+                }
+                
+                // Add buttons to trigger/reset the selected event
+                if (Application.isPlaying && eventManager != null)
+                {
+                    if (GUILayout.Button("Trigger", GUILayout.Width(80)))
+                    {
+                        var selectedEvent = filteredEvents[selectedEventIndex];
+                        eventManager.TriggerEvent(selectedEvent.id);
+                    }
+                    
+                    if (GUILayout.Button("Reset", GUILayout.Width(80)))
+                    {
+                        var selectedEvent = filteredEvents[selectedEventIndex];
+                        eventManager.ResetEvent(selectedEvent.id);
+                    }
+                }
+                
+                EditorGUILayout.EndHorizontal();
+                
+                // Show category tag for the selected event
+                EditorGUILayout.BeginHorizontal();
+                EditorGUILayout.LabelField("Category:", GUILayout.Width(70));
+                EditorGUILayout.LabelField(filteredEvents[selectedEventIndex].category.ToString(), categoryStyle);
+                EditorGUILayout.EndHorizontal();
             }
             
-            EditorGUILayout.BeginHorizontal();
-            EditorGUILayout.LabelField("Event:", GUILayout.Width(50));
-            int newSelectedIndex = EditorGUILayout.Popup(selectedEventIndex, eventTitles);
-            if (newSelectedIndex != selectedEventIndex)
-            {
-                selectedEventIndex = newSelectedIndex;
-                selectedChoiceIndex = -1; // Reset selected choice
-            }
-            EditorGUILayout.EndHorizontal();
+            EditorGUILayout.EndVertical();
             
-            // Show category tag
-            EditorGUILayout.BeginHorizontal();
-            EditorGUILayout.LabelField("Category:", GUILayout.Width(70));
-            EditorGUILayout.LabelField(filteredEvents[selectedEventIndex].category.ToString(), categoryStyle);
-            EditorGUILayout.EndHorizontal();
-            
-            GUILayout.Space(5);
-            
-            // Show current event
-            DisplayEvent(filteredEvents[selectedEventIndex]);
+            GUILayout.Space(10);
         }
-
-        private void DisplayEvent(SampleEvent currentEvent)
+        
+        // Draw details for the selected event
+        private void DrawEventDetails(DialogueEvent currentEvent)
         {
             scrollPosition = EditorGUILayout.BeginScrollView(scrollPosition);
             
@@ -960,6 +707,24 @@ namespace V2.Systems.DialogueSystem.Editor
             // Event description
             EditorGUILayout.LabelField("Event Description:", EditorStyles.boldLabel);
             EditorGUILayout.TextArea(currentEvent.description, descriptionStyle, GUILayout.Height(80));
+            
+            // Event conditions
+            EditorGUILayout.Space(10);
+            EditorGUILayout.LabelField("Trigger Conditions:", EditorStyles.boldLabel);
+            
+            if (currentEvent.conditions != null && currentEvent.conditions.Count > 0)
+            {
+                EditorGUI.indentLevel++;
+                foreach (var condition in currentEvent.conditions)
+                {
+                    EditorGUILayout.LabelField($"• {condition.ToString()}", EditorStyles.miniLabel);
+                }
+                EditorGUI.indentLevel--;
+            }
+            else
+            {
+                EditorGUILayout.HelpBox("No trigger conditions defined. Event must be triggered manually.", MessageType.Info);
+            }
             
             GUILayout.Space(20);
             
@@ -981,7 +746,7 @@ namespace V2.Systems.DialogueSystem.Editor
             // Show selected choice response
             if (selectedChoiceIndex >= 0 && selectedChoiceIndex < currentEvent.choices.Count)
             {
-                SampleChoice selectedChoice = currentEvent.choices[selectedChoiceIndex];
+                EventChoice selectedChoice = currentEvent.choices[selectedChoiceIndex];
                 
                 GUILayout.Space(20);
                 EditorGUILayout.LabelField("Response:", EditorStyles.boldLabel);
@@ -996,7 +761,8 @@ namespace V2.Systems.DialogueSystem.Editor
                 }
                 
                 // Show effects
-                if (selectedChoice.effects != null && selectedChoice.effects.Count > 0)
+                if ((selectedChoice.narrativeEffects != null && selectedChoice.narrativeEffects.Count > 0) ||
+                    (selectedChoice.economicEffects != null && selectedChoice.economicEffects.Count > 0))
                 {
                     GUILayout.Space(10);
                     showEffects = EditorGUILayout.Foldout(showEffects, "Effects", true);
@@ -1004,11 +770,39 @@ namespace V2.Systems.DialogueSystem.Editor
                     if (showEffects)
                     {
                         EditorGUI.indentLevel++;
-                        foreach (var effect in selectedChoice.effects)
+                        
+                        // Display narrative effects
+                        foreach (var effect in selectedChoice.narrativeEffects)
                         {
                             DisplayEffect(effect);
                         }
+                        
+                        // Display economic effects
+                        foreach (var effect in selectedChoice.economicEffects)
+                        {
+                            DisplayEffect(effect.description);
+                        }
+                        
                         EditorGUI.indentLevel--;
+                    }
+                }
+                // Show next event if exists
+                if (!string.IsNullOrEmpty(selectedChoice.nextEventId))
+                {
+                    GUILayout.Space(10);
+                    EditorGUILayout.LabelField("Next Event:", EditorStyles.boldLabel);
+                    EditorGUILayout.LabelField(selectedChoice.nextEventId, EditorStyles.helpBox);
+                }
+                
+                // Add simulate choice button
+                if (Application.isPlaying && eventManager != null && 
+                    eventManager.CurrentEvent != null && 
+                    eventManager.CurrentEvent.id == currentEvent.id)
+                {
+                    GUILayout.Space(15);
+                    if (GUILayout.Button("Simulate This Choice", GUILayout.Height(30)))
+                    {
+                        eventManager.MakeChoice(selectedChoiceIndex);
                     }
                 }
             }
@@ -1017,13 +811,11 @@ namespace V2.Systems.DialogueSystem.Editor
         }
 
         // Display a choice button with proper styling and economic effect indicators
-        private void DisplayChoice(SampleChoice choice, int index)
+        private void DisplayChoice(EventChoice choice, int index)
         {
             GUIStyle style = (index == selectedChoiceIndex) ? selectedChoiceStyle : choiceButtonStyle;
             
             EditorGUILayout.BeginVertical(EditorStyles.helpBox);
-            
-            bool wasSelected = (index == selectedChoiceIndex);
             
             // Check if this choice has economic effects
             bool hasEconomicEffects = (choice.economicEffects != null && choice.economicEffects.Count > 0);
@@ -1038,38 +830,6 @@ namespace V2.Systems.DialogueSystem.Editor
             if (GUILayout.Button(choiceText, style, GUILayout.MinHeight(40)))
             {
                 selectedChoiceIndex = index;
-                
-                // Apply economic effects when a choice is selected
-                if (!wasSelected && economicSystem != null && eventEffect != null)
-                {
-                    // Get the current event
-                    SampleEvent currentEvent = filteredEvents[selectedEventIndex];
-                    
-                    // Apply economic effects if available
-                    if (hasEconomicEffects)
-                    {
-                        eventEffect.ApplyEffects(currentEvent.title, index, choice.economicEffects);
-                    }
-                    else 
-                    {
-                        // Even without economic effects, we should still check for event chaining
-                        string nextEventId = eventEffect.GetNextEvent(currentEvent.title, index);
-                        if (!string.IsNullOrEmpty(nextEventId) && eventTrigger != null)
-                        {
-                            Debug.Log($"Progressing to next event: {nextEventId}");
-                            eventTrigger.TriggerEvent(nextEventId, true);
-                            
-                            // Find and select the new event in the UI
-                            ProgressToNextEvent(nextEventId);
-                        }
-                    }
-                    
-                    // Mark current event as completed
-                    if (eventTrigger != null)
-                    {
-                        eventTrigger.CompleteEvent(currentEvent.title);
-                    }
-                }
             }
             
             // Add a colored indicator if this choice has economic effects
@@ -1112,55 +872,6 @@ namespace V2.Systems.DialogueSystem.Editor
             EditorGUILayout.EndVertical();
             GUILayout.Space(5);
         }
-        
-        // Helper method to find and select the next event in the UI
-        private void ProgressToNextEvent(string nextEventId)
-        {
-            // Find the event in our filtered list
-            for (int i = 0; i < filteredEvents.Count; i++)
-            {
-                if (filteredEvents[i].title == nextEventId)
-                {
-                    // Select this event and reset choice selection
-                    selectedEventIndex = i;
-                    selectedChoiceIndex = -1;
-                    break;
-                }
-            }
-            
-            // If we couldn't find it in filtered events, maybe it's filtered out
-            // Let's temporarily disable filters to find it
-            if (selectedEventIndex < 0 || filteredEvents[selectedEventIndex].title != nextEventId)
-            {
-                // Save current filter state
-                Dictionary<EventCategory, bool> savedFilters = new Dictionary<EventCategory, bool>(categoryFilters);
-                string savedSearch = searchText;
-                
-                // Enable all filters and clear search
-                foreach (var category in categoryFilters.Keys.ToList())
-                {
-                    categoryFilters[category] = true;
-                }
-                searchText = "";
-                FilterEvents();
-                
-                // Now try to find the event again
-                for (int i = 0; i < filteredEvents.Count; i++)
-                {
-                    if (filteredEvents[i].title == nextEventId)
-                    {
-                        selectedEventIndex = i;
-                        selectedChoiceIndex = -1;
-                        break;
-                    }
-                }
-                
-                // Restore original filters but keep the new event visible
-                // (no need to reset filters if we found the event)
-            }
-            
-            Repaint(); // Refresh the UI
-        }
 
         private void DisplayEffect(string effect)
         {
@@ -1193,11 +904,12 @@ namespace V2.Systems.DialogueSystem.Editor
             return result;
         }
         
+        // Apply event filters
         private void FilterEvents()
         {
             filteredEvents.Clear();
             
-            foreach (var evt in sampleEvents)
+            foreach (var evt in allEvents)
             {
                 // Apply category filter
                 if (!categoryFilters[evt.category])
@@ -1224,9 +936,9 @@ namespace V2.Systems.DialogueSystem.Editor
                             }
                             
                             // Search in effects
-                            if (!matchesSearch && choice.effects != null)
+                            if (!matchesSearch && choice.narrativeEffects != null)
                             {
-                                foreach (var effect in choice.effects)
+                                foreach (var effect in choice.narrativeEffects)
                                 {
                                     if (effect.ToLower().Contains(searchLower))
                                     {
@@ -1253,197 +965,6 @@ namespace V2.Systems.DialogueSystem.Editor
             {
                 selectedEventIndex = filteredEvents.Count > 0 ? 0 : -1;
             }
-        }
-        
-        // Draw the economic integration section
-        private void DrawEconomicIntegrationSection()
-        {
-            showEconomicIntegration = EditorGUILayout.Foldout(showEconomicIntegration, "Economic Integration", true, EditorStyles.foldoutHeader);
-            
-            if (!showEconomicIntegration)
-                return;
-                
-            EditorGUILayout.BeginVertical(EditorStyles.helpBox);
-            
-            // Add refresh button at the top
-            DrawRefreshButton();
-            
-            if (economicSystem == null || eventTrigger == null || eventEffect == null)
-            {
-                EditorGUILayout.HelpBox("Economic integration requires EconomicSystem, EconomicEventTrigger, and EconomicEventEffect components in the scene.", MessageType.Warning);
-                
-                if (GUILayout.Button("Create Missing Components"))
-                {
-                    CreateMissingEconomicComponents();
-                }
-            }
-            else
-            {
-                // Display status
-                EditorGUILayout.LabelField("Economic Integration Status: Active", EditorStyles.boldLabel);
-                
-                // Show triggered events
-                showTriggeredEvents = EditorGUILayout.Foldout(showTriggeredEvents, "Triggered Events", true);
-                if (showTriggeredEvents && eventTrigger != null) // Fixed: null check for eventTrigger
-                {
-                    EditorGUI.indentLevel++;
-                    
-                    if (eventTrigger.triggeredEvents.Count == 0)
-                    {
-                        EditorGUILayout.HelpBox("No events have been triggered yet.", MessageType.Info);
-                    }
-                    else
-                    {
-                        // Fix: Make a copy of the collection to avoid enumeration issues
-                        var triggeredEventsCopy = new List<string>(eventTrigger.triggeredEvents);
-                        
-                        foreach (string eventId in triggeredEventsCopy)
-                        {
-                            EditorGUILayout.BeginHorizontal();
-                            EditorGUILayout.LabelField(eventId);
-                            if (GUILayout.Button("Reset", GUILayout.Width(80)))
-                            {
-                                eventTrigger.ResetTriggerCondition(eventId);
-                            }
-                            EditorGUILayout.EndHorizontal();
-                        }
-                    }
-                    
-                    if (GUILayout.Button("Reset All Triggers"))
-                    {
-                        eventTrigger.ResetAllTriggerConditions();
-                    }
-                    
-                    EditorGUI.indentLevel--;
-                }
-                
-                // Test trigger conditions
-                if (GUILayout.Button("Check Trigger Conditions"))
-                {
-                    eventTrigger.CheckTriggerConditions();
-                    Repaint(); // Refresh the window
-                }
-                
-                // Test economic effects
-                showTestEffects = EditorGUILayout.Foldout(showTestEffects, "Test Economic Effects", true);
-                if (showTestEffects && eventEffect != null) // Fixed: null check for eventEffect
-                {
-                    EditorGUI.indentLevel++;
-                    
-                    // Simple buttons to test economic effects
-                    EditorGUILayout.BeginHorizontal();
-                    if (GUILayout.Button("Increase Wealth (+100)"))
-                    {
-                        eventEffect.ApplySingleEffect(EconomicEventEffect.ParameterEffect.EffectTarget.Wealth, 
-                                                     EconomicEventEffect.ParameterEffect.EffectType.Add, 
-                                                     100f);
-                    }
-                    
-                    if (GUILayout.Button("Decrease Wealth (-50)"))
-                    {
-                        eventEffect.ApplySingleEffect(EconomicEventEffect.ParameterEffect.EffectTarget.Wealth, 
-                                                     EconomicEventEffect.ParameterEffect.EffectType.Add, 
-                                                     -50f);
-                    }
-                    EditorGUILayout.EndHorizontal();
-                    
-                    EditorGUILayout.BeginHorizontal();
-                    if (GUILayout.Button("Boost Productivity (+0.2)"))
-                    {
-                        eventEffect.ApplySingleEffect(EconomicEventEffect.ParameterEffect.EffectTarget.ProductivityFactor, 
-                                                     EconomicEventEffect.ParameterEffect.EffectType.Add, 
-                                                     0.2f);
-                    }
-                    
-                    if (GUILayout.Button("Add Labor (+20)"))
-                    {
-                        eventEffect.ApplySingleEffect(EconomicEventEffect.ParameterEffect.EffectTarget.LaborAvailable, 
-                                                     EconomicEventEffect.ParameterEffect.EffectType.Add, 
-                                                     20f);
-                    }
-                    EditorGUILayout.EndHorizontal();
-                    
-                    EditorGUI.indentLevel--;
-                }
-            }
-            
-            EditorGUILayout.EndVertical();
-            
-            GUILayout.Space(10);
-        }
-        
-        // Create any missing economic components - Fixed: Handling null references properly
-        private void CreateMissingEconomicComponents()
-        {
-            GameObject economicObj = null;
-            
-            // Find or create the EconomicSystem
-            economicSystem = FindFirstObjectByType<EconomicSystem>();
-            
-            if (economicSystem == null)
-            {
-                // Check if we need to create a GameObject
-                economicObj = GameObject.Find("EconomicSystem");
-                if (economicObj == null)
-                {
-                    economicObj = new GameObject("EconomicSystem");
-                }
-                
-                // Add the EconomicSystem component
-                economicSystem = economicObj.AddComponent<EconomicSystem>();
-                Debug.Log("Created EconomicSystem component");
-            }
-            else
-            {
-                economicObj = economicSystem.gameObject;
-            }
-            
-            // Add event trigger if missing
-            eventTrigger = FindFirstObjectByType<EconomicEventTrigger>();
-            if (eventTrigger == null && economicObj != null)
-            {
-                eventTrigger = economicObj.AddComponent<EconomicEventTrigger>();
-                Debug.Log("Added EconomicEventTrigger component");
-            }
-            
-            // Add event effect if missing
-            eventEffect = FindFirstObjectByType<EconomicEventEffect>();
-            if (eventEffect == null && economicObj != null)
-            {
-                eventEffect = economicObj.AddComponent<EconomicEventEffect>();
-                Debug.Log("Added EconomicEventEffect component");
-            }
-        }
-        
-        // Event categories enum
-        private enum EventCategory
-        {
-            Economic,
-            Diplomatic,
-            Military,
-            Social,
-            Technology,
-            Disaster
-        }
-        
-        // Simple classes for hardcoded events
-        [System.Serializable]
-        private class SampleEvent
-        {
-            public string title;
-            public string description;
-            public EventCategory category;
-            public List<SampleChoice> choices = new List<SampleChoice>();
-        }
-        
-        // Make sure our SampleChoice class includes economic effects
-        [System.Serializable]
-        private class SampleChoice
-        {
-            public string text;
-            public string response;
-            public List<string> effects = new List<string>();
-            public List<EconomicEventEffect.ParameterEffect> economicEffects;
         }
     }
 }

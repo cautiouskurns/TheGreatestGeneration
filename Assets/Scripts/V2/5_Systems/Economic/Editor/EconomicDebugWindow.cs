@@ -222,6 +222,13 @@ namespace V2.Editor
             // Main sections
             DrawPlayModeControls();
             DrawScenariosSection();
+            
+            // Add new dialogue testing section
+            if (simulationActive)
+            {
+                DrawDialogueTestingSection();
+            }
+            
             DrawControlsSection();
             DrawParametersSection();
             DrawRegionControlsSection();
@@ -317,6 +324,195 @@ namespace V2.Editor
             }
             
             EditorGUILayout.Space(5);
+        }
+
+        private void DrawDialogueTestingSection()
+        {
+            EditorGUILayout.Space(5);
+            
+            // Create a styled header for the dialogue section
+            GUIStyle headerStyle = new GUIStyle(EditorStyles.boldLabel);
+            headerStyle.fontSize = 12;
+            headerStyle.normal.textColor = new Color(0.3f, 0.5f, 0.8f);
+            EditorGUILayout.LabelField("Dialogue Testing", headerStyle);
+            
+            // Get reference to event manager if we don't have one
+            var dialogueManager = FindFirstObjectByType<V2.Systems.DialogueSystem.DialogueEventManager>();
+            if (dialogueManager == null)
+            {
+                EditorGUILayout.HelpBox("DialogueEventManager not found in scene. Add one to test dialogues.", MessageType.Warning);
+                
+                if (GUILayout.Button("Create Dialogue Manager", GUILayout.Height(24)))
+                {
+                    // Find or create the EconomicSystem GameObject
+                    GameObject systemObj = null;
+                    if (economicSystem != null)
+                        systemObj = economicSystem.gameObject;
+                    else
+                        systemObj = new GameObject("EconomicSystem");
+                        
+                    // Add dialogue manager
+                    dialogueManager = systemObj.AddComponent<V2.Systems.DialogueSystem.DialogueEventManager>();
+                    Debug.Log("Created DialogueEventManager");
+                }
+                
+                return;
+            }
+            
+            // Show current active dialogue
+            if (dialogueManager.CurrentEvent != null)
+            {
+                EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+                
+                // Display event title with a larger, colored style
+                GUIStyle titleStyle = new GUIStyle(EditorStyles.boldLabel);
+                titleStyle.fontSize = 12;
+                titleStyle.normal.textColor = new Color(0.2f, 0.5f, 0.8f);
+                EditorGUILayout.LabelField(dialogueManager.CurrentEvent.title, titleStyle);
+                
+                // Display description with a word-wrapped style
+                GUIStyle descStyle = new GUIStyle(EditorStyles.textArea);
+                descStyle.wordWrap = true;
+                descStyle.fontSize = 10;
+                descStyle.padding = new RectOffset(5, 5, 5, 5);
+                descStyle.margin = new RectOffset(2, 2, 2, 2);
+                EditorGUILayout.LabelField(dialogueManager.CurrentEvent.description, descStyle, GUILayout.Height(40));
+                
+                // Static variable to track the selected choice index
+                int buttonSelectedIndex = -1;
+                
+                // Display choices section header
+                EditorGUILayout.Space(3);
+                EditorGUILayout.LabelField("Available Choices:", EditorStyles.miniBoldLabel);
+                
+                // Create a scroll view for the choices to prevent them from taking up too much space
+                Vector2 choicesScrollPos = EditorGUILayout.BeginScrollView(
+                    new Vector2(0, 0), 
+                    GUILayout.Height(Mathf.Min(120, dialogueManager.CurrentEvent.choices.Count * 31)), 
+                    GUILayout.ExpandWidth(true)
+                );
+                
+                // Create choice buttons with improved styling
+                for (int i = 0; i < dialogueManager.CurrentEvent.choices.Count; i++)
+                {
+                    var choice = dialogueManager.CurrentEvent.choices[i];
+                    
+                    // Create a custom button style
+                    GUIStyle buttonStyle = new GUIStyle(GUI.skin.button);
+                    buttonStyle.alignment = TextAnchor.MiddleLeft;
+                    buttonStyle.wordWrap = true;
+                    buttonStyle.padding = new RectOffset(8, 8, 4, 4);
+                    buttonStyle.margin = new RectOffset(2, 2, 2, 2);
+                    buttonStyle.fixedHeight = 28; // Keep buttons compact
+                    
+                    // Highlight the button if it's the one that would be selected
+                    if (i == buttonSelectedIndex)
+                    {
+                        buttonStyle.normal.background = MakeColorTexture(new Color(0.6f, 0.8f, 1f, 0.5f));
+                        buttonStyle.hover.background = MakeColorTexture(new Color(0.7f, 0.9f, 1f, 0.6f));
+                    }
+                    
+                    // Add a visual indicator if this choice leads to another dialogue
+                    string buttonText = choice.text;
+                    if (!string.IsNullOrEmpty(choice.nextEventId))
+                    {
+                        buttonText = "» " + buttonText;
+                    }
+                    
+                    // Truncate long button text with ellipsis
+                    if (buttonText.Length > 70)
+                    {
+                        buttonText = buttonText.Substring(0, 70) + "...";
+                    }
+                    
+                    // Create the button with the improved style
+                    if (GUILayout.Button(buttonText, buttonStyle))
+                    {
+                        buttonSelectedIndex = i; // Mark this button as selected
+                        
+                        // Make the selection and close the GUI briefly to avoid errors
+                        dialogueManager.MakeChoice(i);
+                        
+                        // Debug what's about to happen
+                        string nextEventId = choice.nextEventId;
+                        if (!string.IsNullOrEmpty(nextEventId))
+                        {
+                            Debug.Log($"Choice made with nextEventId: {nextEventId}");
+                        }
+                        else
+                        {
+                            Debug.Log("Choice made with no nextEventId");
+                        }
+                        
+                        GUIUtility.ExitGUI(); // Exit the GUI to avoid errors when the event changes
+                    }
+                    
+                    // Check for hover to show tooltip
+                    Rect lastRect = GUILayoutUtility.GetLastRect();
+                    if (lastRect.Contains(Event.current.mousePosition))
+                    {
+                        // Show tooltip on hover with effect info
+                        if (choice.economicEffects != null && choice.economicEffects.Count > 0)
+                        {
+                            string tooltip = "Economic Effects:";
+                            foreach (var effect in choice.economicEffects)
+                            {
+                                tooltip += $"\n• {effect.description}";
+                            }
+                            GUI.Label(new Rect(Event.current.mousePosition.x + 10, Event.current.mousePosition.y, 180, 80), 
+                                      tooltip, EditorStyles.helpBox);
+                        }
+                    }
+                }
+                
+                EditorGUILayout.EndScrollView();
+                EditorGUILayout.EndVertical();
+            }
+            else
+            {
+                EditorGUILayout.HelpBox("No active dialogue event.", MessageType.Info);
+            }
+            
+            // Test dialogue trigger buttons in a horizontal layout
+            EditorGUILayout.Space(5);
+            
+            EditorGUILayout.LabelField("Trigger Test Events:", EditorStyles.miniBoldLabel);
+            
+            EditorGUILayout.BeginHorizontal();
+            
+            GUIStyle triggerButtonStyle = new GUIStyle(GUI.skin.button);
+            triggerButtonStyle.padding = new RectOffset(8, 8, 4, 4);
+            triggerButtonStyle.margin = new RectOffset(2, 2, 1, 1);
+            triggerButtonStyle.fixedHeight = 22;
+            
+            if (GUILayout.Button("Resource Shortage", triggerButtonStyle, GUILayout.Width(130)))
+            {
+                dialogueManager.TriggerEvent("resource_shortage");
+            }
+            
+            if (GUILayout.Button("Economic Reform", triggerButtonStyle, GUILayout.Width(130)))
+            {
+                dialogueManager.TriggerEvent("economic_reform_proposal");
+            }
+            
+            EditorGUILayout.EndHorizontal();
+            
+            // Button to reset all events
+            if (GUILayout.Button("Reset All Events", GUILayout.Height(22)))
+            {
+                dialogueManager.ResetAllEvents();
+            }
+            
+            EditorGUILayout.Space(5);
+        }
+
+        // Helper method to create a colored texture for UI elements
+        private Texture2D MakeColorTexture(Color color)
+        {
+            Texture2D texture = new Texture2D(1, 1);
+            texture.SetPixel(0, 0, color);
+            texture.Apply();
+            return texture;
         }
 
         private void DrawControlsSection()
