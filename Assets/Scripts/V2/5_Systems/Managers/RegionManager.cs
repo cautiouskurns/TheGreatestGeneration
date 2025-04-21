@@ -7,9 +7,6 @@ namespace V2.Managers
 {
     public class RegionManager : MonoBehaviour
     {
-        [SerializeField] private GameObject regionPrefab;
-        [SerializeField] private Transform mapContainer;
-        
         private Dictionary<string, RegionView> regionViews = new Dictionary<string, RegionView>();
         private EconomicSystem economicSystem;
         private V2.Systems.DialogueSystem.DialogueEventManager dialogueManager;
@@ -22,56 +19,74 @@ namespace V2.Managers
         
         private void Start()
         {
-            InitializeRegions();
+            // Subscribe to events
+            EventBus.Subscribe("EconomicTick", OnEconomicTick);
+            EventBus.Subscribe("RegionSelected", OnRegionSelected);
+            EventBus.Subscribe("RegionsCreated", OnRegionsCreated);
+            
+            // Give MapManager a chance to create regions first
+            Invoke("InitializeRegionReferences", 0.2f);
         }
         
-        private void InitializeRegions()
+        private void OnDestroy()
         {
-            // Create basic regions with positions and colors
-            CreateRegion("Western Province", new Vector2(-300, 0), Color.blue);
-            CreateRegion("Eastern Province", new Vector2(300, 0), Color.red);
-            CreateRegion("Northern Highlands", new Vector2(0, 300), Color.green);
-            CreateRegion("Southern Coast", new Vector2(0, -300), Color.yellow);
+            EventBus.Unsubscribe("EconomicTick", OnEconomicTick);
+            EventBus.Unsubscribe("RegionSelected", OnRegionSelected);
+            EventBus.Unsubscribe("RegionsCreated", OnRegionsCreated);
+        }
+        
+        private void OnRegionsCreated(object data)
+        {
+            // When MapManager signals that it's created regions, initialize our references immediately
+            CancelInvoke("InitializeRegionReferences");
+            InitializeRegionReferences();
+        }
+        
+        private void OnEconomicTick(object data)
+        {
+            // The EconomicSystem now triggers the RegionUpdated events directly
+            // No need to do anything here
+        }
+        
+        // This method finds all RegionView components in the scene and initializes them
+        private void InitializeRegionReferences()
+        {
+            // Find all RegionView components in the scene
+            RegionView[] regions = FindObjectsByType<RegionView>(FindObjectsSortMode.None);
             
-            // Initialize economic entities for each region
-            foreach (var region in regionViews.Values)
+            // Populate our dictionary
+            foreach (var region in regions)
             {
-                RegionEntity regionEntity;
-                
-                // Use test region for the first one if it already exists
-                if (region == regionViews["Western Province"] && economicSystem.testRegion != null)
+                if (!string.IsNullOrEmpty(region.RegionName))
                 {
-                    regionEntity = economicSystem.testRegion;
-                    regionEntity.Name = "Western Province";
+                    regionViews[region.RegionName] = region;
                 }
-                else
+            }
+            
+            Debug.Log($"RegionManager: Found {regionViews.Count} regions to manage");
+            
+            // If we have regions but no testRegion is set, use the first one
+            if (regionViews.Count > 0 && economicSystem.testRegion == null)
+            {
+                economicSystem.testRegion = regionViews.Values.GetEnumerator().Current.RegionEntity;
+                if (economicSystem.testRegion != null)
                 {
-                    // Create a new region entity with random initial values
-                    int initialWealth = Random.Range(100, 300);
-                    int initialProduction = Random.Range(50, 100);
-                    regionEntity = new RegionEntity(region.RegionName, initialWealth, initialProduction);
-                    
-                    // Set additional properties
-                    regionEntity.Population.LaborAvailable = Random.Range(50, 150);
-                    regionEntity.Infrastructure.Level = Random.Range(1, 5);
-                    regionEntity.Population.UpdateSatisfaction(Random.Range(0.4f, 0.8f));
+                    Debug.Log($"Set {economicSystem.testRegion.Name} as initial test region");
                 }
-                
-                region.SetRegionEntity(regionEntity);
+            }
+            
+            // Manually trigger an economic tick to update all values
+            if (economicSystem != null)
+            {
+                economicSystem.ManualTick();
             }
         }
         
-        private void CreateRegion(string name, Vector2 position, Color color)
+        private void OnRegionSelected(object data)
         {
-            GameObject regionObj = Instantiate(regionPrefab, mapContainer);
-            regionObj.name = name;
-            regionObj.transform.localPosition = position;
-            
-            RegionView regionView = regionObj.GetComponent<RegionView>();
-            if (regionView != null)
+            if (data is string regionName && regionViews.TryGetValue(regionName, out RegionView selectedView))
             {
-                regionView.Initialize(name, color);
-                regionViews.Add(name, regionView);
+                SelectRegion(regionName);
             }
         }
         
@@ -86,10 +101,16 @@ namespace V2.Managers
             if (regionViews.TryGetValue(regionName, out RegionView selectedView))
             {
                 // Update the economic system's test region
-                economicSystem.testRegion = selectedView.RegionEntity;
+                if (selectedView.RegionEntity != null)
+                {
+                    economicSystem.testRegion = selectedView.RegionEntity;
+                }
                 
                 // Trigger a region event if possible
-                TriggerRegionEvent(selectedView.RegionEntity);
+                if (selectedView.RegionEntity != null)
+                {
+                    TriggerRegionEvent(selectedView.RegionEntity);
+                }
                 
                 Debug.Log($"Selected region: {regionName}");
             }

@@ -253,11 +253,11 @@ Transform:
   m_GameObject: {fileID: 500666485}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: -0.73313874, y: -0.3724661, z: -10.071337}
+  m_LocalPosition: {x: 0, y: 0, z: -10}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 969194406}
+  m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &500666489
 MonoBehaviour:
@@ -354,7 +354,7 @@ MonoBehaviour:
   regionsContainer: {fileID: 1529645420}
   gridWidth: 3
   gridHeight: 3
-  regionSpacing: 2.2
+  regionSpacing: 1
 --- !u!4 &969194406
 Transform:
   m_ObjectHideFlags: 0
@@ -369,7 +369,6 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 1529645420}
-  - {fileID: 500666488}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1166545070
@@ -463,8 +462,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2e2ce04163d744636846b74016a32503, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  regionPrefab: {fileID: 6690667519402627605, guid: e618fde77b9174433aa1b976cbeeb150, type: 3}
-  mapContainer: {fileID: 969194406}
 --- !u!1 &1900309887
 GameObject:
   m_ObjectHideFlags: 0
@@ -657,6 +654,7 @@ GameObject:
   - component: {fileID: 1991499567}
   - component: {fileID: 1991499569}
   - component: {fileID: 1991499568}
+  - component: {fileID: 1991499570}
   m_Layer: 0
   m_Name: EconomicSystem
   m_TagString: Untagged
@@ -736,6 +734,21 @@ MonoBehaviour:
   decayRate: 0.01
   maintenanceCostMultiplier: 0.5
   laborConsumptionRate: 1.5
+--- !u!114 &1991499570
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1991499565}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3b9fbb0b63e5444afa34fbc7f0c705c1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  createTestRegionsOnStart: 0
+  numberOfRegions: 4
+  regionNamePrefix: 'Test Region '
 --- !u!1 &2109152175
 GameObject:
   m_ObjectHideFlags: 0
@@ -784,6 +797,7 @@ MonoBehaviour:
 SceneRoots:
   m_ObjectHideFlags: 0
   m_Roots:
+  - {fileID: 500666488}
   - {fileID: 2109152176}
   - {fileID: 197066326}
   - {fileID: 1991499566}

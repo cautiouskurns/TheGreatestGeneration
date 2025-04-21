@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using V2.Managers;
 using V2.Entities;
+using V2.Systems;
 
 public class MapManager : MonoBehaviour
 {
@@ -15,10 +16,24 @@ public class MapManager : MonoBehaviour
     // Tracking
     private Dictionary<string, RegionView> regionViews = new Dictionary<string, RegionView>();
     private string selectedRegionId;
+    private EconomicSystem economicSystem;
+    
+    private void Awake()
+    {
+        economicSystem = FindFirstObjectByType<EconomicSystem>();
+    }
     
     private void Start()
     {
         CreateRegionGrid();
+        
+        // Notify the economic system that all regions have been created
+        if (regionViews.Count > 0 && economicSystem != null)
+        {
+            Debug.Log($"MapManager created {regionViews.Count} regions");
+            // Trigger an event that RegionManager can listen for
+            EventBus.Trigger("RegionsCreated", regionViews.Count);
+        }
     }
     
     private void OnEnable()
@@ -65,6 +80,39 @@ public class MapManager : MonoBehaviour
                 
                 // Create region
                 CreateRegion(regionId, regionName, position, regionColor);
+                
+                // Create the economic entity for this region right away
+                if (economicSystem != null)
+                {
+                    CreateRegionEntity(regionId);
+                }
+            }
+        }
+    }
+    
+    private void CreateRegionEntity(string regionId)
+    {
+        // Only create if the region doesn't already have an entity
+        RegionEntity existingEntity = economicSystem.GetRegion(regionId);
+        if (existingEntity == null)
+        {
+            // Create a new region entity with random initial values
+            int initialWealth = Random.Range(100, 300);
+            int initialProduction = Random.Range(50, 100);
+            RegionEntity regionEntity = new RegionEntity(regionId, initialWealth, initialProduction);
+            
+            // Set additional properties
+            regionEntity.Population.LaborAvailable = Random.Range(50, 150);
+            regionEntity.Infrastructure.Level = Random.Range(1, 5);
+            regionEntity.Population.UpdateSatisfaction(Random.Range(0.4f, 0.8f));
+            
+            // Register with the economic system
+            economicSystem.RegisterRegion(regionEntity);
+            
+            // Update the region view if available
+            if (regionViews.TryGetValue(regionId, out RegionView regionView))
+            {
+                regionView.SetRegionEntity(regionEntity);
             }
         }
     }
@@ -101,7 +149,13 @@ public class MapManager : MonoBehaviour
             {
                 currentRegion.SetHighlighted(true);
                 
-                // You could trigger dialogue or region info panel events here
+                // Make this the current test region in the economic system
+                if (economicSystem != null && currentRegion.RegionEntity != null)
+                {
+                    economicSystem.testRegion = currentRegion.RegionEntity;
+                    Debug.Log($"Set {regionId} as test region for economic system");
+                }
+                
                 Debug.Log($"Selected region: {regionId}");
             }
         }
