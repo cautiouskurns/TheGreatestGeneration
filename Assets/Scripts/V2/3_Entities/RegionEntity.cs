@@ -50,6 +50,7 @@ namespace V2.Entities
         public InfrastructureComponent Infrastructure { get; set; }
         public PopulationComponent Population { get; set; }
 
+        // Constructor with all parameters
         public RegionEntity(string name, int initialWealth, int initialProduction)
         {
             Name = name;
@@ -60,6 +61,14 @@ namespace V2.Entities
             Economy = new RegionEconomyComponent(initialWealth, initialProduction);
             Infrastructure = new InfrastructureComponent();
             Population = new PopulationComponent();
+        }
+
+        // Additional constructor with default values
+        public RegionEntity(string name) : this(name, 100, 50)
+        {
+            // This calls the main constructor with default values
+            // Default wealth: 100
+            // Default production: 50
         }
 
         public void ProcessTurn()
